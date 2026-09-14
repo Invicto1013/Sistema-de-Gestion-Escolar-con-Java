@@ -4,11 +4,16 @@ import com.unev.sige.data.UsuarioRepositorio;
 import com.unev.sige.model.Usuario;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.util.Optional;
 
 /**
@@ -65,6 +70,22 @@ public class LoginController {
     private void onSalir() {
         Platform.exit();
     }
+
+    @FXML
+private void onIrARegistro(javafx.event.ActionEvent event) {
+    try {
+        javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+            getClass().getResource("/com/unev/sige/view/registro.fxml")
+        );
+        javafx.scene.Parent root = loader.load();
+        javafx.stage.Stage stage = (javafx.stage.Stage) ((javafx.scene.Node) event.getSource()).getScene().getWindow();
+        stage.setScene(new javafx.scene.Scene(root));
+        stage.setTitle("SIGE - Registro de Usuario");
+        stage.show();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
 
     private void mostrarError(String mensaje) {
         lblMensaje.setTextFill(javafx.scene.paint.Color.RED);
