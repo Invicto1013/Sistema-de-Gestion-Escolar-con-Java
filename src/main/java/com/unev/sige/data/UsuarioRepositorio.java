@@ -50,4 +50,9 @@ public class UsuarioRepositorio {
     public static boolean existeNombreUsuario(String nombreUsuario) {
         return buscarPorNombreUsuario(nombreUsuario).isPresent();
     }
+    // Ejemplo dentro de UsuarioRepositorio.java
+static {
+    // Administrador único para el sistema
+    usuarios.add(new Usuario(1, "admin", "admin123", "Elian Castro", "admin@sige.edu.do", Rol.ADMIN));
+}
 }

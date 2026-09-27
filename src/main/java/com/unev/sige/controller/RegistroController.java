@@ -54,10 +54,18 @@ public class RegistroController {
     private int siguienteId = 100;
 
     @FXML
-    private void initialize() {
-        cmbRol.getItems().setAll(Rol.values());
+private void initialize() {
+    // Filtrar la lista de roles para excluir ADMINISTRADOR
+    for (Rol r : Rol.values()) {
+        if (r != Rol.ADMIN) { // Cambia Rol.ADMINISTRADOR según como esté nombrado en tu Enum (ej. Rol.ADMIN)
+            cmbRol.getItems().add(r);
+        }
     }
+}
 
+    /**
+     * 
+     */
     @FXML
     private void onGuardar() {
         String nombre = txtNombre.getText();
@@ -68,6 +76,10 @@ public class RegistroController {
         String confirmar = txtConfirmarContrasena.getText();
         Rol rol = cmbRol.getValue();
 
+        if (rol == Rol.ADMIN) {
+    mostrarError("El rol de Administrador no está permitido en el registro público.");
+    return;
+}
         if (esVacio(nombre) || esVacio(apellido) || esVacio(usuario) || esVacio(correo)
                 || esVacio(contrasena) || esVacio(confirmar) || rol == null) {
             mostrarError("Todos los campos son obligatorios.");

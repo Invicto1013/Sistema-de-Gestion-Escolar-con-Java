@@ -1,0 +1,1 @@
+SELECT * FROM sige_db.usuarios;

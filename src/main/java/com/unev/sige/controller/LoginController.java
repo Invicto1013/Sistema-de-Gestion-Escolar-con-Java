@@ -21,6 +21,7 @@ import java.util.Optional;
  * Valida campos vacios y autentica al usuario contra UsuarioRepositorio,
  * usando el metodo autenticar() de la clase Usuario.
  */
+@SuppressWarnings("unused")
 public class LoginController {
 
     @FXML
