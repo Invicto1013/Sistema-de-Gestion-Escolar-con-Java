@@ -6,5 +6,6 @@ package com.unev.sige.model;
 public enum Rol {
     ADMIN,
     PROFESOR,
-    ESTUDIANTE
+    ESTUDIANTE,
+    PADRE
 }
