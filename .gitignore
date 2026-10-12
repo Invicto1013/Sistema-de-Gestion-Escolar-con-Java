@@ -1,4 +1,11 @@
+# Credenciales locales
+db.properties
+
+# Build / IDE
 target/
+.idea/
+*.iml
 .vscode/
-*.class
-.DS_Store
+.classpath
+.project
+.settings/

@@ -30,8 +30,8 @@
             <javafx.scene.layout.ColumnConstraints minWidth="220.0" />
         </columnConstraints>
 
-        <Label text="Usuario:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
-        <TextField fx:id="txtUsuario" promptText="Nombre de usuario" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+        <Label text="Correo electrónico:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+        <TextField fx:id="txtCorreo" promptText="correo@ejemplo.com" GridPane.columnIndex="1" GridPane.rowIndex="0" />
 
         <Label text="Contraseña:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
         <PasswordField fx:id="txtContrasena" promptText="Contraseña" GridPane.columnIndex="1" GridPane.rowIndex="1" />

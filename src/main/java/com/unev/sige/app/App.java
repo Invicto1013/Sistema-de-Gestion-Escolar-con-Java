@@ -1,10 +1,14 @@
 package com.unev.sige.app;
 
+import com.unev.sige.data.SesionDAO;
+import com.unev.sige.model.ControladorSesion;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+
+import java.sql.SQLException;
 
 /**
  * Clase principal de la aplicacion JavaFX.
@@ -22,6 +26,21 @@ public class App extends Application {
         stage.setTitle("SIGE - Inicio de sesion");
         stage.setScene(scene);
         stage.show();
+    }
+
+    /**
+     * Al cerrar la ventana con la sesion abierta, la marca como cerrada en la base de datos.
+     */
+    @Override
+    public void stop() {
+        ControladorSesion sesion = SesionActual.getSesion();
+        if (sesion != null) {
+            try {
+                new SesionDAO().cerrar(sesion.getIdSesion());
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public static void main(String[] args) {

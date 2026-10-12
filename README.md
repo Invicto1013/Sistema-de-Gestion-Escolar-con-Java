@@ -40,4 +40,4 @@ mvn clean javafx:run
 
 ## Autor
 
-Genesis Castro - Programación II - UNEV
+Elian Castro - Programación II - UNEV

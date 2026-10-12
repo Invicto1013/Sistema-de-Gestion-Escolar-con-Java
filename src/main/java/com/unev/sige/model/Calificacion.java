@@ -1,29 +1,39 @@
 package com.unev.sige.model;
 
 /**
- * Representa la nota de un Estudiante en una Asignatura durante un periodo especifico.
- * Relaciona a un Estudiante con una Asignatura (muchos a muchos, resuelto por esta clase intermedia).
+ * Notas de una materia inscrita (tabla `calificaciones`, 1 a 1 con `detalle_inscripciones`).
+ * Las notas van de 0 a 100.
  */
 public class Calificacion {
 
     private int id;
-    private Estudiante estudiante;
-    private Asignatura asignatura;
-    private String periodo;
-    private double valor;
-    private TipoCalificacion tipo;
+    private int idDetalleInscripcion;
+    private double notaParcial1;
+    private double notaParcial2;
+    private double notaExamenFinal;
+    private double notaFinal;
+    private String calificacionLiteral;
 
     public Calificacion() {
+        this.calificacionLiteral = "";
     }
 
-    public Calificacion(int id, Estudiante estudiante, Asignatura asignatura, String periodo,
-                         double valor, TipoCalificacion tipo) {
+    public Calificacion(int id, int idDetalleInscripcion, double notaParcial1, double notaParcial2,
+                        double notaExamenFinal, double notaFinal, String calificacionLiteral) {
         this.id = id;
-        this.estudiante = estudiante;
-        this.asignatura = asignatura;
-        this.periodo = periodo;
-        this.valor = valor;
-        this.tipo = tipo;
+        this.idDetalleInscripcion = idDetalleInscripcion;
+        this.notaParcial1 = validar(notaParcial1);
+        this.notaParcial2 = validar(notaParcial2);
+        this.notaExamenFinal = validar(notaExamenFinal);
+        this.notaFinal = validar(notaFinal);
+        this.calificacionLiteral = calificacionLiteral;
+    }
+
+    private static double validar(double nota) {
+        if (Double.isNaN(nota) || nota < 0.0 || nota > 100.0) {
+            throw new IllegalArgumentException("La nota debe estar entre 0 y 100: " + nota);
+        }
+        return nota;
     }
 
     // ----- Getters y setters -----
@@ -36,58 +46,86 @@ public class Calificacion {
         this.id = id;
     }
 
-    public Estudiante getEstudiante() {
-        return estudiante;
+    public int getIdDetalleInscripcion() {
+        return idDetalleInscripcion;
     }
 
-    public void setEstudiante(Estudiante estudiante) {
-        this.estudiante = estudiante;
+    public void setIdDetalleInscripcion(int idDetalleInscripcion) {
+        this.idDetalleInscripcion = idDetalleInscripcion;
     }
 
-    public Asignatura getAsignatura() {
-        return asignatura;
+    public double getNotaParcial1() {
+        return notaParcial1;
     }
 
-    public void setAsignatura(Asignatura asignatura) {
-        this.asignatura = asignatura;
+    public void setNotaParcial1(double notaParcial1) {
+        this.notaParcial1 = validar(notaParcial1);
     }
 
-    public String getPeriodo() {
-        return periodo;
+    public double getNotaParcial2() {
+        return notaParcial2;
     }
 
-    public void setPeriodo(String periodo) {
-        this.periodo = periodo;
+    public void setNotaParcial2(double notaParcial2) {
+        this.notaParcial2 = validar(notaParcial2);
     }
 
-    public double getValor() {
-        return valor;
+    public double getNotaExamenFinal() {
+        return notaExamenFinal;
     }
 
-    public void setValor(double valor) {
-        this.valor = valor;
+    public void setNotaExamenFinal(double notaExamenFinal) {
+        this.notaExamenFinal = validar(notaExamenFinal);
     }
 
-    public TipoCalificacion getTipo() {
-        return tipo;
+    public double getNotaFinal() {
+        return notaFinal;
     }
 
-    public void setTipo(TipoCalificacion tipo) {
-        this.tipo = tipo;
+    public void setNotaFinal(double notaFinal) {
+        this.notaFinal = validar(notaFinal);
+    }
+
+    public String getCalificacionLiteral() {
+        return calificacionLiteral;
+    }
+
+    public void setCalificacionLiteral(String calificacionLiteral) {
+        this.calificacionLiteral = calificacionLiteral;
     }
 
     // ----- Metodos propios -----
 
     /**
-     * Indica si la calificacion es aprobatoria (>= 70, escala de 0 a 100).
+     * Indica si la nota final es aprobatoria (la nota minima esta en EscalaCalificaciones).
      */
     public boolean esAprobatoria() {
-        return valor >= 70.0;
+        return EscalaCalificaciones.aprueba(notaFinal);
+    }
+
+    /**
+     * Recalcula la nota final y la letra a partir de los dos parciales y el examen final,
+     * segun las reglas de EscalaCalificaciones.
+     */
+    public void recalcular() {
+        this.notaFinal = EscalaCalificaciones.calcularNotaFinal(notaParcial1, notaParcial2, notaExamenFinal);
+        this.calificacionLiteral = EscalaCalificaciones.literal(notaFinal);
+    }
+
+    /**
+     * Ajusta un valor leido de la base de datos al rango 0-100 (un NaN pasa a 0), para que
+     * un dato raro guardado a mano no impida abrir la pantalla.
+     */
+    public static double limitar(double nota) {
+        if (Double.isNaN(nota)) {
+            return 0.0;
+        }
+        return Math.max(0.0, Math.min(100.0, nota));
     }
 
     @Override
     public String toString() {
-        return "Calificacion{" + estudiante.getNombreCompleto() + " - " + asignatura.getNombre()
-                + " (" + periodo + "): " + valor + "}";
+        return "Calificacion{detalle=" + idDetalleInscripcion + ", final=" + notaFinal
+                + ", literal='" + calificacionLiteral + "'}";
     }
 }

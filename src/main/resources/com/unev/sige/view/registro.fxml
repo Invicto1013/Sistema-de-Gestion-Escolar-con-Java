@@ -36,20 +36,24 @@
         <Label text="Apellido:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
         <TextField fx:id="txtApellido" promptText="Apellido" GridPane.columnIndex="1" GridPane.rowIndex="1" />
 
-        <Label text="Usuario:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
-        <TextField fx:id="txtUsuario" promptText="Nombre de usuario" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+        <Label text="Correo electrónico:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+        <TextField fx:id="txtCorreo" promptText="correo@ejemplo.com" GridPane.columnIndex="1" GridPane.rowIndex="2" />
 
-        <Label text="Correo electrónico:" GridPane.columnIndex="0" GridPane.rowIndex="3" />
-        <TextField fx:id="txtCorreo" promptText="correo@ejemplo.com" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+        <Label text="Contraseña:" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+        <PasswordField fx:id="txtContrasena" promptText="Contraseña" GridPane.columnIndex="1" GridPane.rowIndex="3" />
 
-        <Label text="Contraseña:" GridPane.columnIndex="0" GridPane.rowIndex="4" />
-        <PasswordField fx:id="txtContrasena" promptText="Contraseña" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+        <Label text="Confirmar contraseña:" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+        <PasswordField fx:id="txtConfirmarContrasena" promptText="Repite la contraseña" GridPane.columnIndex="1" GridPane.rowIndex="4" />
 
-        <Label text="Confirmar contraseña:" GridPane.columnIndex="0" GridPane.rowIndex="5" />
-        <PasswordField fx:id="txtConfirmarContrasena" promptText="Repite la contraseña" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+        <Label text="Rol:" GridPane.columnIndex="0" GridPane.rowIndex="5" />
+        <ComboBox fx:id="cmbRol" onAction="#onRolSeleccionado" prefWidth="240.0" promptText="Selecciona un rol" GridPane.columnIndex="1" GridPane.rowIndex="5" />
 
-        <Label text="Rol:" GridPane.columnIndex="0" GridPane.rowIndex="6" />
-        <ComboBox fx:id="cmbRol" prefWidth="240.0" promptText="Selecciona un rol" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+        <!-- Campos extra: el controlador cambia las etiquetas segun el rol y los oculta si no hay rol -->
+        <Label fx:id="lblDato1" text="Dato 1:" GridPane.columnIndex="0" GridPane.rowIndex="6" />
+        <TextField fx:id="txtDato1" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+
+        <Label fx:id="lblDato2" text="Dato 2:" GridPane.columnIndex="0" GridPane.rowIndex="7" />
+        <TextField fx:id="txtDato2" GridPane.columnIndex="1" GridPane.rowIndex="7" />
     </GridPane>
 
     <Label fx:id="lblMensaje" textFill="RED" wrapText="true" />

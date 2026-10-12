@@ -1,29 +1,32 @@
 package com.unev.sige.model;
 
+import org.mindrot.jbcrypt.BCrypt;
+
 import java.util.Objects;
 
 /**
- * Clase base que representa a cualquier persona que inicia sesion en el sistema.
- * Estudiante y Profesor heredan de esta clase (herencia).
+ * Clase base de cualquier persona que inicia sesion en el sistema (tabla `usuarios`).
+ * Estudiante, Profesor y Padre heredan de esta clase.
+ * La contrasena nunca se guarda en texto plano: se almacena el hash BCrypt.
  */
 public class Usuario {
 
     private int id;
-    private String nombreUsuario;
-    private String contrasena;
-    private String nombreCompleto;
+    private String nombre;
+    private String apellido;
     private String correo;
+    private String contrasenaHash;
     private Rol rol;
 
     public Usuario() {
     }
 
-    public Usuario(int id, String nombreUsuario, String contrasena, String nombreCompleto, String correo, Rol rol) {
+    public Usuario(int id, String nombre, String apellido, String correo, String contrasenaHash, Rol rol) {
         this.id = id;
-        this.nombreUsuario = nombreUsuario;
-        this.contrasena = contrasena;
-        this.nombreCompleto = nombreCompleto;
+        this.nombre = nombre;
+        this.apellido = apellido;
         this.correo = correo;
+        this.contrasenaHash = contrasenaHash;
         this.rol = rol;
     }
 
@@ -37,28 +40,24 @@ public class Usuario {
         this.id = id;
     }
 
-    public String getNombreUsuario() {
-        return nombreUsuario;
+    public String getNombre() {
+        return nombre;
     }
 
-    public void setNombreUsuario(String nombreUsuario) {
-        this.nombreUsuario = nombreUsuario;
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
     }
 
-    protected String getContrasena() {
-        return contrasena;
+    public String getApellido() {
+        return apellido;
     }
 
-    public void setContrasena(String contrasena) {
-        this.contrasena = contrasena;
+    public void setApellido(String apellido) {
+        this.apellido = apellido;
     }
 
     public String getNombreCompleto() {
-        return nombreCompleto;
-    }
-
-    public void setNombreCompleto(String nombreCompleto) {
-        this.nombreCompleto = nombreCompleto;
+        return nombre + " " + apellido;
     }
 
     public String getCorreo() {
@@ -67,6 +66,10 @@ public class Usuario {
 
     public void setCorreo(String correo) {
         this.correo = correo;
+    }
+
+    protected String getContrasenaHash() {
+        return contrasenaHash;
     }
 
     public Rol getRol() {
@@ -80,28 +83,45 @@ public class Usuario {
     // ----- Metodos propios -----
 
     /**
-     * Valida que el usuario y la contrasena ingresados coincidan con los del sistema.
-     * Se usara desde LoginController.
+     * Genera el hash BCrypt de una contrasena en texto plano.
      */
-    public boolean autenticar(String usuarioIngresado, String contrasenaIngresada) {
-        if (usuarioIngresado == null || contrasenaIngresada == null) {
-            return false;
-        }
-        return this.nombreUsuario.equals(usuarioIngresado) && this.contrasena.equals(contrasenaIngresada);
+    public static String hashear(String contrasenaPlana) {
+        return BCrypt.hashpw(contrasenaPlana, BCrypt.gensalt());
     }
 
     /**
-     * Permite cambiar la contrasena actual por una nueva.
+     * Valida que el correo y la contrasena ingresados coincidan con los del usuario.
+     * Se usa desde LoginController.
+     */
+    public boolean autenticar(String correoIngresado, String contrasenaIngresada) {
+        if (correoIngresado == null || contrasenaIngresada == null
+                || correo == null || contrasenaHash == null) {
+            return false;
+        }
+        if (!correo.equalsIgnoreCase(correoIngresado.trim())) {
+            return false;
+        }
+        try {
+            return BCrypt.checkpw(contrasenaIngresada, contrasenaHash);
+        } catch (IllegalArgumentException e) {
+            // El valor guardado en la base de datos no es un hash BCrypt valido.
+            return false;
+        }
+    }
+
+    /**
+     * Cambia la contrasena en memoria (se guarda hasheada).
+     * Para persistir el cambio hay que actualizar la tabla `usuarios`.
      */
     public void cambiarContrasena(String nuevaContrasena) {
         if (nuevaContrasena != null && !nuevaContrasena.isBlank()) {
-            this.contrasena = nuevaContrasena;
+            this.contrasenaHash = hashear(nuevaContrasena);
         }
     }
 
     @Override
     public String toString() {
-        return "Usuario{id=" + id + ", nombreUsuario='" + nombreUsuario + "', rol=" + rol + "}";
+        return "Usuario{id=" + id + ", correo='" + correo + "', rol=" + rol + "}";
     }
 
     @Override

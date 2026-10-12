@@ -1,34 +1,31 @@
 package com.unev.sige.model;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Representa a un alumno matriculado en el colegio.
- * Hereda de Usuario (id, nombreUsuario, contrasena, correo, rol).
+ * Alumno del centro (tabla `estudiantes`, comparte id con `usuarios`).
+ * Hereda de Usuario.
  */
 public class Estudiante extends Usuario {
 
     private String matricula;
-    private LocalDate fechaNacimiento;
     private String grado;
-    private String seccion;
-    private List<Asignatura> listaAsignaturas;
+    private double promedioAcademico;
+    private List<Inscripcion> inscripciones;
 
     public Estudiante() {
         super();
-        this.listaAsignaturas = new ArrayList<>();
+        this.inscripciones = new ArrayList<>();
     }
 
-    public Estudiante(int id, String nombreUsuario, String contrasena, String nombreCompleto, String correo,
-                       String matricula, LocalDate fechaNacimiento, String grado, String seccion) {
-        super(id, nombreUsuario, contrasena, nombreCompleto, correo, Rol.ESTUDIANTE);
+    public Estudiante(int id, String nombre, String apellido, String correo, String contrasenaHash,
+                      String matricula, String grado, double promedioAcademico) {
+        super(id, nombre, apellido, correo, contrasenaHash, Rol.ESTUDIANTE);
         this.matricula = matricula;
-        this.fechaNacimiento = fechaNacimiento;
         this.grado = grado;
-        this.seccion = seccion;
-        this.listaAsignaturas = new ArrayList<>();
+        this.promedioAcademico = promedioAcademico;
+        this.inscripciones = new ArrayList<>();
     }
 
     // ----- Getters y setters -----
@@ -41,14 +38,6 @@ public class Estudiante extends Usuario {
         this.matricula = matricula;
     }
 
-    public LocalDate getFechaNacimiento() {
-        return fechaNacimiento;
-    }
-
-    public void setFechaNacimiento(LocalDate fechaNacimiento) {
-        this.fechaNacimiento = fechaNacimiento;
-    }
-
     public String getGrado() {
         return grado;
     }
@@ -57,49 +46,42 @@ public class Estudiante extends Usuario {
         this.grado = grado;
     }
 
-    public String getSeccion() {
-        return seccion;
+    public double getPromedioAcademico() {
+        return promedioAcademico;
     }
 
-    public void setSeccion(String seccion) {
-        this.seccion = seccion;
+    public void setPromedioAcademico(double promedioAcademico) {
+        this.promedioAcademico = promedioAcademico;
     }
 
-    public List<Asignatura> getListaAsignaturas() {
-        return listaAsignaturas;
-    }
-
-    public void setListaAsignaturas(List<Asignatura> listaAsignaturas) {
-        this.listaAsignaturas = listaAsignaturas;
+    public List<Inscripcion> getInscripciones() {
+        return inscripciones;
     }
 
     // ----- Metodos propios -----
 
     /**
-     * Matricula al estudiante en una asignatura (relacion Estudiante-Asignatura).
+     * Agrega una inscripcion (periodo lectivo) a este estudiante.
      */
-    public void matricularEn(Asignatura asignatura) {
-        if (asignatura != null && !listaAsignaturas.contains(asignatura)) {
-            listaAsignaturas.add(asignatura);
+    public void agregarInscripcion(Inscripcion inscripcion) {
+        if (inscripcion != null && !inscripciones.contains(inscripcion)) {
+            inscripciones.add(inscripcion);
         }
     }
 
     /**
-     * Calcula el promedio del estudiante a partir de una lista de calificaciones.
+     * Calcula el promedio de la nota final de las calificaciones recibidas
+     * (se espera que sean las de este estudiante).
      */
     public double obtenerPromedio(List<Calificacion> calificaciones) {
         if (calificaciones == null || calificaciones.isEmpty()) {
             return 0.0;
         }
         double suma = 0.0;
-        int cantidad = 0;
         for (Calificacion c : calificaciones) {
-            if (c.getEstudiante().equals(this)) {
-                suma += c.getValor();
-                cantidad++;
-            }
+            suma += c.getNotaFinal();
         }
-        return cantidad == 0 ? 0.0 : suma / cantidad;
+        return suma / calificaciones.size();
     }
 
     @Override

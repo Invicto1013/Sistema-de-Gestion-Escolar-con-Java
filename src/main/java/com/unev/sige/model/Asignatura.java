@@ -1,35 +1,37 @@
 package com.unev.sige.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Representa una materia del plan de estudios (ej. Matematica, Espanol).
- * Pertenece a un Profesor. Se relaciona con Estudiante a traves de la matricula.
+ * Materia del plan de estudios (tabla `asignaturas`), por ejemplo Matematica o Espanol.
+ * El profesor y el horario no estan aqui: pertenecen a la Seccion.
  */
 public class Asignatura {
 
+    private int id;
     private String codigo;
     private String nombre;
+    private int creditos;
     private String descripcion;
-    private String grado;
-    private Profesor profesor;
-    private List<Estudiante> estudiantesMatriculados;
 
     public Asignatura() {
-        this.estudiantesMatriculados = new ArrayList<>();
     }
 
-    public Asignatura(String codigo, String nombre, String descripcion, String grado, Profesor profesor) {
+    public Asignatura(int id, String codigo, String nombre, int creditos, String descripcion) {
+        this.id = id;
         this.codigo = codigo;
         this.nombre = nombre;
+        this.creditos = creditos;
         this.descripcion = descripcion;
-        this.grado = grado;
-        this.profesor = profesor;
-        this.estudiantesMatriculados = new ArrayList<>();
     }
 
     // ----- Getters y setters -----
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
 
     public String getCodigo() {
         return codigo;
@@ -47,47 +49,20 @@ public class Asignatura {
         this.nombre = nombre;
     }
 
+    public int getCreditos() {
+        return creditos;
+    }
+
+    public void setCreditos(int creditos) {
+        this.creditos = creditos;
+    }
+
     public String getDescripcion() {
         return descripcion;
     }
 
     public void setDescripcion(String descripcion) {
         this.descripcion = descripcion;
-    }
-
-    public String getGrado() {
-        return grado;
-    }
-
-    public void setGrado(String grado) {
-        this.grado = grado;
-    }
-
-    public Profesor getProfesor() {
-        return profesor;
-    }
-
-    public void setProfesor(Profesor profesor) {
-        this.profesor = profesor;
-    }
-
-    // ----- Metodos propios -----
-
-    /**
-     * Matricula a un estudiante en esta asignatura (relacion Asignatura-Estudiante).
-     */
-    public void matricular(Estudiante estudiante) {
-        if (estudiante != null && !estudiantesMatriculados.contains(estudiante)) {
-            estudiantesMatriculados.add(estudiante);
-            estudiante.matricularEn(this);
-        }
-    }
-
-    /**
-     * Devuelve la lista de estudiantes matriculados en esta asignatura.
-     */
-    public List<Estudiante> listarEstudiantesMatriculados() {
-        return estudiantesMatriculados;
     }
 
     @Override

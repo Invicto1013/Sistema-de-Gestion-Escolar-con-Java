@@ -4,29 +4,37 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Representa a un docente del colegio.
- * Hereda de Usuario. Un Profesor imparte varias Asignaturas (1 a muchos).
+ * Docente del centro (tabla `profesores`, comparte id con `usuarios`).
+ * Hereda de Usuario. Un profesor imparte varias secciones (1 a muchos).
  */
 public class Profesor extends Usuario {
 
+    private String codigoProfesor;
     private String especialidad;
-    private int anosExperiencia;
-    private List<Asignatura> listaAsignaturasAsignadas;
+    private List<Seccion> secciones;
 
     public Profesor() {
         super();
-        this.listaAsignaturasAsignadas = new ArrayList<>();
+        this.secciones = new ArrayList<>();
     }
 
-    public Profesor(int id, String nombreUsuario, String contrasena, String nombreCompleto, String correo,
-                     String especialidad, int anosExperiencia) {
-        super(id, nombreUsuario, contrasena, nombreCompleto, correo, Rol.PROFESOR);
+    public Profesor(int id, String nombre, String apellido, String correo, String contrasenaHash,
+                    String codigoProfesor, String especialidad) {
+        super(id, nombre, apellido, correo, contrasenaHash, Rol.PROFESOR);
+        this.codigoProfesor = codigoProfesor;
         this.especialidad = especialidad;
-        this.anosExperiencia = anosExperiencia;
-        this.listaAsignaturasAsignadas = new ArrayList<>();
+        this.secciones = new ArrayList<>();
     }
 
     // ----- Getters y setters -----
+
+    public String getCodigoProfesor() {
+        return codigoProfesor;
+    }
+
+    public void setCodigoProfesor(String codigoProfesor) {
+        this.codigoProfesor = codigoProfesor;
+    }
 
     public String getEspecialidad() {
         return especialidad;
@@ -36,40 +44,30 @@ public class Profesor extends Usuario {
         this.especialidad = especialidad;
     }
 
-    public int getAnosExperiencia() {
-        return anosExperiencia;
-    }
-
-    public void setAnosExperiencia(int anosExperiencia) {
-        this.anosExperiencia = anosExperiencia;
-    }
-
-    public List<Asignatura> getListaAsignaturasAsignadas() {
-        return listaAsignaturasAsignadas;
-    }
-
-    public void setListaAsignaturasAsignadas(List<Asignatura> listaAsignaturasAsignadas) {
-        this.listaAsignaturasAsignadas = listaAsignaturasAsignadas;
+    public List<Seccion> getSecciones() {
+        return secciones;
     }
 
     // ----- Metodos propios -----
 
     /**
-     * Asigna una asignatura adicional a este profesor (relacion Profesor-Asignatura).
+     * Asigna una seccion a este profesor (relacion Profesor-Seccion).
      */
-    public void asignarAsignatura(Asignatura asignatura) {
-        if (asignatura != null && !listaAsignaturasAsignadas.contains(asignatura)) {
-            listaAsignaturasAsignadas.add(asignatura);
-            asignatura.setProfesor(this);
+    public void asignarSeccion(Seccion seccion) {
+        if (seccion != null && !secciones.contains(seccion)) {
+            secciones.add(seccion);
+            seccion.setProfesor(this);
         }
     }
 
     /**
-     * Crea y devuelve una nueva calificacion para un estudiante en una asignatura.
+     * Crea una calificacion para una materia inscrita (detalle de inscripcion).
+     * Aun no se guarda en la base de datos.
      */
-    public Calificacion registrarCalificacion(Estudiante estudiante, Asignatura asignatura, String periodo,
-                                               double valor, TipoCalificacion tipo) {
-        return new Calificacion(0, estudiante, asignatura, periodo, valor, tipo);
+    public Calificacion registrarCalificacion(int idDetalleInscripcion, double notaParcial1, double notaParcial2,
+                                              double notaExamenFinal, double notaFinal) {
+        return new Calificacion(0, idDetalleInscripcion, notaParcial1, notaParcial2,
+                notaExamenFinal, notaFinal, "");
     }
 
     @Override
