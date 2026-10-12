@@ -31,8 +31,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Pantalla del profesor para capturar las notas de los estudiantes de sus secciones.
- * Se elige una seccion y se edita cada estudiante (boton o doble clic).
+ * Pantalla para capturar o corregir notas de una sección.
+ * Los profesores ven sus secciones; el administrador puede elegir cualquiera.
  * La nota final y la letra se calculan solas con EscalaCalificaciones.
  */
 public class CalificacionesPanel extends VBox {
@@ -48,14 +48,20 @@ public class CalificacionesPanel extends VBox {
     }
 
     private final CalificacionDAO calificacionDAO = new CalificacionDAO();
-    private final int idProfesor;
+    private final int idUsuario;
+    private final boolean modoAdministrador;
 
     private final ComboBox<OpcionSeccion> cmbSeccion = new ComboBox<>();
     private final TableView<NotaEstudiante> tabla = new TableView<>();
     private final Label lblEstado = new Label();
 
     public CalificacionesPanel(int idProfesor) {
-        this.idProfesor = idProfesor;
+        this(idProfesor, false);
+    }
+
+    public CalificacionesPanel(int idUsuario, boolean modoAdministrador) {
+        this.idUsuario = idUsuario;
+        this.modoAdministrador = modoAdministrador;
         setSpacing(12);
 
         construirTabla();
@@ -67,7 +73,7 @@ public class CalificacionesPanel extends VBox {
         HBox selector = new HBox(10, new Label("Sección:"), cmbSeccion);
         selector.setAlignment(Pos.CENTER_LEFT);
 
-        Button btnEditar = new Button("Editar notas");
+        Button btnEditar = new Button(modoAdministrador ? "Corregir notas" : "Editar notas");
         btnEditar.setOnAction(e -> onEditar());
         btnEditar.disableProperty().bind(tabla.getSelectionModel().selectedItemProperty().isNull());
 
@@ -76,7 +82,8 @@ public class CalificacionesPanel extends VBox {
         lblFormula.setTextFill(Color.GRAY);
 
         VBox.setVgrow(tabla, Priority.ALWAYS);
-        getChildren().addAll(Dialogos.titulo("Calificaciones"), selector, btnEditar, tabla, lblEstado, lblFormula);
+        getChildren().addAll(Dialogos.titulo(modoAdministrador ? "Administración de calificaciones" : "Calificaciones"),
+                selector, btnEditar, tabla, lblEstado, lblFormula);
 
         cargarSecciones();
     }
@@ -142,13 +149,15 @@ public class CalificacionesPanel extends VBox {
 
     private void cargarSecciones() {
         try {
-            List<Seccion> secciones = new SeccionDAO().listarPorProfesor(idProfesor);
+            List<Seccion> secciones = modoAdministrador ? new SeccionDAO().listarTodas()
+                    : new SeccionDAO().listarPorProfesor(idUsuario);
             for (Seccion s : secciones) {
                 cmbSeccion.getItems().add(new OpcionSeccion(s));
             }
 
             if (secciones.isEmpty()) {
-                Dialogos.estado(lblEstado, "Aún no tienes secciones asignadas.", false);
+                Dialogos.estado(lblEstado, modoAdministrador ? "No hay secciones registradas."
+                        : "Aún no tienes secciones asignadas.", false);
             } else if (secciones.size() == 1) {
                 cmbSeccion.setValue(cmbSeccion.getItems().get(0));
                 recargar();
@@ -157,7 +166,7 @@ public class CalificacionesPanel extends VBox {
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            Dialogos.estado(lblEstado, "No se pudieron leer tus secciones. Revisa la conexión con MySQL.", true);
+            Dialogos.estado(lblEstado, "No se pudieron leer las secciones. Revisa la conexión con MySQL.", true);
         }
     }
 
@@ -199,7 +208,8 @@ public class CalificacionesPanel extends VBox {
         Calificacion nueva = new Calificacion(fila.calificacion().getId(), fila.idDetalleInscripcion(),
                 n[0], n[1], n[2], 0, "");
         try {
-            calificacionDAO.guardar(nueva, idProfesor);
+            if (modoAdministrador) calificacionDAO.guardarComoAdministrador(nueva, idUsuario);
+            else calificacionDAO.guardar(nueva, idUsuario);
         } catch (PermisoDenegadoException e) {
             Dialogos.error(e.getMessage());
         } catch (SQLException e) {

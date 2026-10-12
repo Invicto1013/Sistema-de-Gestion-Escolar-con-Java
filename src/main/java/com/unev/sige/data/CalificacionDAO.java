@@ -1,6 +1,7 @@
 package com.unev.sige.data;
 
 import com.unev.sige.model.Calificacion;
+import com.unev.sige.model.CalificacionHijo;
 import com.unev.sige.model.Estudiante;
 import com.unev.sige.model.NotaEstudiante;
 
@@ -16,6 +17,40 @@ import java.util.List;
  * Al guardar tambien actualiza el estado de la materia y el promedio del estudiante.
  */
 public class CalificacionDAO {
+
+    /** Notas de un estudiante solo si está vinculado a la cuenta del padre/tutor. */
+    public List<CalificacionHijo> listarParaPadre(int idUsuarioPadre, int idEstudiante) throws SQLException {
+        String sql = """
+                SELECT i.periodo_lectivo, a.codigo_asignatura, a.nombre AS asignatura,
+                       c.nota_parcial1, c.nota_parcial2, c.nota_examen_final, c.nota_final,
+                       c.calificacion_literal, d.estado_materia
+                FROM estudiante_padre ep
+                JOIN padres p ON p.id_padre = ep.id_padre
+                JOIN estudiantes e ON e.id_estudiante = ep.id_estudiante
+                JOIN inscripciones i ON i.id_estudiante = e.id_estudiante
+                JOIN detalle_inscripciones d ON d.id_inscripcion = i.id_inscripcion
+                JOIN secciones s ON s.id_seccion = d.id_seccion
+                JOIN asignaturas a ON a.id_asignatura = s.id_asignatura
+                LEFT JOIN calificaciones c ON c.id_detalle_inscripcion = d.id_detalle_inscripcion
+                WHERE p.id_usuario = ? AND e.id_estudiante = ?
+                ORDER BY i.periodo_lectivo DESC, a.codigo_asignatura
+                """;
+        List<CalificacionHijo> filas = new ArrayList<>();
+        try (Connection conn = ConexionBD.obtener(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idUsuarioPadre);
+            ps.setInt(2, idEstudiante);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) filas.add(new CalificacionHijo(rs.getString("periodo_lectivo"),
+                        rs.getString("codigo_asignatura"), rs.getString("asignatura"),
+                        Calificacion.limitar(rs.getDouble("nota_parcial1")),
+                        Calificacion.limitar(rs.getDouble("nota_parcial2")),
+                        Calificacion.limitar(rs.getDouble("nota_examen_final")),
+                        Calificacion.limitar(rs.getDouble("nota_final")), rs.getString("calificacion_literal"),
+                        rs.getString("estado_materia")));
+            }
+        }
+        return filas;
+    }
 
     private static final String SQL_LISTAR_POR_SECCION = """
             SELECT d.id_detalle_inscripcion, d.estado_materia, i.periodo_lectivo,
@@ -82,12 +117,23 @@ public class CalificacionDAO {
      * @throws PermisoDenegadoException si la materia no pertenece a una seccion de ese profesor
      */
     public void guardar(Calificacion calificacion, int idProfesor) throws SQLException, PermisoDenegadoException {
+        guardar(calificacion, idProfesor, false);
+    }
+
+    /** Guarda una corrección administrativa tras verificar el rol ADMIN del usuario. */
+    public void guardarComoAdministrador(Calificacion calificacion, int idAdmin)
+            throws SQLException, PermisoDenegadoException {
+        guardar(calificacion, idAdmin, true);
+    }
+
+    private void guardar(Calificacion calificacion, int idActor, boolean administrador)
+            throws SQLException, PermisoDenegadoException {
         calificacion.recalcular();
 
         try (Connection conn = ConexionBD.obtener()) {
             conn.setAutoCommit(false);
             try {
-                guardarEnTransaccion(conn, calificacion, idProfesor);
+                guardarEnTransaccion(conn, calificacion, idActor, administrador);
                 conn.commit();
             } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
                 conn.rollback();
@@ -98,23 +144,30 @@ public class CalificacionDAO {
 
     // ----- Metodos privados -----
 
-    private void guardarEnTransaccion(Connection conn, Calificacion c, int idProfesor)
+    private void guardarEnTransaccion(Connection conn, Calificacion c, int idActor, boolean administrador)
             throws SQLException, PermisoDenegadoException {
         int idDetalle = c.getIdDetalleInscripcion();
 
-        // 1) La materia debe ser de una seccion de este profesor.
-        String sqlPermiso = """
+        // 1) Verifica que el actor tenga permiso para corregir estas notas.
+        String sqlPermiso = administrador ? "SELECT 1 FROM usuarios WHERE id_usuario = ? AND rol = 'ADMIN'"
+                : """
                 SELECT 1
                 FROM detalle_inscripciones d
                 JOIN secciones s ON s.id_seccion = d.id_seccion
                 WHERE d.id_detalle_inscripcion = ? AND s.id_profesor = ?
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sqlPermiso)) {
-            ps.setInt(1, idDetalle);
-            ps.setInt(2, idProfesor);
+            if (administrador) {
+                ps.setInt(1, idActor);
+            } else {
+                ps.setInt(1, idDetalle);
+                ps.setInt(2, idActor);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
-                    throw new PermisoDenegadoException("Solo puedes calificar estudiantes de tus propias secciones.");
+                    throw new PermisoDenegadoException(administrador
+                            ? "Solo un administrador puede corregir calificaciones."
+                            : "Solo puedes calificar estudiantes de tus propias secciones.");
                 }
             }
         }

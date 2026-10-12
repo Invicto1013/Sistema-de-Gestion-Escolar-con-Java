@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.mindrot.jbcrypt.BCrypt;
 
 /**
  * Acceso a MySQL para usuarios (tablas usuarios, estudiantes, profesores y padres).
@@ -23,6 +24,7 @@ public class UsuarioDAO {
 
     private static final String SQL_BUSCAR_POR_CORREO = """
             SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.contrasena, u.rol,
+                   u.debe_cambiar_contrasena,
                    e.matricula, e.grado, e.promedio_academico,
                    p.codigo_profesor, p.especialidad,
                    pa.id_padre, pa.telefono_contacto, pa.ocupacion
@@ -90,6 +92,78 @@ public class UsuarioDAO {
             } catch (SQLException | RuntimeException ex) {
                 conn.rollback();
                 throw ex;
+            }
+        }
+    }
+
+    /** Registra un profesor solo si el usuario que ejecuta la operación es ADMIN. */
+    public void registrarProfesorComoAdmin(Profesor profesor, String contrasenaPlana, int idAdmin)
+            throws SQLException, PermisoDenegadoException {
+        String hash = Usuario.hashear(contrasenaPlana);
+        try (Connection conn = ConexionBD.obtener()) {
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT 1 FROM usuarios WHERE id_usuario = ? AND rol = 'ADMIN' FOR UPDATE")) {
+                    ps.setInt(1, idAdmin);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) throw new PermisoDenegadoException(
+                                "Solo un administrador puede crear cuentas de profesor.");
+                    }
+                }
+                int id = insertarUsuario(conn, profesor, hash);
+                profesor.setId(id);
+                insertarProfesor(conn, id, profesor);
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE usuarios SET debe_cambiar_contrasena = 1 WHERE id_usuario = ?")) {
+                    ps.setInt(1, id);
+                    ps.executeUpdate();
+                }
+                conn.commit();
+            } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            }
+        }
+    }
+
+    /** Valida la contraseña actual y guarda la nueva con BCrypt, eliminando el indicador inicial. */
+    public void cambiarContrasena(int idUsuario, String actual, String nueva)
+            throws SQLException, PermisoDenegadoException {
+        if (nueva == null || nueva.length() < 4) {
+            throw new PermisoDenegadoException("La nueva contraseña debe tener al menos 4 caracteres.");
+        }
+        try (Connection conn = ConexionBD.obtener()) {
+            conn.setAutoCommit(false);
+            try {
+                String hashActual;
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT contrasena FROM usuarios WHERE id_usuario = ? FOR UPDATE")) {
+                    ps.setInt(1, idUsuario);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) throw new PermisoDenegadoException("La cuenta ya no existe.");
+                        hashActual = rs.getString("contrasena");
+                    }
+                }
+                boolean correcta;
+                try {
+                    correcta = actual != null && hashActual != null && BCrypt.checkpw(actual, hashActual);
+                } catch (IllegalArgumentException e) {
+                    correcta = false;
+                }
+                if (!correcta) throw new PermisoDenegadoException("La contraseña actual es incorrecta.");
+                if (actual.equals(nueva)) throw new PermisoDenegadoException(
+                        "La nueva contraseña debe ser distinta de la actual.");
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE usuarios SET contrasena = ?, debe_cambiar_contrasena = 0 WHERE id_usuario = ?")) {
+                    ps.setString(1, Usuario.hashear(nueva));
+                    ps.setInt(2, idUsuario);
+                    ps.executeUpdate();
+                }
+                conn.commit();
+            } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
+                conn.rollback();
+                throw e;
             }
         }
     }
@@ -250,7 +324,7 @@ public class UsuarioDAO {
             throw new SQLException("Rol desconocido en la base de datos: " + rs.getString("rol"), ex);
         }
 
-        return switch (rol) {
+        Usuario usuario = switch (rol) {
             case ESTUDIANTE -> new Estudiante(id, nombre, apellido, correo, hash,
                     rs.getString("matricula"), rs.getString("grado"), rs.getDouble("promedio_academico"));
             case PROFESOR -> new Profesor(id, nombre, apellido, correo, hash,
@@ -259,5 +333,7 @@ public class UsuarioDAO {
                     rs.getInt("id_padre"), rs.getString("telefono_contacto"), rs.getString("ocupacion"));
             case ADMIN -> new Usuario(id, nombre, apellido, correo, hash, Rol.ADMIN);
         };
+        usuario.setDebeCambiarContrasena(rs.getBoolean("debe_cambiar_contrasena"));
+        return usuario;
     }
 }

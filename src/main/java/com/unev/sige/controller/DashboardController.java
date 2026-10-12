@@ -3,6 +3,7 @@ package com.unev.sige.controller;
 import com.unev.sige.app.Navegacion;
 import com.unev.sige.app.SesionActual;
 import com.unev.sige.data.SesionDAO;
+import com.unev.sige.data.PermisoDenegadoException;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.model.ControladorSesion;
 import com.unev.sige.model.Estudiante;
@@ -17,6 +18,7 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -100,26 +102,37 @@ public class DashboardController {
         switch (usuario.getRol()) {
             case ADMIN -> {
                 agregarOpcion("Usuarios", this::mostrarUsuarios);
+                agregarOpcion("Historial de sesiones", () -> mostrarPanelAdmin("Historial de sesiones",
+                        () -> new HistorialSesionesPanel(usuario.getId())));
+                agregarOpcion("Crear profesor", () -> mostrarPanelAdmin("Crear profesor",
+                        () -> new CrearProfesorPanel(usuario.getId())));
                 agregarOpcion("Asignaturas", () -> mostrarPanelAdmin("Asignaturas", AsignaturasPanel::new));
                 agregarOpcion("Secciones", () -> mostrarPanelAdmin("Secciones", SeccionesPanel::new));
                 agregarOpcion("Inscripciones", () -> mostrarPanelAdmin("Inscripciones", InscripcionesPanel::new));
-                agregarProximamente("Reportes");
+                agregarOpcion("Calificaciones", () -> mostrarPanelAdmin("Administración de calificaciones",
+                        () -> new CalificacionesPanel(usuario.getId(), true)));
+                agregarOpcion("Vincular padres", () -> mostrarPanelAdmin("Vinculación de padres",
+                        VinculacionesPanel::new));
+                agregarOpcion("Boletas", () -> mostrarPanelAdmin("Boletas",
+                        () -> new BoletaPanel(Rol.ADMIN, usuario.getId())));
             }
             case PROFESOR -> {
                 agregarOpcion("Mis secciones", () -> mostrarPanelPropio(new MisSeccionesPanel(usuario.getId())));
                 agregarOpcion("Calificaciones", () -> mostrarPanelPropio(new CalificacionesPanel(usuario.getId())));
-                agregarProximamente("Asistencia");
+                agregarOpcion("Asistencia", () -> mostrarPanelPropio(new AsistenciaPanel(usuario.getId())));
             }
             case ESTUDIANTE -> {
                 agregarOpcion("Mis materias", () -> mostrarPanelPropio(new MisMateriasPanel(usuario.getId())));
                 agregarOpcion("Mis calificaciones",
                         () -> mostrarPanelPropio(new MisCalificacionesPanel(usuario.getId())));
-                agregarProximamente("Mi asistencia");
+                agregarOpcion("Boleta", () -> mostrarPanelPropio(new BoletaPanel(Rol.ESTUDIANTE, usuario.getId())));
+                agregarOpcion("Mi asistencia", () -> mostrarPanelPropio(new MiAsistenciaPanel(usuario.getId())));
             }
             case PADRE -> {
-                agregarProximamente("Mis hijos");
-                agregarProximamente("Calificaciones");
-                agregarProximamente("Asistencia");
+                agregarOpcion("Mis hijos", () -> mostrarPanelPropio(new MisHijosPanel(usuario.getId())));
+                agregarOpcion("Calificaciones", () -> mostrarPanelPropio(new CalificacionesHijosPanel(usuario.getId())));
+                agregarOpcion("Asistencia", () -> mostrarPanelPropio(new AsistenciaHijosPanel(usuario.getId())));
+                agregarOpcion("Boleta", () -> mostrarPanelPropio(new BoletaPanel(Rol.PADRE, usuario.getId())));
             }
         }
     }
@@ -179,7 +192,27 @@ public class DashboardController {
             agregarDato(datos, fila, "Ocupación", valorOVacio(pa.getOcupacion()));
         }
 
-        mostrar(titulo("Mi perfil"), datos);
+        Button cambiarContrasena = new Button("Cambiar contraseña");
+        cambiarContrasena.setOnAction(e -> cambiarContrasena(usuario));
+        mostrar(titulo("Mi perfil"), datos, cambiarContrasena);
+    }
+
+    private void cambiarContrasena(Usuario usuario) {
+        var resultado = CambioContrasenaDialog.mostrar(lblBienvenida.getScene().getWindow(), true);
+        if (resultado.isEmpty()) return;
+        try {
+            usuarioDAO.cambiarContrasena(usuario.getId(), resultado.get().actual(), resultado.get().nueva());
+            usuario.cambiarContrasena(resultado.get().nueva());
+            usuario.setDebeCambiarContrasena(false);
+            Alert alerta = new Alert(Alert.AlertType.INFORMATION, "Tu contraseña se actualizó correctamente.");
+            alerta.setTitle("SIGE");
+            alerta.setHeaderText(null);
+            alerta.showAndWait();
+        } catch (PermisoDenegadoException e) {
+            Dialogos.error(e.getMessage());
+        } catch (SQLException e) {
+            Dialogos.error("No se pudo actualizar la contraseña. Revisa la conexión con MySQL.");
+        }
     }
 
     private void mostrarUsuarios() {

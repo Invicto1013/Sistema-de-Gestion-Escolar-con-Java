@@ -3,6 +3,7 @@ package com.unev.sige.controller;
 import com.unev.sige.app.Navegacion;
 import com.unev.sige.app.SesionActual;
 import com.unev.sige.data.SesionDAO;
+import com.unev.sige.data.PermisoDenegadoException;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.model.ControladorSesion;
 import com.unev.sige.model.Usuario;
@@ -65,10 +66,22 @@ public class LoginController {
 
             Usuario usuario = usuarioEncontrado.get();
             if (usuario.autenticar(correoIngresado, contrasenaIngresada)) {
+                if (usuario.isDebeCambiarContrasena()) {
+                    Optional<CambioContrasenaDialog.Resultado> cambio = CambioContrasenaDialog.mostrar(
+                            btnIniciarSesion.getScene().getWindow(), false);
+                    if (cambio.isEmpty()) {
+                        mostrarError("Debes cambiar la contraseña inicial para iniciar sesión.");
+                        return;
+                    }
+                    usuarioDAO.cambiarContrasena(usuario.getId(), contrasenaIngresada, cambio.get().nueva());
+                    usuario.setDebeCambiarContrasena(false);
+                }
                 abrirPanelPrincipal(usuario);
             } else {
                 mostrarError("Correo o contraseña incorrectos.");
             }
+        } catch (PermisoDenegadoException e) {
+            mostrarError(e.getMessage());
         } catch (SQLException e) {
             e.printStackTrace();
             mostrarError("No se pudo conectar con la base de datos. Revisa db.properties y que MySQL esté activo.");

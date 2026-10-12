@@ -17,6 +17,7 @@ public class Usuario {
     private String correo;
     private String contrasenaHash;
     private Rol rol;
+    private boolean debeCambiarContrasena;
 
     public Usuario() {
     }
@@ -78,6 +79,14 @@ public class Usuario {
 
     public void setRol(Rol rol) {
         this.rol = rol;
+    }
+
+    public boolean isDebeCambiarContrasena() {
+        return debeCambiarContrasena;
+    }
+
+    public void setDebeCambiarContrasena(boolean debeCambiarContrasena) {
+        this.debeCambiarContrasena = debeCambiarContrasena;
     }
 
     // ----- Metodos propios -----

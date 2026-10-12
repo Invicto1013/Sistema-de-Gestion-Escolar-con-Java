@@ -4,7 +4,6 @@ import com.unev.sige.app.Navegacion;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.model.Estudiante;
 import com.unev.sige.model.Padre;
-import com.unev.sige.model.Profesor;
 import com.unev.sige.model.Rol;
 import com.unev.sige.model.Usuario;
 import javafx.fxml.FXML;
@@ -23,8 +22,7 @@ import java.sql.SQLIntegrityConstraintViolationException;
 /**
  * Controlador del formulario de Registro (registro.fxml).
  * Valida los datos, y guarda el usuario en MySQL con su contrasena hasheada.
- * Segun el rol elegido pide los datos propios de esa tabla:
- * ESTUDIANTE (matricula y grado), PROFESOR (codigo y especialidad), PADRE (telefono y ocupacion).
+ * El registro público admite ESTUDIANTE y PADRE; las cuentas PROFESOR se crean desde el panel admin.
  */
 @SuppressWarnings("unused")
 public class RegistroController {
@@ -75,9 +73,9 @@ public class RegistroController {
 
     @FXML
     private void initialize() {
-        // El rol ADMIN no se ofrece en el registro publico.
+        // ADMIN y PROFESOR se reservan al flujo del administrador.
         for (Rol r : Rol.values()) {
-            if (r != Rol.ADMIN) {
+            if (r == Rol.ESTUDIANTE || r == Rol.PADRE) {
                 cmbRol.getItems().add(r);
             }
         }
@@ -97,8 +95,6 @@ public class RegistroController {
 
         switch (rol) {
             case ESTUDIANTE -> configurarCamposExtra("Matrícula:", "Ej. M-2026-001", "Grado:", "Ej. 8vo");
-            case PROFESOR -> configurarCamposExtra("Código de profesor:", "Ej. P-001",
-                    "Especialidad:", "Ej. Matemática");
             case PADRE -> configurarCamposExtra("Teléfono (opcional):", "809-000-0000",
                     "Ocupación (opcional):", "Ocupación");
             default -> {
@@ -118,12 +114,12 @@ public class RegistroController {
         String dato1 = limpiar(txtDato1.getText());
         String dato2 = limpiar(txtDato2.getText());
 
-        if (rol == Rol.ADMIN) {
-            mostrarError("El rol de Administrador no está permitido en el registro público.");
+        if (rol == Rol.ADMIN || rol == Rol.PROFESOR) {
+            mostrarError("Ese rol solo puede ser creado por un administrador.");
             return;
         }
 
-        boolean pideDatosExtra = rol == Rol.ESTUDIANTE || rol == Rol.PROFESOR;
+        boolean pideDatosExtra = rol == Rol.ESTUDIANTE;
         if (nombre.isEmpty() || apellido.isEmpty() || correo.isEmpty()
                 || esVacio(contrasena) || esVacio(confirmar) || rol == null
                 || (pideDatosExtra && (dato1.isEmpty() || dato2.isEmpty()))) {
@@ -155,17 +151,12 @@ public class RegistroController {
                 mostrarError("Esa matrícula ya existe.");
                 return;
             }
-            if (rol == Rol.PROFESOR && usuarioDAO.existeCodigoProfesor(dato1)) {
-                mostrarError("Ese código de profesor ya existe.");
-                return;
-            }
-
             Usuario nuevoUsuario = switch (rol) {
                 case ESTUDIANTE -> new Estudiante(0, nombre, apellido, correo, null, dato1, dato2, 0.0);
-                case PROFESOR -> new Profesor(0, nombre, apellido, correo, null, dato1, dato2);
                 case PADRE -> new Padre(0, nombre, apellido, correo, null, 0,
                         dato1.isEmpty() ? null : dato1, dato2.isEmpty() ? null : dato2);
-                case ADMIN -> throw new IllegalStateException("ADMIN no se registra desde el formulario.");
+                case PROFESOR, ADMIN -> throw new IllegalStateException(
+                        "Ese rol se crea desde el panel del administrador.");
             };
 
             usuarioDAO.registrar(nuevoUsuario, contrasena);

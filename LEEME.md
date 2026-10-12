@@ -122,9 +122,83 @@
   doble clic en el estudiante > pon 80, 90 y 100 (debe dar 91, A) > entra como el estudiante y mira
   "Mis calificaciones" y "Mi perfil".
 
+## Fase 6: asistencia
+
+- **Profesor > Asistencia:** elige una sección y una fecha; cada estudiante puede quedar como Presente,
+  Ausente o Sin registrar. Solo los estados explícitos se guardan. El profesor solo puede modificar
+  listas de sus propias secciones y el guardado de una fecha ocurre en una transacción.
+- **Estudiante > Mi asistencia:** muestra presentes, ausentes, total de clases registradas y porcentaje
+  por materia inscrita. El porcentaje usa como denominador los días que ya tienen lista registrada.
+- Antes de usar estas pantallas, ejecuta `sql/asistencias.sql` una vez en MySQL Workbench sobre `sige_db`.
+- Nuevos archivos: `data/AsistenciaDAO`, `model/FilaAsistencia`, `model/ResumenAsistencia`,
+  `controller/AsistenciaPanel` y `controller/MiAsistenciaPanel`; `DashboardController` habilita las opciones.
+
+## Fase 7: vinculación de padres e hijos
+
+- **Administrador > Vincular padres:** selecciona una cuenta de padre/tutor y un estudiante ya registrados,
+  indica el parentesco y crea o elimina el vínculo. La relación admite varios tutores por estudiante y
+  varios estudiantes por tutor; un vínculo duplicado se evita.
+- **Padre/tutor > Mis hijos:** muestra solamente estudiantes vinculados a la cuenta autenticada, con matrícula,
+  grado y promedio académico.
+- **Padre/tutor > Calificaciones / Asistencia:** permite consultar las notas y el resumen de asistencia de
+  cualquiera de sus hijos vinculados. Cada consulta verifica el vínculo en la base de datos.
+- Ejecuta `sql/vinculacion_padres.sql` una vez en MySQL Workbench sobre `sige_db`. Si la tabla `estudiantes`
+  todavía no existe, completa primero la instalación base del esquema.
+- Nuevos archivos: `sql/vinculacion_padres.sql`, `data/VinculacionDAO`, `model/VinculoPadreEstudiante`,
+  `controller/VinculacionesPanel` y `controller/MisHijosPanel`; `DashboardController` agrega las opciones.
+- La consulta familiar agrega `model/CalificacionHijo`, `controller/CalificacionesHijosPanel` y
+  `controller/AsistenciaHijosPanel`, además de consultas protegidas en `CalificacionDAO` y `AsistenciaDAO`.
+
+## Fase 8: boleta de calificaciones
+
+- **Estudiante > Boleta:** emite su propia boleta por período.
+- **Padre/tutor > Boleta:** selecciona un hijo vinculado; la consulta vuelve a verificar la relación
+  antes de devolver notas.
+- **Administrador > Boletas:** selecciona cualquier estudiante para consultar su boleta.
+- La boleta incluye matrícula, grado, período, notas parciales, examen final, nota final, literal,
+  estado y promedio de las materias evaluadas. El botón de impresión abre el diálogo del sistema;
+  para crear un PDF, selecciona una impresora PDF disponible (por ejemplo, Microsoft Print to PDF).
+- Nuevos archivos: `data/BoletaDAO`, `model/LineaBoleta` y `controller/BoletaPanel`;
+  `DashboardController` habilita el acceso según el rol.
+
+## Fase 9: administración de calificaciones
+
+- **Administrador > Calificaciones:** puede consultar las calificaciones de cualquier sección y corregir
+  parcial 1, parcial 2 y examen final. La nota final, el literal, el estado de la materia y el promedio
+  del estudiante se recalculan igual que al guardar como profesor.
+- El guardado administrativo verifica el rol ADMIN en la base de datos; el flujo del profesor sigue
+  limitado a sus propias secciones.
+- No requiere cambios de esquema. `CalificacionesPanel` admite modo de administrador y
+  `CalificacionDAO.guardarComoAdministrador` aplica la autorización y transacción.
+
+## Fase 10: alta administrativa de profesores
+
+- El registro público solo ofrece los roles ESTUDIANTE y PADRE; no permite crear usuarios ADMIN ni PROFESOR.
+- **Administrador > Crear profesor:** registra el nombre, correo, código, especialidad y contraseña inicial.
+- `UsuarioDAO.registrarProfesorComoAdmin` comprueba el rol ADMIN dentro de la misma transacción antes de
+  insertar al usuario y su perfil de profesor.
+- No requiere cambios de esquema.
+
+## Fase 11: cambio de contraseña
+
+- Las cuentas de profesor existentes quedan marcadas para cambiar su contraseña inicial al primer inicio
+  tras ejecutar `sql/cambio_contrasena.sql`; los profesores nuevos se marcan al crearlos.
+- El inicio de sesión exige completar el cambio antes de abrir el dashboard. La contraseña nueva se guarda
+  con BCrypt y el indicador se limpia en la misma transacción.
+- Todos los roles pueden cambiar su contraseña desde **Mi perfil**, confirmando primero la contraseña actual.
+- Ejecuta `sql/cambio_contrasena.sql` una sola vez (el script detecta si la columna ya existe) antes de usar
+  esta versión. Las cuentas no docentes conservan su contraseña actual.
+- Nuevos archivos: `sql/cambio_contrasena.sql` y `controller/CambioContrasenaDialog`; `Usuario`, `UsuarioDAO`,
+  `LoginController` y `DashboardController` añaden el flujo correspondiente.
+
+## Fase 12: historial de sesiones
+
+- **Administrador > Historial de sesiones:** consulta los últimos 500 accesos con usuario, correo,
+  inicio, cierre, dirección IP y estado.
+- La consulta vuelve a comprobar el rol ADMIN en MySQL y no requiere cambios de esquema.
+- Se agregan `model/SesionRegistrada` y `controller/HistorialSesionesPanel`; `SesionDAO` consulta el registro
+  existente y `DashboardController` agrega el acceso administrativo.
+
 ## Pendiente (siguientes pasos)
 
-- Vincular padres con estudiantes (tabla `estudiante_padre`).
-- Asistencia (el profesor la toma por seccion y dia; hay que crear la tabla con `sql/asistencias.sql`).
 - Reportes academicos (boleta de calificaciones) y que el administrador pueda ver/corregir notas.
-- Decidir si el registro publico debe permitir el rol PROFESOR (hoy permite ESTUDIANTE, PROFESOR y PADRE).
