@@ -20,7 +20,6 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -210,7 +209,7 @@ public class InscripcionesPanel extends VBox {
         txtPeriodo.setPromptText("Ej. " + LocalDate.now().getYear() + "-1");
 
         Label lblError = new Label();
-        lblError.setTextFill(Color.RED);
+        lblError.getStyleClass().add("error-message");
         lblError.setWrapText(true);
 
         GridPane formulario = new GridPane();
@@ -239,6 +238,7 @@ public class InscripcionesPanel extends VBox {
             }
         });
 
+        Dialogos.aplicarEstilos(dialogo);
         Optional<ButtonType> respuesta = dialogo.showAndWait();
         if (respuesta.isPresent() && respuesta.get() == ButtonType.OK) {
             return Optional.of(new DatosInscripcion(cmbSeccion.getValue().seccion(), txtPeriodo.getText().trim()));

@@ -7,7 +7,6 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.layout.GridPane;
-import javafx.scene.paint.Color;
 import javafx.stage.Window;
 
 import java.util.Optional;
@@ -34,7 +33,7 @@ final class CambioContrasenaDialog {
         PasswordField confirmar = new PasswordField();
         confirmar.setPromptText("Repite la nueva contraseña");
         Label error = new Label();
-        error.setTextFill(Color.RED);
+        error.getStyleClass().add("error-message");
         error.setWrapText(true);
 
         GridPane contenido = new GridPane();
@@ -65,6 +64,7 @@ final class CambioContrasenaDialog {
             }
         });
 
+        Dialogos.aplicarEstilos(dialogo);
         Optional<ButtonType> respuesta = dialogo.showAndWait();
         if (respuesta.filter(b -> b == ButtonType.OK).isEmpty()) return Optional.empty();
         return Optional.of(new Resultado(pedirActual ? actual.getText() : null, nueva.getText()));

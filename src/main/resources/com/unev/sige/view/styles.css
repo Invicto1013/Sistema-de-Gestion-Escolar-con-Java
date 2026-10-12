@@ -1,0 +1,64 @@
+/* Paleta SIGE; contraste de texto normal WCAG AA: minimo 4.5:1. */
+.root {
+ -sige-primary:#17324D; -sige-secondary:#245B83; -sige-accent:#0F766E;
+ -sige-background:#F3F6F9; -sige-surface:#FFFFFF; -sige-text:#243447; -sige-muted:#526579;
+ -sige-success:#246B45; -sige-warning:#8A4B08; -sige-error:#A12D2D;
+ -fx-font-family:"Segoe UI",Arial,sans-serif; -fx-font-size:13px; -fx-base:-sige-surface;
+ -fx-background:-sige-background; -fx-control-inner-background:-sige-surface;
+ -fx-focus-color:-sige-accent; -fx-faint-focus-color:derive(-sige-accent,82%);
+}
+.app-root,.content-panel { -fx-background-color:-sige-background; }
+.label { -fx-text-fill:-sige-text; }
+.button { -fx-background-color:-sige-secondary; -fx-text-fill:white; -fx-background-radius:5px; -fx-padding:8px 14px; -fx-cursor:hand; }
+.button:hover { -fx-background-color:-sige-primary; }
+.button:focused { -fx-effect:dropshadow(gaussian,-sige-accent,5,0.3,0,0); }
+.button:disabled { -fx-opacity:0.62; -fx-cursor:default; }
+.button.secondary-button { -fx-background-color:#E5EDF3; -fx-text-fill:-sige-primary; }
+.text-field,.password-field,.text-area,.combo-box,.date-picker { -fx-background-color:-sige-surface; -fx-text-fill:-sige-text; -fx-prompt-text-fill:-sige-muted; -fx-border-color:#A8B7C5; -fx-border-radius:4px; -fx-background-radius:4px; }
+.table-view { -fx-background-color:-sige-surface; -fx-border-color:#C6D1DB; }
+.table-view .column-header-background,.table-view .column-header,.table-view .filler { -fx-background-color:#E5EDF3; -fx-border-color:#C6D1DB; }
+.table-view .column-header .label { -fx-text-fill:-sige-primary; -fx-font-weight:bold; }
+.table-row-cell { -fx-background-color:-sige-surface; -fx-text-background-color:-sige-text; }
+.table-row-cell:odd { -fx-background-color:#F3F6F9; }
+.table-row-cell:selected { -fx-background-color:-sige-secondary; -fx-text-background-color:white; }
+.app-header { -fx-background-color:-sige-primary; }
+.app-header .label { -fx-text-fill:white; }
+.brand-label { -fx-font-size:20px; -fx-font-weight:bold; }
+.user-name { -fx-font-weight:bold; }
+.user-role { -fx-text-fill:#E3EDF6; }
+.side-menu { -fx-background-color:#E5EDF3; }
+.sidebar-option { -fx-alignment:CENTER_LEFT; -fx-background-color:transparent; -fx-text-fill:-sige-primary; }
+.sidebar-option:hover,.sidebar-option-active { -fx-background-color:#D5E3ED; -fx-text-fill:-sige-primary; }
+.sidebar-option-active { -fx-font-weight:bold; -fx-border-color:-sige-accent; -fx-border-width:0 0 0 3px; }
+.section-title { -fx-font-size:20px; -fx-font-weight:bold; }
+.strong-text { -fx-font-weight:bold; }
+.muted-text { -fx-text-fill:-sige-muted; }
+.error-message { -fx-text-fill:-sige-error; }
+.success-message { -fx-text-fill:-sige-success; }
+.warning-message { -fx-text-fill:-sige-warning; }
+.report-paper { -fx-background-color:white; -fx-border-color:#A8B7C5; }
+.report-table-cell { -fx-font-size:8.5px; -fx-padding:4px 3px; -fx-border-color:#C6D1DB; -fx-border-width:0 1 1 0; }
+.report-table-header { -fx-font-weight:bold; -fx-background-color:#E5EDF3; }
+.report-title { -fx-font-size:16px; -fx-font-weight:bold; }
+.report-meta { -fx-font-size:9px; -fx-text-fill:-sige-muted; }
+.dialog-pane,.alert .dialog-pane { -fx-background-color:-sige-background; }
+.dialog-pane .content.label { -fx-text-fill:-sige-text; }
+.dialog-pane .header-panel { -fx-background-color:#E5EDF3; }
+.dashboard-home { -fx-background-color:-sige-background; }
+.dashboard-card { -fx-background-color:-sige-surface; -fx-padding:14px; -fx-background-radius:7px; -fx-border-color:#C6D1DB; -fx-border-radius:7px; -fx-min-width:130px; }
+.dashboard-card-label { -fx-text-fill:-sige-muted; -fx-wrap-text:true; }
+.dashboard-card-value { -fx-font-size:25px; -fx-font-weight:bold; -fx-text-fill:-sige-primary; }
+.dashboard-chart { -fx-background-color:-sige-surface; -fx-padding:10px; -fx-background-radius:7px; -fx-border-color:#C6D1DB; -fx-border-radius:7px; }
+.modo-telefono.login-root,.modo-telefono.registro-root { -fx-padding:16px; -fx-spacing:12px; }
+.modo-telefono.login-root .grid-pane,.modo-telefono.registro-root .grid-pane { -fx-hgap:6px; -fx-vgap:8px; }
+.modo-telefono.login-root .label,.modo-telefono.registro-root .label { -fx-wrap-text:true; }
+.modo-telefono.login-root .button,.modo-telefono.registro-root .button { -fx-padding:8px 9px; }
+.modo-telefono .app-header { -fx-padding:8px; -fx-spacing:6px; }
+.modo-telefono .mobile-menu { -fx-max-width:9999px; }
+.modo-telefono .side-menu { -fx-padding:8px; }
+.modo-telefono .dashboard-card { -fx-min-width:0; -fx-padding:10px; }
+.modo-telefono .dashboard-card-value { -fx-font-size:21px; }
+.modo-telefono .dashboard-chart { -fx-padding:4px; }
+.modo-telefono .table-view { -fx-font-size:11px; }
+.modo-tableta .side-menu { -fx-padding:10px 8px; }
+.modo-tableta .dashboard-card { -fx-padding:11px; }

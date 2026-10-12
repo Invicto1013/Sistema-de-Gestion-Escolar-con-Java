@@ -23,7 +23,7 @@ import org.mindrot.jbcrypt.BCrypt;
 public class UsuarioDAO {
 
     private static final String SQL_BUSCAR_POR_CORREO = """
-            SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.contrasena, u.rol,
+            SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.contrasena, u.rol, u.activo,
                    u.debe_cambiar_contrasena,
                    e.matricula, e.grado, e.promedio_academico,
                    p.codigo_profesor, p.especialidad,
@@ -104,7 +104,7 @@ public class UsuarioDAO {
             conn.setAutoCommit(false);
             try {
                 try (PreparedStatement ps = conn.prepareStatement(
-                        "SELECT 1 FROM usuarios WHERE id_usuario = ? AND rol = 'ADMIN' FOR UPDATE")) {
+                        "SELECT 1 FROM usuarios WHERE id_usuario = ? AND rol = 'ADMIN' AND activo = 1 FOR UPDATE")) {
                     ps.setInt(1, idAdmin);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (!rs.next()) throw new PermisoDenegadoException(
@@ -174,7 +174,7 @@ public class UsuarioDAO {
      * ni el hash de la contrasena.
      */
     public List<Usuario> listarTodos() throws SQLException {
-        String sql = "SELECT id_usuario, nombre, apellido, correo, rol FROM usuarios ORDER BY id_usuario";
+        String sql = "SELECT id_usuario, nombre, apellido, correo, rol, activo FROM usuarios ORDER BY id_usuario";
         List<Usuario> lista = new ArrayList<>();
 
         try (Connection conn = ConexionBD.obtener();
@@ -187,8 +187,10 @@ public class UsuarioDAO {
                 } catch (IllegalArgumentException ex) {
                     rol = null; // rol desconocido: la tabla lo muestra como "?"
                 }
-                lista.add(new Usuario(rs.getInt("id_usuario"), rs.getString("nombre"),
-                        rs.getString("apellido"), rs.getString("correo"), null, rol));
+                Usuario usuario = new Usuario(rs.getInt("id_usuario"), rs.getString("nombre"),
+                        rs.getString("apellido"), rs.getString("correo"), null, rol);
+                usuario.setActivo(rs.getBoolean("activo"));
+                lista.add(usuario);
             }
         }
         return lista;
@@ -217,6 +219,193 @@ public class UsuarioDAO {
             }
         }
         return lista;
+    }
+
+    public void cambiarEstadoCuentaComoAdmin(int idAdmin, int idUsuario, boolean activo)
+            throws SQLException, PermisoDenegadoException {
+        if (idAdmin == idUsuario && !activo) {
+            throw new PermisoDenegadoException("No puedes desactivar tu propia cuenta.");
+        }
+        try (Connection conn = ConexionBD.obtener()) {
+            conn.setAutoCommit(false);
+            try {
+                validarAdministrador(conn, idAdmin);
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT rol FROM usuarios WHERE id_usuario = ? FOR UPDATE")) {
+                    ps.setInt(1, idUsuario);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) throw new PermisoDenegadoException("La cuenta seleccionada ya no existe.");
+                        if (!activo && "ADMIN".equals(rs.getString("rol"))) {
+                            try (PreparedStatement admins = conn.prepareStatement(
+                                    "SELECT COUNT(*) FROM usuarios WHERE rol = 'ADMIN' AND activo = 1 AND id_usuario <> ?")) {
+                                admins.setInt(1, idUsuario);
+                                try (ResultSet cuenta = admins.executeQuery()) {
+                                    if (cuenta.next() && cuenta.getInt(1) == 0) {
+                                        throw new PermisoDenegadoException("No se puede desactivar el último administrador activo.");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE usuarios SET activo = ? WHERE id_usuario = ?")) {
+                    ps.setBoolean(1, activo);
+                    ps.setInt(2, idUsuario);
+                    ps.executeUpdate();
+                }
+                conn.commit();
+            } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            }
+        }
+    }
+
+    public void restablecer2FAComoAdmin(int idAdmin, int idUsuario)
+            throws SQLException, PermisoDenegadoException {
+        try (Connection conn = ConexionBD.obtener()) {
+            validarAdministrador(conn, idAdmin);
+            try (PreparedStatement ps = conn.prepareStatement("""
+                    UPDATE usuarios SET dos_factor_activo = 0, dos_factor_secreto = NULL,
+                        dos_factor_intentos = 0, dos_factor_bloqueado_hasta = NULL
+                    WHERE id_usuario = ?
+                    """)) {
+                ps.setInt(1, idUsuario);
+                if (ps.executeUpdate() != 1) throw new PermisoDenegadoException("La cuenta seleccionada ya no existe.");
+            }
+        }
+    }
+
+    /** Cambia el rol y su perfil en una transacción; no permite dejar huérfanos académicos. */
+    public void cambiarRolComoAdmin(int idAdmin, int idUsuario, Rol nuevoRol,
+            String matricula, String grado, String codigoProfesor, String especialidad,
+            String telefono, String ocupacion) throws SQLException, PermisoDenegadoException {
+        if (idAdmin == idUsuario) {
+            throw new PermisoDenegadoException("No puedes cambiar tu propio rol.");
+        }
+        if (nuevoRol == null) throw new PermisoDenegadoException("Selecciona el rol nuevo.");
+        matricula = limpiar(matricula);
+        grado = limpiar(grado);
+        codigoProfesor = limpiar(codigoProfesor);
+        especialidad = limpiar(especialidad);
+        telefono = limpiar(telefono);
+        ocupacion = limpiar(ocupacion);
+        if (nuevoRol == Rol.ESTUDIANTE && (matricula == null || grado == null))
+            throw new PermisoDenegadoException("El perfil de estudiante requiere matrícula y grado.");
+        if (nuevoRol == Rol.PROFESOR && (codigoProfesor == null || especialidad == null))
+            throw new PermisoDenegadoException("El perfil de profesor requiere código y especialidad.");
+        if (matricula != null && matricula.length() > 20 || grado != null && grado.length() > 30
+                || codigoProfesor != null && codigoProfesor.length() > 20
+                || especialidad != null && especialidad.length() > 100
+                || telefono != null && telefono.length() > 30 || ocupacion != null && ocupacion.length() > 100) {
+            throw new PermisoDenegadoException("Uno o más datos del perfil exceden el límite permitido.");
+        }
+        try (Connection conn = ConexionBD.obtener()) {
+            conn.setAutoCommit(false);
+            try {
+                validarAdministrador(conn, idAdmin);
+                String nombre;
+                String apellido;
+                String correo;
+                Rol rolAnterior;
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT nombre, apellido, correo, rol FROM usuarios WHERE id_usuario = ? FOR UPDATE")) {
+                    ps.setInt(1, idUsuario);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) throw new PermisoDenegadoException("La cuenta seleccionada ya no existe.");
+                        nombre = rs.getString("nombre");
+                        apellido = rs.getString("apellido");
+                        correo = rs.getString("correo");
+                        try { rolAnterior = Rol.valueOf(rs.getString("rol")); }
+                        catch (IllegalArgumentException ex) { throw new PermisoDenegadoException("El rol actual no es válido."); }
+                    }
+                }
+                if (rolAnterior == nuevoRol) throw new PermisoDenegadoException("La cuenta ya tiene ese rol.");
+                if (rolAnterior == Rol.ADMIN) {
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "SELECT COUNT(*) FROM usuarios WHERE rol = 'ADMIN' AND activo = 1 AND id_usuario <> ?")) {
+                        ps.setInt(1, idUsuario);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next() && rs.getInt(1) == 0) {
+                                throw new PermisoDenegadoException("No se puede degradar al último administrador activo.");
+                            }
+                        }
+                    }
+                }
+                retirarPerfilSinDependencias(conn, idUsuario, rolAnterior);
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE usuarios SET rol = ?, debe_cambiar_contrasena = 1 WHERE id_usuario = ?")) {
+                    ps.setString(1, nuevoRol.name());
+                    ps.setInt(2, idUsuario);
+                    ps.executeUpdate();
+                }
+                Usuario perfil = switch (nuevoRol) {
+                    case ADMIN -> new Usuario(idUsuario, nombre, apellido, correo, null, Rol.ADMIN);
+                    case ESTUDIANTE -> new Estudiante(idUsuario, nombre, apellido, correo, null,
+                            matricula, grado, 0);
+                    case PROFESOR -> new Profesor(idUsuario, nombre, apellido, correo, null,
+                            codigoProfesor, especialidad);
+                    case PADRE -> new Padre(idUsuario, nombre, apellido, correo, null, 0,
+                            telefono, ocupacion);
+                };
+                if (perfil instanceof Estudiante e) insertarEstudiante(conn, idUsuario, e);
+                else if (perfil instanceof Profesor p) insertarProfesor(conn, idUsuario, p);
+                else if (perfil instanceof Padre p) insertarPadre(conn, idUsuario, p);
+                conn.commit();
+            } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            }
+        }
+    }
+
+    private void retirarPerfilSinDependencias(Connection conn, int idUsuario, Rol rol)
+            throws SQLException, PermisoDenegadoException {
+        String dependencia = switch (rol) {
+            case ESTUDIANTE -> "SELECT (SELECT COUNT(*) FROM inscripciones WHERE id_estudiante = ?)"
+                    + " + (SELECT COUNT(*) FROM estudiante_padre WHERE id_estudiante = ?)";
+            case PROFESOR -> "SELECT COUNT(*) FROM secciones WHERE id_profesor = ?";
+            case PADRE -> "SELECT COUNT(*) FROM estudiante_padre ep JOIN padres p ON p.id_padre = ep.id_padre"
+                    + " WHERE p.id_usuario = ?";
+            case ADMIN -> null;
+        };
+        String tabla = switch (rol) {
+            case ESTUDIANTE -> "estudiantes";
+            case PROFESOR -> "profesores";
+            case PADRE -> "padres";
+            case ADMIN -> null;
+        };
+        if (tabla == null) return;
+        try (PreparedStatement ps = conn.prepareStatement(dependencia)) {
+            ps.setInt(1, idUsuario);
+            if (rol == Rol.ESTUDIANTE) ps.setInt(2, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
+                    throw new PermisoDenegadoException("No se puede cambiar el rol: el perfil tiene relaciones académicas asociadas.");
+                }
+            }
+        }
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM " + tabla + " WHERE "
+                + (rol == Rol.PADRE ? "id_usuario" : rol == Rol.ESTUDIANTE ? "id_estudiante" : "id_profesor") + " = ?")) {
+            ps.setInt(1, idUsuario);
+            ps.executeUpdate();
+        }
+    }
+
+    private String limpiar(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
+    }
+
+    private void validarAdministrador(Connection conn, int idAdmin)
+            throws SQLException, PermisoDenegadoException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT 1 FROM usuarios WHERE id_usuario = ? AND rol = 'ADMIN' AND activo = 1 FOR UPDATE")) {
+            ps.setInt(1, idAdmin);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) throw new PermisoDenegadoException("Solo un administrador puede gestionar cuentas.");
+            }
+        }
     }
 
     /**
@@ -334,6 +523,7 @@ public class UsuarioDAO {
             case ADMIN -> new Usuario(id, nombre, apellido, correo, hash, Rol.ADMIN);
         };
         usuario.setDebeCambiarContrasena(rs.getBoolean("debe_cambiar_contrasena"));
+        usuario.setActivo(rs.getBoolean("activo"));
         return usuario;
     }
 }

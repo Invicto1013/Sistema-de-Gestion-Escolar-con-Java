@@ -87,11 +87,11 @@ public class BoletaPanel extends VBox {
         VBox.setVgrow(tabla, Priority.ALWAYS);
 
         Label encabezado = new Label("SIGE · SISTEMA DE GESTIÓN EDUCATIVA");
-        encabezado.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        encabezado.getStyleClass().add("strong-text");
         Label titulo = new Label("BOLETA DE CALIFICACIONES");
-        titulo.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
+        titulo.getStyleClass().add("section-title");
         documento.setPadding(new Insets(22));
-        documento.setStyle("-fx-background-color: white; -fx-border-color: #cccccc;");
+        documento.getStyleClass().add("report-paper");
         documento.getChildren().addAll(encabezado, titulo, datosEstudiante, datosPeriodo, tabla, resumen);
 
         HBox selectores = new HBox(10, new Label("Estudiante:"), estudiante,
@@ -207,16 +207,18 @@ public class BoletaPanel extends VBox {
     /** Construye una versión de impresión compacta; evita las filas vacías del TableView. */
     private Node crearDocumentoImpresion() {
         VBox pagina = new VBox(9);
+        pagina.getStylesheets().add(BoletaPanel.class
+                .getResource("/com/unev/sige/view/styles.css").toExternalForm());
         pagina.setPadding(new Insets(16));
         pagina.setPrefWidth(500);
         pagina.setMinWidth(500);
         pagina.setMaxWidth(500);
-        pagina.setStyle("-fx-background-color: white; -fx-text-fill: #202020;");
+        pagina.getStyleClass().add("report-paper");
 
         Label institucion = new Label("SIGE · SISTEMA DE GESTIÓN EDUCATIVA");
-        institucion.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
+        institucion.getStyleClass().add("strong-text");
         Label titulo = new Label("BOLETA DE CALIFICACIONES");
-        titulo.setStyle("-fx-font-size: 17px; -fx-font-weight: bold;");
+        titulo.getStyleClass().add("section-title");
         Label estudianteInfo = new Label(datosEstudiante.getText());
         estudianteInfo.setWrapText(true);
         Label periodoInfo = new Label(datosPeriodo.getText());
@@ -256,9 +258,8 @@ public class BoletaPanel extends VBox {
         etiqueta.setMaxWidth(Double.MAX_VALUE);
         etiqueta.setWrapText(true);
         etiqueta.setAlignment(alineacion);
-        etiqueta.setStyle("-fx-font-size: 8.5px; -fx-padding: 4px 3px; -fx-border-color: #c8c8c8; "
-                + "-fx-border-width: 0 1 1 0;"
-                + (encabezado ? " -fx-font-weight: bold; -fx-background-color: #eeeeee;" : ""));
+        etiqueta.getStyleClass().add("report-table-cell");
+        if (encabezado) etiqueta.getStyleClass().add("report-table-header");
         return etiqueta;
     }
 }

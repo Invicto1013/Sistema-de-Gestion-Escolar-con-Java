@@ -202,3 +202,45 @@
 ## Pendiente (siguientes pasos)
 
 - Reportes academicos (boleta de calificaciones) y que el administrador pueda ver/corregir notas.
+## Administración y reportes (Tarea 4, fase 4)
+
+- **Administrador > Usuarios:** crea cuentas de profesor, cambia el rol/perfil de cuentas sin relaciones
+  académicas, activa o desactiva cuentas y restablece el estado de 2FA. Un rol no se cambia si al perfil
+  actual todavía le pertenecen inscripciones, secciones o vínculos familiares; así se protegen los datos.
+- Los cambios administrativos vuelven a validar en MySQL que quien los ejecuta sea un administrador activo.
+  Los cambios de rol marcan la cuenta para cambiar su contraseña en el siguiente acceso.
+- La autenticación rechaza las cuentas desactivadas y las contraseñas continúan almacenadas con BCrypt.
+- **Reporte de inscripciones:** filtro por rango de fechas y alcance por rol (todos para ADMIN, secciones del
+  profesor, cuenta del estudiante o hijos vinculados del padre/tutor). Desde la vista se imprime o se guarda
+  como PDF; el encabezado incluye SIGE, fecha de emisión, usuario, rol y rango consultado.
+- Antes de iniciar esta versión, ejecuta una vez `sql/fase4_gestion_usuarios.sql` con el esquema `sige_db`
+  seleccionado en MySQL Workbench. Agrega el estado de cuenta y los campos para restablecer y bloquear el 2FA.
+- `ReporteDAO` aplica fechas y permisos en SQL; `ReporteInscripcionesPanel` presenta/exporta el resultado.
+# Fase 5: autenticación de dos factores
+
+La aplicación solicita configurar una app compatible con TOTP (por ejemplo, Google Authenticator o Microsoft Authenticator) en el primer inicio válido. Después de escanear el QR, confirma con el código temporal de 6 dígitos. Los siguientes inicios requieren ese código. Tres códigos erróneos bloquean temporalmente el acceso durante 15 minutos. Los éxitos y fallos se guardan en `bitacora_accesos`.
+
+## Preparación de Fase 5
+
+1. En MySQL Workbench abre y ejecuta `sql/fase5_2fa.sql` en el esquema `sige_db`. La cuenta de MySQL de SIGE debe tener permisos para crear esa tabla. La migración de Fase 4 debe haberse ejecutado antes, porque allí se agregaron los campos de 2FA a `usuarios`.
+2. Si aún no tienes `db.properties`, copia `db.properties.example` como `db.properties` en la carpeta desde donde ejecutas SIGE y completa los datos locales de MySQL.
+3. Genera una clave local AES-256 desde PowerShell, en el directorio del proyecto:
+
+   ```powershell
+   $clave2FA = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+   Add-Content -LiteralPath .\db.properties -Value "`n2fa.encryption-key=$clave2FA"
+   Remove-Variable clave2FA
+   ```
+
+   Protege `db.properties`: contiene secretos locales y no se debe subir a Git. No cambies ni pierdas esta clave después de configurar cuentas; es necesaria para descifrar los secretos TOTP guardados. También se admite la variable de entorno `SIGE_2FA_ENCRYPTION_KEY`.
+4. Ejecuta `mvn clean compile` y luego inicia la aplicación desde VS Code. Al iniciar sesión por primera vez, escanea el QR y confirma el código de seis dígitos.
+
+La dependencia ZXing Core 3.5.4 genera el QR. Si Maven no puede descargar dependencias por un certificado/proxy local, configura el acceso de Maven Central en esa computadora y vuelve a compilar.
+
+## Fase 6: dashboard del sistema
+
+Al iniciar sesión, la opción Inicio carga cuatro KPI, un gráfico de inscripciones por asignatura, un gráfico del estado de las materias y una tabla con las inscripciones recientes. Todos los valores salen de MySQL. El DAO limita las consultas al usuario autenticado: administrador ve el conjunto institucional, profesor sus secciones, estudiante sus materias y padre/tutor los estudiantes vinculados. Las consultas se ejecutan en un `Task` JavaFX para que la pantalla no se congele. Si faltan datos, los gráficos y la tabla muestran el estado vacío.
+
+## Fase 7: escritorio, tableta y teléfono
+
+La escena aplica los modos `modo-escritorio` (1024 px o más), `modo-tableta` (600 a 1023 px) y `modo-telefono` (menos de 600 px) según el ancho disponible. En teléfono, el menú lateral se sustituye por un selector compacto superior, los KPI se apilan en una columna, los gráficos pasan a filas y la tabla oculta columnas secundarias. En tableta se conservan dos columnas para KPI y se reduce el menú; en escritorio se usan cuatro columnas. Login y registro reducen sus márgenes y campos para la referencia de 412 px. Para las evidencias de la tarea, redimensiona la ventana a 1366x768, 1024x768, 768x1024 y 412x915 y captura login, dashboard y un CRUD.

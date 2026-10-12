@@ -98,4 +98,9 @@ public final class ConexionBD {
         }
         return DriverManager.getConnection(url, usuario, clave == null ? "" : clave);
     }
+
+    /** Clave AES-256 de 2FA, definida fuera del código por variable de entorno o db.properties. */
+    public static String claveCifrado2FA() {
+        return valor("SIGE_2FA_ENCRYPTION_KEY", "2fa.encryption-key");
+    }
 }

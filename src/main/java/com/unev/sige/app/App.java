@@ -22,6 +22,7 @@ public class App extends Application {
         Parent root = loader.load();
 
         Scene scene = new Scene(root, 480, 380);
+        Navegacion.aplicarEstilos(scene);
 
         stage.setTitle("SIGE - Inicio de sesion");
         stage.setScene(scene);

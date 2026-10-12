@@ -24,7 +24,6 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -79,7 +78,7 @@ public class CalificacionesPanel extends VBox {
 
         Label lblFormula = new Label(EscalaCalificaciones.descripcionFormula());
         lblFormula.setWrapText(true);
-        lblFormula.setTextFill(Color.GRAY);
+        lblFormula.getStyleClass().add("muted-text");
 
         VBox.setVgrow(tabla, Priority.ALWAYS);
         getChildren().addAll(Dialogos.titulo(modoAdministrador ? "Administración de calificaciones" : "Calificaciones"),
@@ -238,15 +237,15 @@ public class CalificacionesPanel extends VBox {
         TextField txtExamen = new TextField(Dialogos.nota(actual.getNotaExamenFinal()));
 
         Label lblVista = new Label();
-        lblVista.setStyle("-fx-font-weight: bold;");
+        lblVista.getStyleClass().add("strong-text");
 
         Label lblError = new Label();
-        lblError.setTextFill(Color.RED);
+        lblError.getStyleClass().add("error-message");
         lblError.setWrapText(true);
 
         Label lblFormula = new Label(EscalaCalificaciones.descripcionFormula());
         lblFormula.setWrapText(true);
-        lblFormula.setTextFill(Color.GRAY);
+        lblFormula.getStyleClass().add("muted-text");
         lblFormula.setMaxWidth(380);
 
         GridPane formulario = new GridPane();
@@ -291,6 +290,7 @@ public class CalificacionesPanel extends VBox {
             }
         });
 
+        Dialogos.aplicarEstilos(dialogo);
         Optional<ButtonType> respuesta = dialogo.showAndWait();
         if (respuesta.isPresent() && respuesta.get() == ButtonType.OK) {
             return Optional.ofNullable(leerNotas(txtP1.getText(), txtP2.getText(), txtExamen.getText()));

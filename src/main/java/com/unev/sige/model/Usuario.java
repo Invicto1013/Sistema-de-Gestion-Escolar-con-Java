@@ -19,6 +19,8 @@ public class Usuario {
     private Rol rol;
     private boolean debeCambiarContrasena;
 
+    private boolean activo = true;
+
     public Usuario() {
     }
 
@@ -87,6 +89,14 @@ public class Usuario {
 
     public void setDebeCambiarContrasena(boolean debeCambiarContrasena) {
         this.debeCambiarContrasena = debeCambiarContrasena;
+    }
+
+    public boolean isActivo() {
+        return activo;
+    }
+
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 
     // ----- Metodos propios -----

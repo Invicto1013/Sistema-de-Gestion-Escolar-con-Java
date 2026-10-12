@@ -12,7 +12,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import javafx.scene.paint.Color;
 import javafx.stage.Window;
 
 import java.io.IOException;
@@ -230,12 +229,13 @@ public class RegistroController {
     }
 
     private void mostrarError(String mensaje) {
-        lblMensaje.setTextFill(Color.RED);
+        lblMensaje.getStyleClass().add("error-message");
         lblMensaje.setText(mensaje);
     }
 
     private void mostrarExito(String mensaje) {
-        lblMensaje.setTextFill(Color.GREEN);
+        lblMensaje.getStyleClass().remove("error-message");
+        lblMensaje.getStyleClass().add("success-message");
         lblMensaje.setText(mensaje);
     }
 }

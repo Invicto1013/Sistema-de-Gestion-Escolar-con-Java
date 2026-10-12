@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="18.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+<VBox styleClass="registro-root" alignment="CENTER" spacing="18.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.unev.sige.controller.RegistroController">
     <padding>
         <Insets bottom="30.0" left="40.0" right="40.0" top="30.0" />
@@ -26,8 +26,8 @@
 
     <GridPane hgap="10.0" vgap="10.0">
         <columnConstraints>
-            <ColumnConstraints minWidth="140.0" />
-            <ColumnConstraints minWidth="240.0" />
+            <ColumnConstraints minWidth="105.0" />
+            <ColumnConstraints minWidth="170.0" hgrow="ALWAYS" />
         </columnConstraints>
 
         <Label text="Nombre:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
@@ -46,7 +46,7 @@
         <PasswordField fx:id="txtConfirmarContrasena" promptText="Repite la contraseña" GridPane.columnIndex="1" GridPane.rowIndex="4" />
 
         <Label text="Rol:" GridPane.columnIndex="0" GridPane.rowIndex="5" />
-        <ComboBox fx:id="cmbRol" onAction="#onRolSeleccionado" prefWidth="240.0" promptText="Selecciona un rol" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+        <ComboBox fx:id="cmbRol" maxWidth="1.7976931348623157E308" onAction="#onRolSeleccionado" promptText="Selecciona un rol" GridPane.columnIndex="1" GridPane.rowIndex="5" />
 
         <!-- Campos extra: el controlador cambia las etiquetas segun el rol y los oculta si no hay rol -->
         <Label fx:id="lblDato1" text="Dato 1:" GridPane.columnIndex="0" GridPane.rowIndex="6" />
@@ -56,7 +56,7 @@
         <TextField fx:id="txtDato2" GridPane.columnIndex="1" GridPane.rowIndex="7" />
     </GridPane>
 
-    <Label fx:id="lblMensaje" textFill="RED" wrapText="true" />
+    <Label fx:id="lblMensaje" styleClass="error-message" wrapText="true" />
 
     <HBox alignment="CENTER" spacing="12.0">
         <Button fx:id="btnGuardar" onAction="#onGuardar" prefWidth="110.0" text="Guardar" />

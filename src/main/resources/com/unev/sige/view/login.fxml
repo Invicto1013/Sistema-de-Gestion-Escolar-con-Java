@@ -10,7 +10,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="20.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+<VBox styleClass="login-root" alignment="CENTER" spacing="20.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.unev.sige.controller.LoginController">
     <padding>
         <Insets bottom="30.0" left="40.0" right="40.0" top="30.0" />
@@ -26,8 +26,8 @@
 
     <GridPane hgap="10.0" vgap="12.0">
         <columnConstraints>
-            <javafx.scene.layout.ColumnConstraints minWidth="120.0" />
-            <javafx.scene.layout.ColumnConstraints minWidth="220.0" />
+            <javafx.scene.layout.ColumnConstraints minWidth="100.0" />
+            <javafx.scene.layout.ColumnConstraints minWidth="170.0" hgrow="ALWAYS" />
         </columnConstraints>
 
         <Label text="Correo electrónico:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
@@ -37,7 +37,7 @@
         <PasswordField fx:id="txtContrasena" promptText="Contraseña" GridPane.columnIndex="1" GridPane.rowIndex="1" />
     </GridPane>
 
-    <Label fx:id="lblMensaje" textFill="RED" wrapText="true" />
+    <Label fx:id="lblMensaje" styleClass="error-message" wrapText="true" />
 
     <VBox alignment="CENTER" spacing="10.0">
         <Button fx:id="btnIniciarSesion" defaultButton="true" onAction="#onIniciarSesion" prefWidth="180.0" text="Iniciar sesión" />

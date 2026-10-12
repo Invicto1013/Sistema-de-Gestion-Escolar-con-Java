@@ -22,7 +22,6 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -226,7 +225,7 @@ public class SeccionesPanel extends VBox {
         txtCupo.setPromptText("Ej. 30");
 
         Label lblError = new Label();
-        lblError.setTextFill(Color.RED);
+        lblError.getStyleClass().add("error-message");
         lblError.setWrapText(true);
 
         GridPane formulario = new GridPane();
@@ -253,6 +252,7 @@ public class SeccionesPanel extends VBox {
             }
         });
 
+        Dialogos.prepararModal(dialogo, getScene().getWindow());
         Optional<ButtonType> respuesta = dialogo.showAndWait();
         if (respuesta.isPresent() && respuesta.get() == ButtonType.OK) {
             return Optional.of(new Seccion(idActual, txtAula.getText().trim(), txtHorario.getText().trim(),

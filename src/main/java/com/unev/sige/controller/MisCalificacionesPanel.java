@@ -9,7 +9,6 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -91,7 +90,7 @@ public class MisCalificacionesPanel extends VBox {
 
         Label lblFormula = new Label(EscalaCalificaciones.descripcionFormula());
         lblFormula.setWrapText(true);
-        lblFormula.setTextFill(Color.GRAY);
+        lblFormula.getStyleClass().add("muted-text");
 
         getChildren().addAll(Dialogos.titulo("Mis calificaciones"), tabla, lblEstado, lblFormula);
     }
