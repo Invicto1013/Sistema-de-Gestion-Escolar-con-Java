@@ -1,5 +1,5 @@
 # Copiar como db.properties y completar los valores locales.
-db.url=jdbc:mysql://localhost:3306/sige_db?useSSL=false&serverTimezone=America/Santo_Domingo
+db.url=jdbc:mysql://localhost:3306/sige_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Santo_Domingo
 db.user=TU_USUARIO_MYSQL
 db.password=TU_CLAVE_MYSQL
 # AES-256 Base64 generado en PowerShell. No compartir ni subir a Git.

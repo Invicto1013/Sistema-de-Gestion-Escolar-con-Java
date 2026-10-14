@@ -50,6 +50,16 @@ public class SesionDAO {
         }
     }
 
+    /** Revoca una sesión registrada solo si quien lo solicita sigue siendo ADMIN activo. */
+    public void cerrarComoAdmin(int idAdministrador,int idSesion) throws SQLException,PermisoDenegadoException {
+        String sql="UPDATE controlador_sesiones SET fecha_cierre=CURRENT_TIMESTAMP,estado_activo=0 "
+                +"WHERE id_sesion=? AND estado_activo=1 AND EXISTS (SELECT 1 FROM usuarios WHERE id_usuario=? AND rol='ADMIN' AND activo=1)";
+        try(Connection conn=ConexionBD.obtener();PreparedStatement ps=conn.prepareStatement(sql)){
+            ps.setInt(1,idSesion);ps.setInt(2,idAdministrador);
+            if(ps.executeUpdate()!=1)throw new PermisoDenegadoException("La sesión ya estaba cerrada o no está disponible.");
+        }
+    }
+
     /**
      * Devuelve como máximo 500 sesiones recientes. La consulta también verifica en MySQL
      * que el usuario solicitante conserve el rol ADMIN.
@@ -86,5 +96,30 @@ public class SesionDAO {
             }
         }
         return resultado;
+    }
+
+    /** Busca hasta 500 sesiones recientes usando filtros opcionales y parámetros seguros. */
+    public List<SesionRegistrada> buscarRecientes(int idAdministrador,String texto,String estado,String desde,String hasta) throws SQLException {
+        StringBuilder sql=new StringBuilder("""
+                SELECT cs.id_sesion, CONCAT(u.nombre, ' ', u.apellido) AS usuario, u.correo,
+                       DATE_FORMAT(cs.fecha_inicio, '%Y-%m-%d %H:%i:%s') AS inicio,
+                       COALESCE(DATE_FORMAT(cs.fecha_cierre, '%Y-%m-%d %H:%i:%s'), '—') AS cierre,
+                       COALESCE(cs.direccion_ip, '—') AS direccion_ip,
+                       CASE WHEN cs.estado_activo = 1 THEN 'Activa' ELSE 'Cerrada' END AS estado
+                FROM controlador_sesiones cs JOIN usuarios u ON u.id_usuario=cs.id_usuario
+                WHERE EXISTS (SELECT 1 FROM usuarios admin WHERE admin.id_usuario=? AND admin.rol='ADMIN' AND admin.activo=1)
+                """);
+        List<Object> params=new ArrayList<>();params.add(idAdministrador);
+        if(texto!=null&&!texto.isBlank()){sql.append(" AND (u.correo LIKE ? OR u.nombre LIKE ? OR u.apellido LIKE ? OR CONCAT(u.nombre,' ',u.apellido) LIKE ?)");String like="%"+texto.trim()+"%";for(int i=0;i<4;i++)params.add(like);}
+        if("Activa".equals(estado))sql.append(" AND cs.estado_activo=1");else if("Cerrada".equals(estado))sql.append(" AND cs.estado_activo=0");
+        if(desde!=null){sql.append(" AND cs.fecha_inicio >= ?");params.add(desde+" 00:00:00");}
+        if(hasta!=null){sql.append(" AND cs.fecha_inicio < DATE_ADD(?, INTERVAL 1 DAY)");params.add(hasta);}
+        sql.append(" ORDER BY cs.fecha_inicio DESC, cs.id_sesion DESC LIMIT 500");
+        List<SesionRegistrada> result=new ArrayList<>();
+        try(Connection conn=ConexionBD.obtener();PreparedStatement ps=conn.prepareStatement(sql.toString())){
+            for(int i=0;i<params.size();i++)ps.setObject(i+1,params.get(i));
+            try(ResultSet rs=ps.executeQuery()){while(rs.next())result.add(new SesionRegistrada(rs.getInt("id_sesion"),rs.getString("usuario"),rs.getString("correo"),rs.getString("inicio"),rs.getString("cierre"),rs.getString("direccion_ip"),rs.getString("estado")));}
+        }
+        return result;
     }
 }

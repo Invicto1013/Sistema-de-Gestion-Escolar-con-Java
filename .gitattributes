@@ -1,0 +1,14 @@
+# Finales de línea consistentes en todo el equipo (Windows, VS Code, GitHub).
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binarios: que Git no los toque.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.jar binary

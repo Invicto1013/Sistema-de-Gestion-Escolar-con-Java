@@ -44,6 +44,28 @@ public class AsistenciaDAO {
         return filas;
     }
 
+    /** Reporte de marcas ya registradas; el docente queda limitado a sus secciones. */
+    public List<FilaAsistencia> listarReportePorSeccion(int idSeccion,int idUsuario,boolean administrador,
+            java.time.LocalDate desde,java.time.LocalDate hasta) throws SQLException {
+        String sql="""
+                SELECT d.id_detalle_inscripcion,e.matricula,u.nombre,u.apellido,x.fecha,x.presente
+                FROM asistencias x
+                JOIN detalle_inscripciones d ON d.id_detalle_inscripcion=x.id_detalle_inscripcion
+                JOIN inscripciones i ON i.id_inscripcion=d.id_inscripcion
+                JOIN estudiantes e ON e.id_estudiante=i.id_estudiante
+                JOIN usuarios u ON u.id_usuario=e.id_estudiante
+                JOIN secciones s ON s.id_seccion=d.id_seccion
+                WHERE s.id_seccion=? AND x.fecha BETWEEN ? AND ? AND (?=1 OR s.id_profesor=?)
+                ORDER BY x.fecha DESC,u.apellido,u.nombre LIMIT 5001
+                """;
+        List<FilaAsistencia> filas=new ArrayList<>();
+        try(Connection conn=ConexionBD.obtener();PreparedStatement ps=conn.prepareStatement(sql)){
+            ps.setInt(1,idSeccion);ps.setDate(2,Date.valueOf(desde));ps.setDate(3,Date.valueOf(hasta));ps.setBoolean(4,administrador);ps.setInt(5,idUsuario);
+            try(ResultSet rs=ps.executeQuery()){while(rs.next())filas.add(new FilaAsistencia(rs.getInt("id_detalle_inscripcion"),rs.getString("matricula"),rs.getString("apellido")+", "+rs.getString("nombre"),rs.getDate("fecha").toLocalDate(),rs.getBoolean("presente")));}
+        }
+        return filas;
+    }
+
     /** Guarda o actualiza la lista de una fecha; solo acepta registros de secciones del profesor. */
     public void guardarPorSeccion(int idSeccion, int idProfesor, java.time.LocalDate fecha,
                                   List<FilaAsistencia> filas) throws SQLException {

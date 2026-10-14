@@ -199,9 +199,6 @@
 - Se agregan `model/SesionRegistrada` y `controller/HistorialSesionesPanel`; `SesionDAO` consulta el registro
   existente y `DashboardController` agrega el acceso administrativo.
 
-## Pendiente (siguientes pasos)
-
-- Reportes academicos (boleta de calificaciones) y que el administrador pueda ver/corregir notas.
 ## Administración y reportes (Tarea 4, fase 4)
 
 - **Administrador > Usuarios:** crea cuentas de profesor, cambia el rol/perfil de cuentas sin relaciones

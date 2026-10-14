@@ -196,6 +196,33 @@ public class UsuarioDAO {
         return lista;
     }
 
+    /** Búsqueda administrativa parametrizada por texto, rol y estado de la cuenta. */
+    public List<Usuario> buscarTodos(String texto, String rol, String estado) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT id_usuario,nombre,apellido,correo,rol,activo FROM usuarios WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        if (texto != null && !texto.isBlank()) {
+            sql.append(" AND (nombre LIKE ? OR apellido LIKE ? OR correo LIKE ? OR CONCAT(nombre,' ',apellido) LIKE ?)");
+            String pattern = "%" + texto.trim() + "%";
+            for (int i=0;i<4;i++) params.add(pattern);
+        }
+        if (rol != null && !rol.isBlank()) { sql.append(" AND rol = ?"); params.add(rol); }
+        if ("activa".equals(estado)) sql.append(" AND activo = 1");
+        else if ("inactiva".equals(estado)) sql.append(" AND activo = 0");
+        sql.append(" ORDER BY id_usuario");
+        List<Usuario> lista = new ArrayList<>();
+        try (Connection conn = ConexionBD.obtener(); PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i=0;i<params.size();i++) ps.setObject(i+1,params.get(i));
+            try (ResultSet rs=ps.executeQuery()) {
+                while(rs.next()) {
+                    Rol role; try { role=Rol.valueOf(rs.getString("rol")); } catch(IllegalArgumentException ex) { role=null; }
+                    Usuario user=new Usuario(rs.getInt("id_usuario"),rs.getString("nombre"),rs.getString("apellido"),rs.getString("correo"),null,role);
+                    user.setActivo(rs.getBoolean("activo")); lista.add(user);
+                }
+            }
+        }
+        return lista;
+    }
+
     /**
      * Lista los profesores (para elegir uno al crear una seccion).
      * Solo carga id, nombre, apellido, correo, codigo y especialidad.
@@ -273,6 +300,31 @@ public class UsuarioDAO {
                     """)) {
                 ps.setInt(1, idUsuario);
                 if (ps.executeUpdate() != 1) throw new PermisoDenegadoException("La cuenta seleccionada ya no existe.");
+            }
+        }
+    }
+
+    /** Asigna una clave temporal al usuario y exige que la cambie al iniciar sesión. */
+    public void restablecerContrasenaComoAdmin(int idAdmin, int idUsuario, String temporal)
+            throws SQLException, PermisoDenegadoException {
+        if (idAdmin == idUsuario) throw new PermisoDenegadoException("No puedes restablecer tu propia contraseña desde esta opción.");
+        if (temporal == null || temporal.length() < 16 || temporal.length() > 128)
+            throw new PermisoDenegadoException("La contraseña temporal no cumple los requisitos de seguridad.");
+        String hash = Usuario.hashear(temporal);
+        try (Connection conn = ConexionBD.obtener()) {
+            conn.setAutoCommit(false);
+            try {
+                validarAdministrador(conn, idAdmin);
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE usuarios SET contrasena = ?, debe_cambiar_contrasena = 1 WHERE id_usuario = ?")) {
+                    ps.setString(1, hash);
+                    ps.setInt(2, idUsuario);
+                    if (ps.executeUpdate() != 1) throw new PermisoDenegadoException("La cuenta seleccionada ya no existe.");
+                }
+                conn.commit();
+            } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
+                conn.rollback();
+                throw e;
             }
         }
     }

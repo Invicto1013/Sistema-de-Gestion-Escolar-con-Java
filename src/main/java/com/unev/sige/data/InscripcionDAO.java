@@ -87,11 +87,25 @@ public class InscripcionDAO {
      * seccion, asignatura y profesor. Las mas recientes primero.
      */
     public List<Inscripcion> listarPorEstudiante(int idEstudiante) throws SQLException {
-        Map<Integer, Inscripcion> porId = new LinkedHashMap<>();
+        return consultarInscripciones(SQL_LISTAR_POR_ESTUDIANTE, idEstudiante, null);
+    }
 
-        try (Connection conn = ConexionBD.obtener();
-             PreparedStatement ps = conn.prepareStatement(SQL_LISTAR_POR_ESTUDIANTE)) {
-            ps.setInt(1, idEstudiante);
+    /** Materias de un estudiante, solo si está vinculado a la cuenta del padre/tutor. */
+    public List<Inscripcion> listarParaPadre(int idUsuarioPadre, int idEstudiante) throws SQLException {
+        String sql = SQL_LISTAR_POR_ESTUDIANTE
+                .replace("FROM inscripciones i", "FROM inscripciones i "
+                        + "JOIN estudiante_padre ep ON ep.id_estudiante = i.id_estudiante "
+                        + "JOIN padres pa ON pa.id_padre = ep.id_padre")
+                .replace("WHERE i.id_estudiante = ?", "WHERE pa.id_usuario = ? AND i.id_estudiante = ?");
+        return consultarInscripciones(sql, idUsuarioPadre, idEstudiante);
+    }
+
+    private List<Inscripcion> consultarInscripciones(String sql, int primerId, Integer estudianteAdicional)
+            throws SQLException {
+        Map<Integer, Inscripcion> porId = new LinkedHashMap<>();
+        try (Connection conn = ConexionBD.obtener(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, primerId);
+            if (estudianteAdicional != null) ps.setInt(2, estudianteAdicional);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     int idInscripcion = rs.getInt("id_inscripcion");

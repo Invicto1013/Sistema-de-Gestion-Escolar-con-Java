@@ -18,7 +18,6 @@ public class Usuario {
     private String contrasenaHash;
     private Rol rol;
     private boolean debeCambiarContrasena;
-
     private boolean activo = true;
 
     public Usuario() {
