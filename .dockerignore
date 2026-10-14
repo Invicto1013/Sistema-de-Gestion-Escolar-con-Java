@@ -3,6 +3,6 @@
 .vscode
 .idea
 target
-db.properties
+**/db.properties
 *.log
 *.zip
