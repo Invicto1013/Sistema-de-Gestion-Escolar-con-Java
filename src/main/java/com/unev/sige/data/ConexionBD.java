@@ -17,38 +17,64 @@ import java.util.Properties;
  * Entrega conexiones JDBC a MySQL (sige_db).
  * Las credenciales NO estan en el codigo. Se buscan, en este orden:
  * 1) variables de entorno SIGE_DB_URL, SIGE_DB_USER y SIGE_DB_PASSWORD;
- * 2) archivo db.properties en la carpeta desde donde se ejecuta la aplicacion;
- * 3) archivo db.properties dentro del classpath (por ejemplo src/main/resources/db.properties),
- *    que sirve aunque el IDE ejecute desde otra carpeta.
- * db.properties esta en .gitignore; usa db.properties.example como plantilla.
+ * 2) archivo config.properties (o db.properties) en la carpeta desde donde se ejecuta la aplicacion
+ *    o, si no esta alli, en la carpeta donde esta el .jar;
+ * 3) archivo dentro del classpath (solo desarrollo; el JAR de entrega no lo incluye).
+ * config.properties y db.properties estan en .gitignore; usa config.example.properties como plantilla.
  */
 public final class ConexionBD {
 
-    private static final String ARCHIVO = "db.properties";
+    /** Nombres aceptados, en orden de prioridad (config.properties es el nombre que pide la rubrica). */
+    private static final String[] ARCHIVOS = {"config.properties", "db.properties"};
     private static final Properties PROPIEDADES = cargarPropiedades();
 
     private ConexionBD() {
     }
 
+    /** Carpeta donde esta el .jar (o las clases, si se ejecuta desde el IDE); null si no se puede determinar. */
+    private static Path carpetaDeLaAplicacion() {
+        try {
+            Path origen = Path.of(ConexionBD.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            return Files.isDirectory(origen) ? origen : origen.getParent();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private static Properties cargarPropiedades() {
         Properties props = new Properties();
 
-        Path ruta = Path.of(ARCHIVO).toAbsolutePath();
-        if (Files.exists(ruta)) {
-            try {
-                leer(props, Files.readAllBytes(ruta));
-                return props;
-            } catch (IOException e) {
-                System.err.println("No se pudo leer " + ruta + ": " + e.getMessage());
+        // 1) Carpeta desde donde se ejecuta; 2) carpeta del .jar (doble clic, jpackage, acceso directo).
+        List<Path> carpetas = new ArrayList<>();
+        carpetas.add(Path.of("").toAbsolutePath());
+        Path app = carpetaDeLaAplicacion();
+        if (app != null) {
+            carpetas.add(app);
+        }
+        for (Path carpeta : carpetas) {
+            for (String archivo : ARCHIVOS) {
+                Path ruta = carpeta.resolve(archivo);
+                if (Files.exists(ruta)) {
+                    try {
+                        leer(props, Files.readAllBytes(ruta));
+                        return props;
+                    } catch (IOException e) {
+                        System.err.println("No se pudo leer " + ruta + ": " + e.getMessage());
+                    }
+                }
             }
         }
 
-        try (InputStream in = ConexionBD.class.getResourceAsStream("/" + ARCHIVO)) {
-            if (in != null) {
-                leer(props, in.readAllBytes());
+        // 3) Dentro del classpath (solo para desarrollo; el JAR de entrega no lo incluye).
+        for (String archivo : ARCHIVOS) {
+            try (InputStream in = ConexionBD.class.getResourceAsStream("/" + archivo)) {
+                if (in != null) {
+                    leer(props, in.readAllBytes());
+                    return props;
+                }
+            } catch (IOException e) {
+                System.err.println("No se pudo leer " + archivo + " del classpath: " + e.getMessage());
             }
-        } catch (IOException e) {
-            System.err.println("No se pudo leer " + ARCHIVO + " del classpath: " + e.getMessage());
         }
         return props;
     }
@@ -91,10 +117,10 @@ public final class ConexionBD {
                 faltan.add("db.user");
             }
             throw new SQLException("Falta configurar la conexion (" + String.join(", ", faltan) + "). "
-                    + "No se encontro un db.properties valido en la carpeta de ejecucion ("
-                    + Path.of("").toAbsolutePath() + ") ni en el classpath. "
-                    + "Copia db.properties.example como db.properties en esa carpeta "
-                    + "(o en src/main/resources) y completa tus datos de MySQL.");
+                    + "No se encontro un config.properties valido en la carpeta de ejecucion ("
+                    + Path.of("").toAbsolutePath() + ") ni junto al programa. "
+                    + "Copia config.example.properties como config.properties en la carpeta "
+                    + "del .jar y completa los datos de MySQL.");
         }
         return DriverManager.getConnection(url, usuario, clave == null ? "" : clave);
     }

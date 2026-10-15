@@ -6,3 +6,4 @@ target
 **/db.properties
 *.log
 *.zip
+**/config.properties

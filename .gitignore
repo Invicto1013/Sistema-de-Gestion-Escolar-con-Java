@@ -9,3 +9,6 @@ target/
 .classpath
 .project
 .settings/
+
+# Configuracion con credenciales (usar config.example.properties como plantilla)
+config.properties
