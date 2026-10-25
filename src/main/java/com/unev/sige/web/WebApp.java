@@ -36,6 +36,7 @@ import com.unev.sige.model.Seccion;
 import com.unev.sige.model.NotaEstudiante;
 import com.unev.sige.model.LineaReporteInscripcion;
 import com.unev.sige.model.Rol;
+import com.unev.sige.model.PoliticaContrasena;
 import com.unev.sige.model.Usuario;
 import com.unev.sige.model.VinculoPadreEstudiante;
 import com.unev.sige.security.Configuracion2FAException;
@@ -54,6 +55,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
@@ -116,6 +118,7 @@ public final class WebApp {
             if (method.equals("GET")) {
                 switch (path) {
                     case "/" -> page(x, s, home(s, null));
+                    case "/registro" -> { if (s.user != null) redirect(x, "/"); else page(x, s, registroPage(s, null, Map.of())); }
                     case "/perfil" -> page(x, s, s.user == null ? errorPage("Inicia sesión para ver tu perfil.") : profilePage(s, x.getRequestURI().getRawQuery()));
                     case "/aula" -> page(x,s,aulaPage(s,x.getRequestURI().getRawQuery(),null));
                     case "/archivo-aula" -> downloadAulaFile(x,s,x.getRequestURI().getRawQuery());
@@ -155,6 +158,7 @@ public final class WebApp {
             if (!constantEquals(s.csrf, form.get("_csrf"))) { page(x, s, errorPage("La solicitud expiró. Recarga la página e inténtalo otra vez.")); return; }
             switch (path) {
                 case "/login" -> login(x, s, form);
+                case "/registro" -> registrar(x, s, form);
                 case "/verify-2fa" -> verifyMfa(x, s, form);
                 case "/change-password" -> changePassword(x, s, form);
                 case "/inscribir" -> enroll(x, s, form);
@@ -184,6 +188,89 @@ public final class WebApp {
             page(x, sessionFor(x), errorPage("No se pudo completar la solicitud. Revisa la conexión con la base de datos."));
         } finally {
             x.close();
+        }
+    }
+
+    // ---- Registro público (ESTUDIANTE y PADRE; PROFESOR/ADMIN solo los crea un administrador) ----
+    private static final Object REGISTRO_LOCK = new Object();
+    private static long registroVentana = 0; private static int registroCuenta = 0;
+
+    private static boolean registroPermitido() {
+        synchronized (REGISTRO_LOCK) {
+            long ahora = Instant.now().getEpochSecond() / 60;
+            if (ahora != registroVentana) { registroVentana = ahora; registroCuenta = 0; }
+            return ++registroCuenta <= 20;
+        }
+    }
+
+    private static String registroPage(WebSession s, String error, Map<String, String> v) {
+        String rol = v.getOrDefault("rol", "ESTUDIANTE");
+        return shell("Crear registro", (error == null ? "" : alert(error))
+            + "<section class='auth-card'><div class='eyebrow'>NUEVA CUENTA</div><h1>Crear registro</h1>"
+            + "<p>Completa tus datos para registrarte como estudiante o padre/tutor.</p>"
+            + "<form method='post' action='/registro'>" + hiddenCsrf(s)
+            + "<label>Tipo de cuenta<select name='rol' required>"
+            + "<option value='ESTUDIANTE'" + ("ESTUDIANTE".equals(rol) ? " selected" : "") + ">Estudiante</option>"
+            + "<option value='PADRE'" + ("PADRE".equals(rol) ? " selected" : "") + ">Padre / tutor</option></select></label>"
+            + "<label>Nombre<input name='nombre' maxlength='80' required value='" + esc(v.getOrDefault("nombre", "")) + "'></label>"
+            + "<label>Apellido<input name='apellido' maxlength='80' required value='" + esc(v.getOrDefault("apellido", "")) + "'></label>"
+            + "<label>Correo electrónico<input name='correo' type='email' maxlength='120' autocomplete='username' required value='" + esc(v.getOrDefault("correo", "")) + "'></label>"
+            + "<label>Contraseña<input name='contrasena' type='password' autocomplete='new-password' required></label>"
+            + "<label>Confirmar contraseña<input name='confirmar' type='password' autocomplete='new-password' required></label>"
+            + "<p class='hint'>" + esc(PoliticaContrasena.REQUISITOS) + "</p>"
+            + "<fieldset class='reg-extra'><legend>Solo estudiantes</legend>"
+            + "<label>Matrícula<input name='matricula' maxlength='30' placeholder='M-2026-001' value='" + esc(v.getOrDefault("matricula", "")) + "'></label>"
+            + "<label>Grado<input name='grado' maxlength='30' placeholder='8vo' value='" + esc(v.getOrDefault("grado", "")) + "'></label></fieldset>"
+            + "<fieldset class='reg-extra'><legend>Solo padres / tutores (opcional)</legend>"
+            + "<label>Teléfono<input name='telefono' maxlength='30' placeholder='809-000-0000' value='" + esc(v.getOrDefault("telefono", "")) + "'></label>"
+            + "<label>Ocupación<input name='ocupacion' maxlength='80' value='" + esc(v.getOrDefault("ocupacion", "")) + "'></label></fieldset>"
+            + "<button class='primary' type='submit'>Crear cuenta</button></form>"
+            + "<p class='hint'>¿Ya tienes cuenta? <a class='text-link inline-link' href='/'>Iniciar sesión</a></p></section>", false, "");
+    }
+
+    private static void registrar(HttpExchange x, WebSession s, Map<String, String> f) throws IOException {
+        if (s.user != null) { redirect(x, "/"); return; }
+        String rolTxt = f.getOrDefault("rol", "").trim();
+        String nombre = f.getOrDefault("nombre", "").trim();
+        String apellido = f.getOrDefault("apellido", "").trim();
+        String correo = f.getOrDefault("correo", "").trim().toLowerCase(java.util.Locale.ROOT);
+        String clave = f.getOrDefault("contrasena", "");
+        String confirmar = f.getOrDefault("confirmar", "");
+        String matricula = f.getOrDefault("matricula", "").trim();
+        String grado = f.getOrDefault("grado", "").trim();
+        String telefono = f.getOrDefault("telefono", "").trim();
+        String ocupacion = f.getOrDefault("ocupacion", "").trim();
+        Map<String, String> v = new HashMap<>(f);   // se reenvía al formulario, nunca las contraseñas
+        v.remove("contrasena"); v.remove("confirmar");
+        String err = null;
+        if (!registroPermitido()) err = "Demasiados registros en poco tiempo. Inténtalo en un minuto.";
+        else if (!rolTxt.equals("ESTUDIANTE") && !rolTxt.equals("PADRE")) err = "Ese tipo de cuenta solo puede crearlo un administrador.";
+        else if (nombre.isEmpty() || apellido.isEmpty() || correo.isEmpty() || clave.isEmpty() || confirmar.isEmpty()) err = "Completa todos los campos obligatorios.";
+        else if (nombre.length() > 80 || apellido.length() > 80 || correo.length() > 120) err = "Algún dato supera la longitud permitida.";
+        else if (!correo.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) err = "Ingresa un correo electrónico válido.";
+        else if (!clave.equals(confirmar)) err = "Las contraseñas no coinciden.";
+        else if (rolTxt.equals("ESTUDIANTE") && (matricula.isEmpty() || grado.isEmpty())) err = "Los estudiantes deben indicar matrícula y grado.";
+        else err = PoliticaContrasena.validar(clave);
+        if (err != null) { page(x, s, registroPage(s, err, v)); return; }
+        try {
+            if (USERS.existeCorreo(correo)) { page(x, s, registroPage(s, "Ese correo ya está registrado.", v)); return; }
+            Usuario nuevo;
+            if (rolTxt.equals("ESTUDIANTE")) {
+                if (USERS.existeMatricula(matricula)) { page(x, s, registroPage(s, "Esa matrícula ya existe.", v)); return; }
+                nuevo = new Estudiante(0, nombre, apellido, correo, null, matricula, grado, 0.0);
+            } else {
+                nuevo = new Padre(0, nombre, apellido, correo, null, 0,
+                        telefono.isEmpty() ? null : telefono, ocupacion.isEmpty() ? null : ocupacion);
+            }
+            USERS.registrar(nuevo, clave);
+            accessLog(nuevo.getId(), correo, "REGISTRO", "Cuenta " + rolTxt + " creada desde la web");
+            page(x, s, shell("Registro completado", "<section class='auth-card'><div class='success' role='status'>Tu cuenta se creó correctamente.</div>"
+                + "<h1>¡Listo, " + esc(nombre) + "!</h1><p>Ya puedes iniciar sesión con tu correo y contraseña.</p>"
+                + "<a class='primary link-button' href='/'>Ir a iniciar sesión</a></section>", false, ""));
+        } catch (SQLIntegrityConstraintViolationException e) {
+            page(x, s, registroPage(s, "Ya existe un registro con esos datos (correo o matrícula).", v));
+        } catch (SQLException e) {
+            page(x, s, registroPage(s, "No se pudo guardar el registro. Inténtalo más tarde.", v));
         }
     }
 
@@ -298,7 +385,7 @@ public final class WebApp {
                 + "<p>Inicia sesión para consultar tu información académica.</p><form method='post' action='/login'>"
                 + hiddenCsrf(s) + "<label>Correo electrónico<input name='correo' type='email' autocomplete='username' required></label>"
                 + "<label>Contraseña<input name='contrasena' type='password' autocomplete='current-password' required></label>"
-                + "<button class='primary' type='submit'>Iniciar sesión</button></form><p class='hint'>Tu cuenta debe estar registrada por la institución.</p></section>", false, "");
+                + "<button class='primary' type='submit'>Iniciar sesión</button></form><p class='hint'>¿No tienes cuenta? <a class='text-link inline-link' href='/registro'>Crear registro</a></p><p class='hint'>Las cuentas de profesor las crea la administración.</p></section>", false, "");
         try {
             DashboardDAO.Datos data = new DashboardDAO().cargar(s.user.getRol(), s.user.getId());
             DashboardDAO.Indicadores i = data.indicadores();
