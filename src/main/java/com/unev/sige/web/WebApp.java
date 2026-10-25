@@ -5,10 +5,13 @@ import com.google.zxing.WriterException;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.unev.sige.data.Autenticacion2FADAO;
 import com.unev.sige.data.AsistenciaDAO;
+import com.unev.sige.data.AulaDAO;
 import com.unev.sige.data.AsignaturaDAO;
 import com.unev.sige.data.BoletaDAO;
 import com.unev.sige.data.CalificacionDAO;
 import com.unev.sige.data.ConexionBD;
+import com.unev.sige.data.CorreoNotificaciones;
+import com.unev.sige.data.CurriculoDAO;
 import com.unev.sige.data.DashboardDAO;
 import com.unev.sige.data.InscripcionDAO;
 import com.unev.sige.data.InscripcionInvalidaException;
@@ -19,6 +22,7 @@ import com.unev.sige.data.SeccionDAO;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.data.VinculacionDAO;
 import com.unev.sige.model.ControladorSesion;
+import com.unev.sige.model.GradoCurricular;
 import com.unev.sige.model.Calificacion;
 import com.unev.sige.model.Asignatura;
 import com.unev.sige.model.FilaAsistencia;
@@ -41,6 +45,9 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.net.InetSocketAddress;
 import java.net.BindException;
 import java.net.URLDecoder;
@@ -49,6 +56,8 @@ import java.security.SecureRandom;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,6 +68,8 @@ import java.util.concurrent.Executors;
 public final class WebApp {
     private static final String COOKIE = "SIGEWEB";
     private static final long MAX_IDLE_SECONDS = 8 * 60 * 60;
+    private static final int MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+    private static final int MAX_MULTIPART_BYTES = MAX_UPLOAD_BYTES + 256 * 1024;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Map<String, WebSession> SESSIONS = new ConcurrentHashMap<>();
     private static volatile HttpServer SERVER;
@@ -106,6 +117,8 @@ public final class WebApp {
                 switch (path) {
                     case "/" -> page(x, s, home(s, null));
                     case "/perfil" -> page(x, s, s.user == null ? errorPage("Inicia sesión para ver tu perfil.") : profilePage(s, x.getRequestURI().getRawQuery()));
+                    case "/aula" -> page(x,s,aulaPage(s,x.getRequestURI().getRawQuery(),null));
+                    case "/archivo-aula" -> downloadAulaFile(x,s,x.getRequestURI().getRawQuery());
                     case "/boleta" -> page(x, s, boletaPage(s, x.getRequestURI().getRawQuery()));
                     case "/asistencia" -> page(x, s, attendancePage(s, x.getRequestURI().getRawQuery()));
                     case "/materias" -> page(x, s, subjectsPage(s, x.getRequestURI().getRawQuery()));
@@ -117,6 +130,7 @@ public final class WebApp {
                     case "/reporte-inscripciones" -> page(x, s, enrollmentReportPage(s, x.getRequestURI().getRawQuery(), null));
                     case "/reporte-inscripciones.csv" -> downloadEnrollmentReport(x,s,x.getRequestURI().getRawQuery());
                     case "/asignaturas" -> page(x,s,subjectsAdminPage(s,x.getRequestURI().getRawQuery(),null,null));
+                    case "/curriculo" -> page(x,s,curriculumPage(s));
                     case "/secciones" -> page(x,s,sectionsAdminPage(s,x.getRequestURI().getRawQuery(),null,null));
                     case "/usuarios" -> page(x,s,usersAdminPage(s,x.getRequestURI().getRawQuery(),null));
                     case "/usuarios.csv" -> downloadUsersCsv(x,s,x.getRequestURI().getRawQuery());
@@ -133,7 +147,11 @@ public final class WebApp {
                 return;
             }
             if (!method.equals("POST")) { send(x, 405, "text/plain; charset=utf-8", "Método no permitido"); return; }
-            Map<String, String> form = form(x);
+            Map<String,String> form; Map<String,UploadedFile> files=Map.of();
+            String contentType=x.getRequestHeaders().getFirst("Content-Type");
+            if(contentType!=null&&contentType.toLowerCase(java.util.Locale.ROOT).startsWith("multipart/form-data")){
+                MultipartData data=multipartForm(x,contentType);form=data.fields();files=data.files();
+            }else form=form(x);
             if (!constantEquals(s.csrf, form.get("_csrf"))) { page(x, s, errorPage("La solicitud expiró. Recarga la página e inténtalo otra vez.")); return; }
             switch (path) {
                 case "/login" -> login(x, s, form);
@@ -142,6 +160,8 @@ public final class WebApp {
                 case "/inscribir" -> enroll(x, s, form);
                 case "/guardar-calificacion" -> saveGrade(x, s, form);
                 case "/guardar-asistencia" -> saveAttendance(x, s, form);
+                case "/aula-publicar" -> publishAula(x,s,form,files);
+                case "/aula-entregar" -> submitAula(x,s,form,files);
                 case "/guardar-asignatura" -> saveSubject(x,s,form);
                 case "/eliminar-asignatura" -> deleteSubject(x,s,form);
                 case "/guardar-seccion" -> saveSection(x,s,form);
@@ -157,6 +177,8 @@ public final class WebApp {
                 case "/shutdown" -> shutdown(x, s);
                 default -> page(x, s, errorPage("Página no encontrada."));
             }
+        } catch (UploadTooLargeException e) {
+            send(x,413,"text/plain; charset=utf-8","El archivo supera el límite de 20 MB.");
         } catch (Exception e) {
             e.printStackTrace();
             page(x, sessionFor(x), errorPage("No se pudo completar la solicitud. Revisa la conexión con la base de datos."));
@@ -354,7 +376,7 @@ public final class WebApp {
                 .append(profileField("Ocupación",p.getOcupacion()));
         String notice="actualizada".equals(query)?"<div class='success' role='status'>La contraseña se actualizó correctamente.</div>":"";
         String body="<div class='page-heading'><div><div class='eyebrow'>CUENTA</div><h1>Mi perfil</h1><p>Información asociada a tu cuenta SIGE.</p></div></div>"
-                +notice+"<section class='card profile-card'><div class='profile-fields'>"+fields+"</div><a class='primary link-button' href='/password'>Cambiar contraseña</a></section>";
+                +notice+"<section class='card profile-card'><div class='profile-fields'>"+fields+"</div><a class='primary link-button' href='/password'>Cambiar contraseña</a>"+(u.getRol()==Rol.PROFESOR||u.getRol()==Rol.ESTUDIANTE?" <a class='secondary-link' href='/aula'>Abrir aula y tareas</a>":"")+"</section>";
         return shell("Mi perfil",body,true,u.getNombreCompleto());
     }
 
@@ -436,16 +458,18 @@ public final class WebApp {
                 var section=detail.getSeccion();var subject=section.getAsignatura();var teacher=section.getProfesor();
                 rows.append("<tr><td>").append(esc(enrollment.getPeriodoLectivo())).append("</td><td><b>")
                         .append(esc(subject.getCodigo())).append("</b><br>").append(esc(subject.getNombre()))
+                        .append("</td><td>").append(esc(subject.getAreaCurricular()==null?"Área pendiente":subject.getAreaCurricular()))
+                        .append("</td><td>").append(esc(section.getGrado()==null?"Grado pendiente":section.getGrado().nombre()))
                         .append("</td><td>").append(subject.getCreditos()).append("</td><td>")
                         .append(esc(teacher==null?"Sin asignar":teacher.getNombreCompleto())).append("</td><td>")
                         .append(esc(section.getHorario())).append("</td><td>").append(esc(section.getAula()))
                         .append("</td><td><span class='state-pill'>").append(esc(detail.getEstadoMateria())).append("</span></td></tr>");
             }
-            if(rows.isEmpty())rows.append("<tr><td colspan='7' class='empty'>Aún no hay materias inscritas para mostrar.</td></tr>");
+            if(rows.isEmpty())rows.append("<tr><td colspan='9' class='empty'>Aún no hay materias inscritas para mostrar.</td></tr>");
             String picker=s.user.getRol()==Rol.PADRE?childPicker(children,"/materias","Estudiante: "+studentName):"";
             String body="<div class='page-heading'><div><div class='eyebrow'>CONSULTA ACADÉMICA</div><h1>Mis materias</h1><p>Secciones y horarios de "+esc(studentName)+".</p></div></div>"
                     +picker+"<section class='metrics grade-summary'>"+metric("Materias inscritas",count)+metric("Períodos",enrollments.size())
-                    +metric("Créditos",credits)+"</section><section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Período</th><th>Asignatura</th><th>Créditos</th><th>Profesor</th><th>Horario</th><th>Aula</th><th>Estado</th></tr></thead><tbody>"
+                    +metric("Créditos",credits)+"</section><section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Período</th><th>Asignatura</th><th>Área curricular</th><th>Grado</th><th>Créditos</th><th>Profesor</th><th>Horario</th><th>Aula</th><th>Estado</th></tr></thead><tbody>"
                     +rows+"</tbody></table></div></section>";
             return shell("Mis materias",body,true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Mis materias",alert("No se pudieron consultar las materias. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
@@ -463,6 +487,8 @@ public final class WebApp {
                 available++;
                 var subject=section.getAsignatura();var teacher=section.getProfesor();
                 rows.append("<tr><td><b>").append(esc(subject.getCodigo())).append("</b><br>").append(esc(subject.getNombre()))
+                        .append("</td><td>").append(esc(subject.getAreaCurricular()==null?"Área pendiente":subject.getAreaCurricular()))
+                        .append("</td><td>").append(esc(section.getGrado()==null?"Grado pendiente":section.getGrado().nombre()))
                         .append("</td><td>").append(subject.getCreditos()).append("</td><td>")
                         .append(esc(teacher==null?"Sin asignar":teacher.getNombreCompleto())).append("</td><td>")
                         .append(esc(section.getHorario())).append("</td><td>").append(esc(section.getAula())).append("</td><td>")
@@ -472,10 +498,10 @@ public final class WebApp {
                         .append("<label>Período lectivo<input name='periodo' maxlength='20' placeholder='Ej. 2026-2' required></label>")
                         .append("<button class='primary' type='submit'>Inscribirme</button></form></td></tr>");
             }
-            if(rows.isEmpty())rows.append("<tr><td colspan='7' class='empty'>No hay secciones con cupo disponible en este momento.</td></tr>");
+            if(rows.isEmpty())rows.append("<tr><td colspan='9' class='empty'>No hay secciones con cupo disponible en este momento.</td></tr>");
             String notice=message==null?"":"<div class='success' role='status'>"+esc(message)+"</div>";
             String body="<div class='page-heading'><div><div class='eyebrow'>INSCRIPCIÓN ACADÉMICA</div><h1>Secciones disponibles</h1><p>Elige una sección con espacio e indica el período lectivo que corresponde.</p></div><span class='role-badge'>"+available+" disponibles</span></div>"
-                    +notice+"<section class='card table-card'><div class='table-wrap'><table class='grade-table enrollment-table'><thead><tr><th>Asignatura</th><th>Créditos</th><th>Profesor</th><th>Horario</th><th>Aula</th><th>Cupo</th><th>Inscripción</th></tr></thead><tbody>"
+                    +notice+"<section class='card table-card'><div class='table-wrap'><table class='grade-table enrollment-table'><thead><tr><th>Asignatura</th><th>Área curricular</th><th>Grado</th><th>Créditos</th><th>Profesor</th><th>Horario</th><th>Aula</th><th>Cupo</th><th>Inscripción</th></tr></thead><tbody>"
                     +rows+"</tbody></table></div></section><p class='hint'>El sistema valida cupo y materias repetidas al guardar la inscripción.</p>";
             return shell("Secciones disponibles",body,true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Inscripciones",alert("No se pudieron cargar las secciones. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
@@ -494,7 +520,7 @@ public final class WebApp {
             StringBuilder options=new StringBuilder("<option value=''>Selecciona una sección...</option>");
             for(Seccion sec:sections)options.append("<option value='").append(sec.getId()).append("'")
                     .append(active!=null&&active.getId()==sec.getId()?" selected":"").append(">")
-                    .append(esc(sec.getAsignatura().getCodigo()+" · "+sec.getAsignatura().getNombre()+" · "+sec.getHorario()+" · Aula "+sec.getAula()))
+                    .append(esc(sec.getAsignatura().getCodigo()+" · "+sec.getAsignatura().getNombre()+" · "+(sec.getGrado()==null?"Grado pendiente":sec.getGrado().nombre())+" · "+sec.getHorario()+" · Aula "+sec.getAula()))
                     .append("</option>");
             StringBuilder body=new StringBuilder("<div class='page-heading'><div><div class='eyebrow'>GESTIÓN ACADÉMICA</div><h1>Calificaciones</h1><p>Selecciona una de tus secciones para registrar o corregir notas.</p></div></div>");
             if(notice!=null)body.append("<div class='success' role='status'>").append(esc(notice)).append("</div>");
@@ -503,7 +529,7 @@ public final class WebApp {
             if(selected!=null&&active==null)body.append(alert("La sección elegida no está asignada a tu cuenta."));
             if(active!=null){
                 List<NotaEstudiante> students=new CalificacionDAO().listarPorSeccion(active.getId());
-                body.append("<section class='card table-card'><h2>").append(esc(active.getAsignatura().getCodigo()+" · "+active.getAsignatura().getNombre()))
+                body.append("<section class='card table-card'><h2>").append(esc(active.getAsignatura().getCodigo()+" · "+active.getAsignatura().getNombre()+" · "+(active.getGrado()==null?"Grado pendiente":active.getGrado().nombre())))
                         .append("</h2><p class='muted'>").append(esc(active.getHorario()+" · Aula "+active.getAula()+" · "+students.size()+" estudiante(s)"))
                         .append("</p><div class='table-wrap'><table class='grade-table teacher-grades'><thead><tr><th>Estudiante</th><th>Matrícula</th><th>Período</th><th>Parcial 1</th><th>Parcial 2</th><th>Examen</th><th>Final calculado</th><th>Estado</th><th>Guardar</th></tr></thead><tbody>");
                 if(students.isEmpty())body.append("<tr><td colspan='9' class='empty'>Esta sección todavía no tiene estudiantes inscritos.</td></tr>");
@@ -554,6 +580,107 @@ public final class WebApp {
         return grade;
     }
 
+    private static String aulaPage(WebSession s,String query,String message){
+        if(s.user==null)return shell("Aula y tareas",errorPage("Inicia sesión para continuar."),false,"");
+        if(s.user.getRol()!=Rol.PROFESOR&&s.user.getRol()!=Rol.ESTUDIANTE)return shell("Aula y tareas",errorPage("El aula está disponible para profesores y estudiantes."),true,s.user.getNombreCompleto());
+        try{
+            AulaDAO dao=new AulaDAO();List<AulaDAO.Material> materials=s.user.getRol()==Rol.PROFESOR?dao.paraProfesor(s.user.getId()):dao.paraEstudiante(s.user.getId());
+            String notice="";
+            if(message!=null)notice=alert(message);
+            else if(query!=null&&query.contains("publicado=1"))notice="<div class='success' role='status'>La publicación quedó disponible para la sección.</div>";
+            else if(query!=null&&query.contains("entregado=1"))notice="<div class='success' role='status'>La entrega se subió correctamente. Puedes volver a subir una versión corregida.</div>";
+            StringBuilder content=new StringBuilder();
+            if(s.user.getRol()==Rol.PROFESOR){
+                List<Seccion> sections=new SeccionDAO().listarPorProfesor(s.user.getId());StringBuilder options=new StringBuilder("<option value=''>Selecciona una sección...</option>");
+                for(Seccion sec:sections)options.append("<option value='").append(sec.getId()).append("'>").append(esc(sec.getAsignatura().getNombre()+" · "+(sec.getGrado()==null?"Sin grado":sec.getGrado().nombre())+" · sección "+sec.getId())).append("</option>");
+                if(sections.isEmpty())content.append("<section class='card'><p class='empty'>No tienes secciones asignadas. Solicita al administrador que te asigne una sección para publicar.</p></section>");
+                else content.append("<section class='card aula-editor'><h2>Publicar una clase o tarea</h2><form class='aula-form' method='post' action='/aula-publicar' enctype='multipart/form-data'>").append(hiddenCsrf(s))
+                        .append("<label>Sección<select name='seccion' required>").append(options).append("</select></label><div class='aula-fields'><label>Tipo<select name='tipo' required><option value='CLASE'>Clase o material</option><option value='TAREA'>Tarea</option></select></label><label>Título<input name='titulo' maxlength='120' required></label><label>Fecha límite (opcional)<input type='date' name='fecha_limite'></label></div><label>Instrucciones o descripción<textarea name='descripcion' maxlength='5000' rows='4'></textarea></label><label>Archivo adjunto (opcional)<input type='file' name='archivo'><small>Se acepta cualquier formato. Máximo 20 MB por archivo.</small></label><button class='primary' type='submit'>Publicar</button></form></section>");
+            }
+            if(materials.isEmpty())content.append("<section class='card'><h2>Publicaciones</h2><p class='empty'>Aún no hay clases ni tareas para mostrar.</p></section>");
+            else{
+                content.append("<section class='aula-list'><h2>").append(s.user.getRol()==Rol.PROFESOR?"Mis publicaciones y entregas":"Clases y tareas asignadas").append("</h2>");
+                java.util.Set<Integer> rendered=new java.util.HashSet<>();
+                for(AulaDAO.Material m:materials){
+                    if(s.user.getRol()==Rol.PROFESOR&&!rendered.add(m.id()))continue;
+                    content.append("<article class='card aula-card'><div class='aula-card-head'><div><span class='aula-type'>").append(esc(m.tipo().equals("TAREA")?"TAREA":"CLASE")).append("</span><h3>").append(esc(m.titulo())).append("</h3><p>").append(esc(m.asignatura())).append(" · ").append(esc(m.grado()==null?"Grado no indicado":m.grado())).append(" · Publicado ").append(esc(m.fechaPublicacion())).append("</p></div>");
+                    if(m.tipo().equals("TAREA")&&m.fechaLimite()!=null)content.append("<span class='role-badge'>Entrega: ").append(esc(m.fechaLimite().toString())).append("</span>");
+                    content.append("</div>");if(m.descripcion()!=null&&!m.descripcion().isBlank())content.append("<p class='aula-description'>").append(esc(m.descripcion()).replace("\n","<br>")).append("</p>");
+                    if(m.storageKey()!=null)content.append("<p><a class='secondary-link' href='/archivo-aula?material=").append(m.id()).append("'>Descargar material: ").append(esc(m.archivoNombre())).append(" ( ").append(humanBytes(m.archivoBytes())).append(" )</a></p>");
+                    if(s.user.getRol()==Rol.ESTUDIANTE&&m.tipo().equals("TAREA")){
+                        if(m.entregaId()>0)content.append("<div class='success'>Entrega enviada: ").append(esc(m.entregaNombre())).append(" · ").append(esc(m.entregaFecha())).append(". Puedes reemplazarla con una nueva versión.</div>");
+                        content.append("<form class='submit-work' method='post' action='/aula-entregar' enctype='multipart/form-data'>").append(hiddenCsrf(s)).append("<input type='hidden' name='material' value='").append(m.id()).append("'><label>Archivo de tu entrega<input type='file' name='archivo' required></label><small>Se acepta cualquier formato. Máximo 20 MB.</small><button class='primary' type='submit'>Subir entrega</button></form>");
+                    }else if(s.user.getRol()==Rol.PROFESOR&&m.tipo().equals("TAREA")){
+                        content.append("<div class='submissions'><b>Entregas recibidas</b>");
+                        for(AulaDAO.Material submission:materials)if(submission.id()==m.id()&&submission.entregaId()>0)content.append("<div class='submission-row'><span><b>").append(esc(submission.entregaEstudiante())).append("</b> · ").append(esc(submission.entregaNombre())).append(" · ").append(esc(submission.entregaFecha())).append("</span><a class='secondary-link' href='/archivo-aula?entrega=").append(submission.entregaId()).append("'>Descargar</a></div>");
+                        if(materials.stream().noneMatch(row->row.id()==m.id()&&row.entregaId()>0))content.append("<p class='empty'>Todavía no hay entregas.</p>");content.append("</div>");
+                    }
+                    content.append("</article>");
+                }
+                content.append("</section>");
+            }
+            String body="<div class='page-heading'><div><div class='eyebrow'>ESPACIO ACADÉMICO</div><h1>Aula y tareas</h1><p>Publica materiales de clase, consulta las tareas y gestiona las entregas de tus secciones.</p></div></div>"+notice+content;
+            return shell("Aula y tareas",body,true,s.user.getNombreCompleto());
+        }catch(SQLException e){return shell("Aula y tareas",alert("No se pudo cargar el aula. Verifica la conexión con MySQL y que se haya instalado sql/aula_virtual.sql."),true,s.user.getNombreCompleto());}
+    }
+
+    private static void publishAula(HttpExchange x,WebSession s,Map<String,String> f,Map<String,UploadedFile> files)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.PROFESOR){page(x,s,errorPage("Solo los profesores pueden publicar en el aula."));return;}
+        int section;try{section=Integer.parseInt(f.getOrDefault("seccion",""));}catch(NumberFormatException e){page(x,s,aulaPage(s,null,"Selecciona una sección válida."));return;}
+        String type=f.getOrDefault("tipo","").trim(),title=f.getOrDefault("titulo","").trim(),description=f.getOrDefault("descripcion","").trim();
+        if(!type.equals("CLASE")&&!type.equals("TAREA")||title.isBlank()||title.length()>120||description.length()>5000){page(x,s,aulaPage(s,null,"Completa el tipo, el título y una descripción de hasta 5000 caracteres."));return;}
+        java.time.LocalDate due=null;String date=f.getOrDefault("fecha_limite","").trim();try{if(!date.isBlank())due=java.time.LocalDate.parse(date);}catch(java.time.DateTimeException e){page(x,s,aulaPage(s,null,"La fecha límite no tiene un formato válido."));return;}
+        UploadedFile file=files.get("archivo");String key=null,name=null,mime=null;long bytes=0;
+        try{
+            if(file!=null&&file.data().length>0){key=saveUpload(file.data());name=safeFileName(file.filename());mime=file.contentType();bytes=file.data().length;}
+            new AulaDAO().publicar(s.user.getId(),section,type,title,description,due,key,name,mime,bytes);redirect(x,"/aula?publicado=1");
+        }catch(SQLException|IOException e){if(key!=null)deleteUpload(key);page(x,s,aulaPage(s,null,"No se pudo publicar. Comprueba que el esquema aula_virtual.sql esté instalado y que la sección sea tuya."));}
+    }
+
+    private static void submitAula(HttpExchange x,WebSession s,Map<String,String> f,Map<String,UploadedFile> files)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.ESTUDIANTE){page(x,s,errorPage("Solo los estudiantes pueden subir entregas."));return;}
+        int material;try{material=Integer.parseInt(f.getOrDefault("material",""));}catch(NumberFormatException e){page(x,s,aulaPage(s,null,"La tarea no es válida."));return;}
+        UploadedFile file=files.get("archivo");if(file==null||file.data().length==0){page(x,s,aulaPage(s,null,"Selecciona un archivo antes de subir la entrega."));return;}
+        String key=null;try{key=saveUpload(file.data());new AulaDAO().entregar(s.user.getId(),material,key,safeFileName(file.filename()),file.contentType(),file.data().length);redirect(x,"/aula?entregado=1");}
+        catch(SQLException|IOException e){if(key!=null)deleteUpload(key);page(x,s,aulaPage(s,null,"No se pudo subir la entrega. Verifica que estés inscrito en la sección de esta tarea y que aula_virtual.sql esté instalado."));}
+    }
+
+    private static void downloadAulaFile(HttpExchange x,WebSession s,String query)throws IOException{
+        if(s.user==null||(s.user.getRol()!=Rol.PROFESOR&&s.user.getRol()!=Rol.ESTUDIANTE)){send(x,403,"text/plain; charset=utf-8","Acceso denegado");return;}
+        Integer material=parseQueryInteger(query,"material"),submission=parseQueryInteger(query,"entrega");if((material==null)==(submission==null)){send(x,400,"text/plain; charset=utf-8","Solicitud no válida");return;}
+        try{
+            AulaDAO dao=new AulaDAO();AulaDAO.Archivo file=material!=null?dao.archivoMaterial(s.user.getId(),s.user.getRol(),material):dao.archivoEntrega(s.user.getId(),s.user.getRol(),submission);
+            if(file==null){send(x,404,"text/plain; charset=utf-8","Archivo no encontrado");return;}
+            Path path=uploadRoot().resolve(file.storageKey()).normalize();if(!path.getParent().equals(uploadRoot().toAbsolutePath().normalize())||!Files.isRegularFile(path)){send(x,404,"text/plain; charset=utf-8","Archivo no encontrado");return;}
+            byte[] data=Files.readAllBytes(path);Headers h=x.getResponseHeaders();h.set("Cache-Control","no-store");h.set("X-Content-Type-Options","nosniff");h.set("Content-Disposition","attachment; filename=\"archivo-descargado\"; filename*=UTF-8''"+java.net.URLEncoder.encode(file.nombre(),StandardCharsets.UTF_8).replace("+","%20"));h.set("Content-Type","application/octet-stream");x.sendResponseHeaders(200,data.length);x.getResponseBody().write(data);
+        }catch(SQLException|IOException e){send(x,500,"text/plain; charset=utf-8","No se pudo descargar el archivo");}
+    }
+
+    private static String saveUpload(byte[] data)throws IOException{if(data.length>MAX_UPLOAD_BYTES)throw new IOException("El archivo supera 20 MB.");Path root=uploadRoot();Files.createDirectories(root);String key=UUID.randomUUID().toString();Files.write(root.resolve(key),data,StandardOpenOption.CREATE_NEW,StandardOpenOption.WRITE);return key;}
+    private static void deleteUpload(String key){try{Files.deleteIfExists(uploadRoot().resolve(key));}catch(IOException ignored){}}
+    private static Path uploadRoot(){String configured=System.getenv("SIGE_UPLOAD_DIR");Path root=configured==null||configured.isBlank()?Path.of("data","uploads"):Path.of(configured);return root.toAbsolutePath().normalize();}
+    private static String safeFileName(String original){String value=original==null?"archivo":original.replace('\\','/');int slash=value.lastIndexOf('/');if(slash>=0)value=value.substring(slash+1);value=value.replaceAll("[\\p{Cntrl}]", "_").trim();if(value.isBlank()||value.equals(".")||value.equals(".."))value="archivo";return value.length()>180?value.substring(value.length()-180):value;}
+    private static String humanBytes(long n){if(n<1024)return n+" B";if(n<1024*1024)return String.format(java.util.Locale.ROOT,"%.1f KB",n/1024.0);return String.format(java.util.Locale.ROOT,"%.1f MB",n/(1024.0*1024));}
+
+    private record UploadedFile(String filename,String contentType,byte[] data){}
+    private record MultipartData(Map<String,String> fields,Map<String,UploadedFile> files){}
+    private static MultipartData multipartForm(HttpExchange x,String contentType)throws IOException{
+        String boundary=null;for(String part:contentType.split(";")){String t=part.trim();if(t.startsWith("boundary=")){boundary=t.substring(9).replaceAll("^\"|\"$","");break;}}
+        if(boundary==null||boundary.isBlank()||boundary.length()>100)throw new IOException("Formulario multipart inválido.");
+        int declared=x.getRequestHeaders().getFirst("Content-Length")==null?-1:Integer.parseInt(x.getRequestHeaders().getFirst("Content-Length"));if(declared>MAX_MULTIPART_BYTES)throw new UploadTooLargeException();
+        byte[] body=x.getRequestBody().readNBytes(MAX_MULTIPART_BYTES+1);if(body.length>MAX_MULTIPART_BYTES)throw new UploadTooLargeException();
+        byte[] marker=("--"+boundary).getBytes(StandardCharsets.ISO_8859_1),separator=("\r\n--"+boundary).getBytes(StandardCharsets.ISO_8859_1);Map<String,String> fields=new HashMap<>();Map<String,UploadedFile> files=new HashMap<>();int pos=indexOf(body,marker,0);
+        while(pos>=0){int headStart=pos+marker.length;if(headStart+2<=body.length&&body[headStart]=='-'&&body[headStart+1]=='-')break;if(headStart+2>body.length||body[headStart]!='\r'||body[headStart+1]!='\n')throw new IOException("Formulario multipart inválido.");int headerStart=headStart+2,headerEnd=indexOf(body,new byte[]{13,10,13,10},headerStart);if(headerEnd<0)throw new IOException("Encabezado de archivo inválido.");String headers=new String(body,headerStart,headerEnd-headerStart,StandardCharsets.ISO_8859_1);int dataStart=headerEnd+4,next=indexOf(body,separator,dataStart);if(next<0)throw new IOException("Parte multipart incompleta.");String disposition="";String mime="application/octet-stream";for(String line:headers.split("\r\n")){if(line.toLowerCase(java.util.Locale.ROOT).startsWith("content-disposition:"))disposition=line;if(line.toLowerCase(java.util.Locale.ROOT).startsWith("content-type:"))mime=line.substring(line.indexOf(':')+1).trim();}
+            String field=dispositionValue(disposition,"name");String filename=dispositionValue(disposition,"filename");int length=next-dataStart;if(field!=null){if(filename!=null){if(length>MAX_UPLOAD_BYTES)throw new UploadTooLargeException();files.put(field,new UploadedFile(filename,mime,java.util.Arrays.copyOfRange(body,dataStart,next)));}else if(length<=64*1024)fields.put(field,new String(body,dataStart,length,StandardCharsets.UTF_8));}
+            pos=next+2;
+        }
+        return new MultipartData(fields,files);
+    }
+    private static String dispositionValue(String header,String name){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(?:^|;)\\s*"+name+"=\"([^\"]*)\"|(?:^|;)\\s*"+name+"=([^;]*)",java.util.regex.Pattern.CASE_INSENSITIVE).matcher(header);if(!m.find())return null;return m.group(1)!=null?m.group(1):m.group(2).trim();}
+    private static int indexOf(byte[] data,byte[] needle,int from){outer:for(int i=Math.max(0,from);i<=data.length-needle.length;i++){for(int j=0;j<needle.length;j++)if(data[i+j]!=needle[j])continue outer;return i;}return -1;}
+    private static final class UploadTooLargeException extends IOException{private static final long serialVersionUID=1L;}
+
+
     private static Integer parseQueryInteger(String query,String key){
         if(query==null)return null;
         for(String part:query.split("&")){String[] kv=part.split("=",2);if(kv.length==2&&kv[0].equals(key))try{return Integer.valueOf(URLDecoder.decode(kv[1],StandardCharsets.UTF_8));}catch(NumberFormatException ignored){return -1;}}
@@ -574,7 +701,7 @@ public final class WebApp {
             StringBuilder options=new StringBuilder("<option value=''>Selecciona una sección...</option>");
             for(Seccion sec:sections)options.append("<option value='").append(sec.getId()).append("'")
                     .append(active!=null&&active.getId()==sec.getId()?" selected":"").append(">")
-                    .append(esc(sec.getAsignatura().getCodigo()+" · "+sec.getAsignatura().getNombre()+" · "+sec.getHorario()+" · Aula "+sec.getAula())).append("</option>");
+                    .append(esc(sec.getAsignatura().getCodigo()+" · "+sec.getAsignatura().getNombre()+" · "+(sec.getGrado()==null?"Grado pendiente":sec.getGrado().nombre())+" · "+sec.getHorario()+" · Aula "+sec.getAula())).append("</option>");
             StringBuilder body=new StringBuilder("<div class='page-heading'><div><div class='eyebrow'>GESTIÓN ACADÉMICA</div><h1>Tomar asistencia</h1><p>Selecciona una de tus secciones y la fecha de la clase.</p></div></div>");
             if(message!=null)body.append("<div class='success' role='status'>").append(esc(message)).append("</div>");
             body.append("<section class='card section-picker'><form method='get' action='/asistencia-docente'><label>Sección<select name='seccion' required>")
@@ -583,7 +710,7 @@ public final class WebApp {
             if(selected!=null&&active==null)body.append(alert("La sección elegida no está asignada a tu cuenta."));
             if(active!=null){
                 List<FilaAsistencia> roster=new AsistenciaDAO().listarPorSeccionYFecha(active.getId(),date);
-                body.append("<section class='card table-card'><h2>").append(esc(active.getAsignatura().getCodigo()+" · "+active.getAsignatura().getNombre()))
+                body.append("<section class='card table-card'><h2>").append(esc(active.getAsignatura().getCodigo()+" · "+active.getAsignatura().getNombre()+" · "+(active.getGrado()==null?"Grado pendiente":active.getGrado().nombre())))
                         .append("</h2><p class='muted'>").append(esc(date+" · "+active.getHorario()+" · Aula "+active.getAula()))
                         .append("</p><form method='post' action='/guardar-asistencia'>").append(hiddenCsrf(s))
                         .append("<input type='hidden' name='seccion' value='").append(active.getId()).append("'><input type='hidden' name='fecha' value='").append(date)
@@ -629,14 +756,16 @@ public final class WebApp {
             for(LineaReporteInscripcion row:rows)table.append("<tr><td>").append(row.fecha()).append("</td><td>")
                     .append(esc(row.estudiante())).append("</td><td>").append(esc(row.matricula())).append("</td><td>")
                     .append(esc(row.periodo())).append("</td><td>").append(esc(row.asignatura())).append("</td><td>")
+                    .append(esc(row.grado()==null?"Pendiente":row.grado())).append("</td><td>")
+                    .append(esc(row.area()==null?"Pendiente":row.area())).append("</td><td>")
                     .append(row.idSeccion()).append("</td><td><span class='state-pill'>").append(esc(row.estado())).append("</span></td></tr>");
-            if(table.isEmpty())table.append("<tr><td colspan='7' class='empty'>No hay inscripciones dentro del rango seleccionado.</td></tr>");
+            if(table.isEmpty())table.append("<tr><td colspan='9' class='empty'>No hay inscripciones dentro del rango seleccionado.</td></tr>");
             String notice=message==null?"":"<div class='alert' role='alert'>"+esc(message)+"</div>";
             String body="<div class='page-heading'><div><div class='eyebrow'>INFORME ACADÉMICO</div><h1>Reporte de inscripciones</h1><p>Los resultados respetan el alcance de tu rol.</p></div></div>"
                     +notice+"<section class='card section-picker'><form method='get' action='/reporte-inscripciones'><label>Desde<input type='date' name='desde' value='"+from+"' required></label>"
                     +"<label>Hasta<input type='date' name='hasta' value='"+to+"' required></label><button class='primary' type='submit'>Consultar</button></form></section>"
                     +"<section class='metrics grade-summary'>"+metric("Inscripciones",rows.size())+metric("Desde",from.toString())+metric("Hasta",to.toString())+"</section>"
-                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Fecha</th><th>Estudiante</th><th>Matrícula</th><th>Período</th><th>Asignatura</th><th>Sección</th><th>Estado</th></tr></thead><tbody>"
+                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Fecha</th><th>Estudiante</th><th>Matrícula</th><th>Período</th><th>Asignatura</th><th>Grado</th><th>Área</th><th>Sección</th><th>Estado</th></tr></thead><tbody>"
                     +table+"</tbody></table></div><a class='primary link-button' href='/reporte-inscripciones.csv?desde="+from+"&amp;hasta="+to+"'>Descargar CSV</a></section>";
             return shell("Reporte de inscripciones",body,true,s.user.getNombreCompleto());
         }catch(PermisoDenegadoException e){return shell("Reporte de inscripciones",errorPage(e.getMessage()),true,s.user.getNombreCompleto());}
@@ -650,9 +779,10 @@ public final class WebApp {
         java.time.LocalDate to=parseDate(queryValue(query,"hasta"),today);
         try{
             List<LineaReporteInscripcion> rows=new ReporteDAO().listarInscripciones(from,to,s.user.getRol(),s.user.getId());
-            StringBuilder csv=new StringBuilder("\uFEFFFecha,Estudiante,Matrícula,Período,Asignatura,Sección,Estado\r\n");
+            StringBuilder csv=new StringBuilder("\uFEFFFecha,Estudiante,Matrícula,Período,Asignatura,Grado,Área,Sección,Estado\r\n");
             for(LineaReporteInscripcion row:rows)csv.append(csv(row.fecha().toString())).append(',').append(csv(row.estudiante())).append(',')
                     .append(csv(row.matricula())).append(',').append(csv(row.periodo())).append(',').append(csv(row.asignatura())).append(',')
+                    .append(csv(row.grado()==null?"Pendiente":row.grado())).append(',').append(csv(row.area()==null?"Pendiente":row.area())).append(',')
                     .append(row.idSeccion()).append(',').append(csv(row.estado())).append("\r\n");
             x.getResponseHeaders().set("Content-Disposition","attachment; filename=\"reporte-inscripciones.csv\"");
             send(x,200,"text/csv; charset=utf-8",csv.toString());
@@ -713,10 +843,37 @@ public final class WebApp {
         return "\""+safe.replace("\"","\"\"")+"\"";
     }
 
+    private static String curriculumPage(WebSession s){
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN)
+            return shell("Currículo",errorPage("Solo un administrador puede consultar el catálogo curricular."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
+        try{
+            List<GradoCurricular> grades=new CurriculoDAO().listarGrados();
+            if(grades.isEmpty())return shell("Currículo",alert("El catálogo curricular aún no tiene datos. Ejecuta sql/fase_curriculo_grados.sql en sige_db."),true,s.user.getNombreCompleto());
+            StringBuilder body=new StringBuilder("<div class='page-heading'><div><div class='eyebrow'>PLAN DE ESTUDIOS · REPÚBLICA DOMINICANA</div><h1>Grados y áreas curriculares</h1><p>Catálogo base de Primaria y Secundaria, organizado por ciclo.</p></div></div>");
+            body.append("<div class='curriculum-note'><b>Base común:</b> el catálogo nacional sirve para centros públicos y privados. Los planes pueden ampliar idiomas, talleres y optativas. Las horas semanales quedan configurables según el plan y la jornada del centro.</div>");
+            for(String level:List.of("Primaria","Secundaria")){
+                body.append("<section class='curriculum-level'><div class='curriculum-level-heading'><div><div class='eyebrow'>NIVEL</div><h2>").append(level).append("</h2></div><span class='role-badge'>").append(level.equals("Primaria")?"6 grados":"6 grados · áreas comunes y modalidad en segundo ciclo").append("</span></div><div class='curriculum-grid'>");
+                for(GradoCurricular grade:grades){
+                    if(!grade.nivel().equals(level))continue;
+                    body.append("<article class='card curriculum-grade'><div class='curriculum-grade-heading'><span class='role-badge'>").append(esc(grade.ciclo())).append("</span><h3>").append(esc(grade.nombre())).append("</h3></div><ul>");
+                    for(String area:grade.areas())body.append("<li>").append(esc(area)).append("</li>");
+                    body.append("</ul>");
+                    if(grade.codigo().equals("P1"))body.append("<p class='curriculum-focus'>Prioridad: alfabetización inicial y sentido numérico.</p>");
+                    if(grade.codigo().equals("P4"))body.append("<p class='curriculum-focus'>En el segundo ciclo se incorpora Inglés.</p>");
+                    if(grade.codigo().equals("S1"))body.append("<p class='curriculum-focus'>Primer ciclo: formación común y orientación.</p>");
+                    if(grade.codigo().equals("S4"))body.append("<p class='curriculum-focus'>Segundo ciclo: Académica, Técnico-Profesional o Artes.</p>");
+                    body.append("</article>");
+                }
+                body.append("</div></section>");
+            }
+            body.append("<p class='help-text'>Las áreas se asocian a las asignaturas y estas a sus grados. Las secciones operativas heredan el grado y muestran su asignatura, profesor y horario.</p>");
+            return shell("Currículo",body.toString(),true,s.user.getNombreCompleto());
+        }catch(SQLException e){return shell("Currículo",alert("No se pudo leer el catálogo curricular. Ejecuta sql/fase_curriculo_grados.sql en sige_db y verifica la conexión."),true,s.user.getNombreCompleto());}
+    }
     private static String subjectsAdminPage(WebSession s,String query,String message,Asignatura editing){
         if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Asignaturas",errorPage("Solo un administrador puede gestionar las asignaturas."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
         try{
-            AsignaturaDAO dao=new AsignaturaDAO();List<Asignatura> subjects=dao.listarTodas();
+            AsignaturaDAO dao=new AsignaturaDAO();List<Asignatura> subjects=dao.listarTodas();List<GradoCurricular> grades=new CurriculoDAO().listarGrados();Map<String,String> areas=new CurriculoDAO().listarAreas();
             if(editing==null){
                 Integer editId=parseQueryInteger(query,"editar");
                 if(editId!=null)editing=subjects.stream().filter(a->a.getId()==editId).findFirst().orElse(null);
@@ -725,20 +882,24 @@ public final class WebApp {
             if(message==null&&query!=null&&query.contains("guardado=1"))message="La asignatura se guardó correctamente.";
             if(message==null&&query!=null&&query.contains("eliminado=1"))message="La asignatura se eliminó correctamente.";
             Asignatura value=editing==null?new Asignatura(0,"","",0,""):editing;
+            StringBuilder areaOptions=new StringBuilder("<option value=''>Selecciona el área...</option>");
+            areas.forEach((code,name)->areaOptions.append("<option value='").append(esc(code)).append("'").append(code.equals(value.getCodigoArea())?" selected":"").append(">").append(esc(name)).append("</option>"));
+            StringBuilder gradeOptions=new StringBuilder();
+            for(GradoCurricular g:grades){boolean selected=value.getIdsGrados()!=null&&List.of(value.getIdsGrados().split(",")).contains(String.valueOf(g.id()));gradeOptions.append("<option value='").append(g.id()).append("'").append(selected?" selected":"").append(">").append(esc(g.nombre()+" · "+g.ciclo())).append("</option>");}
             String body="<div class='page-heading'><div><div class='eyebrow'>ADMINISTRACIÓN</div><h1>Asignaturas</h1><p>Gestiona el catálogo de materias del centro.</p></div></div>"
                     +(message==null?"":"<div class='"+(actionSuccess?"success":"alert")+"' role='status'>"+esc(message)+"</div>")
                     +"<section class='card subject-editor'><h2>"+(value.getId()==0?"Nueva asignatura":"Editar asignatura")+"</h2><form method='post' action='/guardar-asignatura'>"+hiddenCsrf(s)
                     +"<input type='hidden' name='id' value='"+value.getId()+"'><div class='subject-fields'><label>Código<input name='codigo' maxlength='10' value='"+esc(value.getCodigo())+"' required></label>"
-                    +"<label>Nombre<input name='nombre' maxlength='100' value='"+esc(value.getNombre())+"' required></label><label>Créditos<input name='creditos' type='number' min='0' max='99' value='"+value.getCreditos()+"' required></label>"
+                    +"<label>Nombre<input name='nombre' maxlength='100' value='"+esc(value.getNombre())+"' required></label><label>Área curricular<select name='area' required>"+areaOptions+"</select></label><label>Grados (puedes elegir varios)<select name='grados' multiple size='4' required>"+gradeOptions+"</select></label><label>Créditos / carga<input name='creditos' type='number' min='0' max='99' value='"+value.getCreditos()+"' required></label>"
                     +"<label class='subject-description'>Descripción<textarea name='descripcion' rows='3'>"+esc(value.getDescripcion())+"</textarea></label></div><div class='subject-actions'><button class='primary' type='submit'>"+(value.getId()==0?"Crear asignatura":"Guardar cambios")+"</button>"
                     +(value.getId()==0?"":"<a class='text-link' href='/asignaturas'>Cancelar edición</a>")+"</div></form></section>"
-                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Código</th><th>Nombre</th><th>Créditos</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody>";
+                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Código</th><th>Nombre</th><th>Área curricular</th><th>Grados</th><th>Créditos</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody>";
             StringBuilder rows=new StringBuilder();
             for(Asignatura a:subjects)rows.append("<tr><td><b>").append(esc(a.getCodigo())).append("</b></td><td>").append(esc(a.getNombre()))
-                    .append("</td><td>").append(a.getCreditos()).append("</td><td>").append(esc(a.getDescripcion())).append("</td><td><div class='subject-actions'><a class='text-link' href='/asignaturas?editar=")
+                    .append("</td><td>").append(esc(a.getAreaCurricular()==null?"Pendiente":a.getAreaCurricular())).append("</td><td>").append(esc(a.getGradosCurriculares()==null?"Pendiente":a.getGradosCurriculares())).append("</td><td>").append(a.getCreditos()).append("</td><td>").append(esc(a.getDescripcion())).append("</td><td><div class='subject-actions'><a class='text-link' href='/asignaturas?editar=")
                     .append(a.getId()).append("'>Editar</a><form method='post' action='/eliminar-asignatura' class='inline-form'>").append(hiddenCsrf(s))
                     .append("<input type='hidden' name='id' value='").append(a.getId()).append("'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar eliminación</label><button class='danger' type='submit'>Eliminar</button></form></div></td></tr>");
-            if(rows.isEmpty())rows.append("<tr><td colspan='5' class='empty'>No hay asignaturas registradas.</td></tr>");
+            if(rows.isEmpty())rows.append("<tr><td colspan='7' class='empty'>No hay asignaturas registradas.</td></tr>");
             return shell("Asignaturas",body+rows+"</tbody></table></div></section>",true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Asignaturas",alert("No se pudo cargar el catálogo. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
     }
@@ -753,7 +914,10 @@ public final class WebApp {
         if(code.isBlank()||name.isBlank())validation="El código y el nombre son obligatorios.";
         else if(code.length()>10)validation="El código admite máximo 10 caracteres.";
         else if(name.length()>100)validation="El nombre admite máximo 100 caracteres.";
-        else if(credits<0||credits>99)validation="Los créditos deben estar entre 0 y 99.";
+        else if(credits<0||credits>99)validation="El valor debe estar entre 0 y 99.";
+        String areaCode=values.getOrDefault("area","").trim();List<Integer> gradeIds=new java.util.ArrayList<>();
+        for(String rawGrade:values.getOrDefault("grados","").split(",")){if(!rawGrade.isBlank())try{gradeIds.add(Integer.parseInt(rawGrade));}catch(NumberFormatException ignored){}}
+        if(validation==null&&(areaCode.isBlank()||gradeIds.isEmpty()))validation="Selecciona el área curricular y al menos un grado.";
         if(validation!=null){page(x,s,subjectsAdminPage(s,null,validation,new Asignatura(id,code,name,credits,description)));return;}
         try{
             AsignaturaDAO dao=new AsignaturaDAO();
@@ -761,8 +925,9 @@ public final class WebApp {
             if(dao.existeCodigo(code,id)){page(x,s,subjectsAdminPage(s,null,"Ya existe una asignatura con ese código.",new Asignatura(id,code,name,credits,description)));return;}
             Asignatura subject=new Asignatura(id,code,name,credits,description.isBlank()?null:description);
             if(id==0)dao.insertar(subject);else dao.actualizar(subject);
+            dao.guardarCurriculo(subject.getId(),areaCode,gradeIds);
             redirect(x,"/asignaturas?guardado=1");
-        }catch(SQLException e){page(x,s,subjectsAdminPage(s,null,"No se pudo guardar la asignatura. Verifica la conexión con MySQL.",new Asignatura(id,code,name,credits,description)));}
+        }catch(SQLException e){page(x,s,subjectsAdminPage(s,null,"No se pudo guardar la asignatura. Verifica la conexión y el catálogo curricular.",new Asignatura(id,code,name,credits,description)));}
     }
 
     private static void deleteSubject(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
@@ -779,7 +944,7 @@ public final class WebApp {
     private static String sectionsAdminPage(WebSession s,String query,String message,Seccion editing){
         if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Secciones",errorPage("Solo un administrador puede gestionar las secciones."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
         try{
-            SeccionDAO dao=new SeccionDAO();List<Seccion> sections=dao.listarTodas();List<Asignatura> subjects=new AsignaturaDAO().listarTodas();
+            SeccionDAO dao=new SeccionDAO();List<Seccion> sections=dao.listarTodas();List<Asignatura> subjects=new AsignaturaDAO().listarTodas();List<GradoCurricular> grades=new CurriculoDAO().listarGrados();
             List<Profesor> teachers=USERS.listarProfesores();
             if(editing==null){Integer editId=parseQueryInteger(query,"editar");if(editId!=null)editing=sections.stream().filter(z->z.getId()==editId).findFirst().orElse(null);}
             boolean success=message==null&&query!=null&&(query.contains("guardado=1")||query.contains("eliminado=1"));
@@ -790,6 +955,8 @@ public final class WebApp {
             for(Asignatura a:subjects)subjectOptions.append("<option value='").append(a.getId()).append("'")
                     .append(value.getAsignatura()!=null&&value.getAsignatura().getId()==a.getId()?" selected":"").append(">")
                     .append(esc(a.getCodigo()+" · "+a.getNombre())).append("</option>");
+            StringBuilder gradeOptions=new StringBuilder("<option value=''>Selecciona el grado...</option>");
+            for(GradoCurricular g:grades)gradeOptions.append("<option value='").append(g.id()).append("'").append(value.getGrado()!=null&&value.getGrado().id()==g.id()?" selected":"").append(">").append(esc(g.nombre()+" · "+g.ciclo())).append("</option>");
             StringBuilder teacherOptions=new StringBuilder("<option value='0'>Sin profesor asignado</option>");
             for(Profesor p:teachers)teacherOptions.append("<option value='").append(p.getId()).append("'")
                     .append(value.getProfesor()!=null&&value.getProfesor().getId()==p.getId()?" selected":"").append(">")
@@ -798,43 +965,47 @@ public final class WebApp {
                     +(message==null?"":"<div class='"+(success?"success":"alert")+"' role='status'>"+esc(message)+"</div>")
                     +"<section class='card subject-editor'><h2>"+(value.getId()==0?"Nueva sección":"Editar sección")+"</h2><form method='post' action='/guardar-seccion'>"+hiddenCsrf(s)
                     +"<input type='hidden' name='id' value='"+value.getId()+"'><div class='subject-fields'><label>Asignatura<select name='asignatura' required>"+subjectOptions+"</select></label>"
-                    +"<label>Profesor<select name='profesor'>"+teacherOptions+"</select></label><label>Aula<input name='aula' maxlength='20' value='"+esc(value.getAula())+"' required></label>"
+                    +"<label>Grado<select name='grado' required>"+gradeOptions+"</select></label><label>Profesor<select name='profesor'>"+teacherOptions+"</select></label><label>Aula<input name='aula' maxlength='20' value='"+esc(value.getAula())+"' required></label>"
                     +"<label>Horario<input name='horario' maxlength='50' value='"+esc(value.getHorario())+"' required></label><label>Cupo máximo<input name='cupo' type='number' min='1' max='500' value='"+value.getCupoMaximo()+"' required></label></div>"
                     +"<div class='subject-actions'><button class='primary' type='submit'>"+(value.getId()==0?"Crear sección":"Guardar cambios")+"</button>"+(value.getId()==0?"":"<a class='text-link' href='/secciones'>Cancelar edición</a>")+"</div></form></section>"
-                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>ID</th><th>Asignatura</th><th>Profesor</th><th>Aula</th><th>Horario</th><th>Inscritos / Cupo</th><th>Acciones</th></tr></thead><tbody>";
+                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>ID</th><th>Grado</th><th>Asignatura</th><th>Profesor</th><th>Aula</th><th>Horario</th><th>Inscritos / Cupo</th><th>Acciones</th></tr></thead><tbody>";
             StringBuilder rows=new StringBuilder();
-            for(Seccion section:sections)rows.append("<tr><td>").append(section.getId()).append("</td><td><b>").append(esc(section.getAsignatura().getCodigo()))
+            for(Seccion section:sections)rows.append("<tr><td>").append(section.getId()).append("</td><td>").append(esc(section.getGrado()==null?"Pendiente":section.getGrado().nombre())).append("</td><td><b>").append(esc(section.getAsignatura().getCodigo()))
                     .append("</b><br>").append(esc(section.getAsignatura().getNombre())).append("</td><td>")
                     .append(esc(section.getProfesor()==null?"Sin asignar":section.getProfesor().getNombreCompleto())).append("</td><td>")
                     .append(esc(section.getAula())).append("</td><td>").append(esc(section.getHorario())).append("</td><td>")
                     .append(section.getInscritos()).append(" / ").append(section.getCupoMaximo()).append("</td><td><div class='subject-actions'><a class='text-link' href='/secciones?editar=")
                     .append(section.getId()).append("'>Editar</a><form method='post' action='/eliminar-seccion' class='inline-form'>").append(hiddenCsrf(s))
                     .append("<input type='hidden' name='id' value='").append(section.getId()).append("'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar</label><button class='danger' type='submit'>Eliminar</button></form></div></td></tr>");
-            if(rows.isEmpty())rows.append("<tr><td colspan='7' class='empty'>No hay secciones registradas.</td></tr>");
+            if(rows.isEmpty())rows.append("<tr><td colspan='8' class='empty'>No hay secciones registradas.</td></tr>");
             return shell("Secciones",body+rows+"</tbody></table></div></section>",true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Secciones",alert("No se pudo cargar la gestión de secciones. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
     }
 
     private static void saveSection(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
         if(s.user==null||s.user.getRol()!=Rol.ADMIN){page(x,s,errorPage("Solo un administrador puede guardar secciones."));return;}
-        int id,subjectId,teacherId,capacity;
-        try{id=Integer.parseInt(values.getOrDefault("id","0"));subjectId=Integer.parseInt(values.getOrDefault("asignatura",""));teacherId=Integer.parseInt(values.getOrDefault("profesor","0"));capacity=Integer.parseInt(values.getOrDefault("cupo",""));}
+        int id,subjectId,teacherId,capacity,gradeId;
+        try{id=Integer.parseInt(values.getOrDefault("id","0"));subjectId=Integer.parseInt(values.getOrDefault("asignatura",""));teacherId=Integer.parseInt(values.getOrDefault("profesor","0"));gradeId=Integer.parseInt(values.getOrDefault("grado",""));capacity=Integer.parseInt(values.getOrDefault("cupo",""));}
         catch(NumberFormatException e){page(x,s,sectionsAdminPage(s,null,"Revisa la asignatura, el profesor y el cupo ingresados.",null));return;}
         String room=values.getOrDefault("aula","").trim(),schedule=values.getOrDefault("horario","").trim();
         String error=room.isBlank()||schedule.isBlank()?"Aula y horario son obligatorios.":room.length()>20?"El aula admite máximo 20 caracteres.":schedule.length()>50?"El horario admite máximo 50 caracteres.":capacity<1||capacity>500?"El cupo debe estar entre 1 y 500.":null;
         try{
             SeccionDAO dao=new SeccionDAO();List<Seccion> current=dao.listarTodas();
             Seccion old=id==0?null:current.stream().filter(z->z.getId()==id).findFirst().orElse(null);
-            List<Asignatura> subjects=new AsignaturaDAO().listarTodas();List<Profesor> teachers=USERS.listarProfesores();
+            List<Asignatura> subjects=new AsignaturaDAO().listarTodas();List<Profesor> teachers=USERS.listarProfesores();List<GradoCurricular> grades=new CurriculoDAO().listarGrados();
             Asignatura subject=subjects.stream().filter(a->a.getId()==subjectId).findFirst().orElse(null);
             Profesor teacher=teacherId==0?null:teachers.stream().filter(p->p.getId()==teacherId).findFirst().orElse(null);
+            GradoCurricular grade=grades.stream().filter(g->g.id()==gradeId).findFirst().orElse(null);
             if(error==null&&id>0&&old==null)error="La sección seleccionada ya no existe.";
             if(error==null&&subject==null)error="Selecciona una asignatura válida.";
+            if(error==null&&grade==null)error="Selecciona un grado curricular válido.";
+            if(error==null&&!new AsignaturaDAO().puedeOfrecerse(subjectId,gradeId))error="La asignatura no está asociada al grado seleccionado. Revísala en Asignaturas.";
             if(error==null&&teacherId!=0&&teacher==null)error="Selecciona un profesor válido.";
             if(error==null&&old!=null&&capacity<old.getInscritos())error="El cupo no puede ser menor que los "+old.getInscritos()+" estudiantes ya inscritos.";
             if(error==null&&old!=null&&old.getInscritos()>0&&old.getAsignatura().getId()!=subjectId)error="No se puede cambiar la asignatura de una sección que ya tiene estudiantes inscritos.";
-            if(error!=null){Seccion rejected=new Seccion(id,room,schedule,capacity,subject,teacher);page(x,s,sectionsAdminPage(s,null,error,rejected));return;}
-            Seccion section=new Seccion(id,room,schedule,capacity,subject,teacher);
+            if(error==null&&old!=null&&old.getInscritos()>0&&old.getGrado()!=null&&old.getGrado().id()!=gradeId)error="No se puede cambiar el grado de una sección que ya tiene estudiantes inscritos.";
+            if(error!=null){Seccion rejected=new Seccion(id,room,schedule,capacity,subject,teacher);rejected.setGrado(grade);page(x,s,sectionsAdminPage(s,null,error,rejected));return;}
+            Seccion section=new Seccion(id,room,schedule,capacity,subject,teacher);section.setGrado(grade);
             if(id==0)dao.insertar(section);else dao.actualizar(section);
             redirect(x,"/secciones?guardado=1");
         }catch(SQLException e){page(x,s,sectionsAdminPage(s,null,"No se pudo guardar la sección. Verifica la conexión con MySQL.",null));}
@@ -943,6 +1114,9 @@ public final class WebApp {
     private static String changeRolePage(WebSession s,String query,String message){
         if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Cambiar rol",errorPage("Solo un administrador puede cambiar roles."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
         try{
+            if(message==null&&query!=null&&query.contains("notificacion=ok"))message="Perfil actualizado y notificación enviada al correo personal.";
+            if(message==null&&query!=null&&query.contains("notificacion=fallida"))message="El perfil se guardó, pero no se pudo enviar el correo. Revisa la configuración SMTP.";
+            if(message==null&&query!=null&&query.contains("notificacion=omitido"))message="Perfil creado. Se omitió el correo: por ahora solo se notifican cuentas personales Gmail, Outlook, Hotmail, Live o MSN.";
             List<Usuario> users=USERS.listarTodos();Integer selectedId=parseQueryInteger(query,"id");
             StringBuilder options=new StringBuilder("<option value=''>Selecciona una cuenta...</option>");Usuario selected=null;
             for(Usuario u:users){if(u.getId()==s.user.getId())continue;boolean isSelected=selectedId!=null&&selectedId==u.getId();if(isSelected)selected=u;
@@ -964,8 +1138,18 @@ public final class WebApp {
         try{
             if(role==Rol.ESTUDIANTE&&values.get("matricula")!=null&&!values.get("matricula").isBlank()&&USERS.existeMatricula(values.get("matricula").trim())){page(x,s,changeRolePage(s,"id="+id,"Esa matrícula ya está registrada."));return;}
             if(role==Rol.PROFESOR&&values.get("codigoProfesor")!=null&&!values.get("codigoProfesor").isBlank()&&USERS.existeCodigoProfesor(values.get("codigoProfesor").trim())){page(x,s,changeRolePage(s,"id="+id,"Ese código de profesor ya está registrado."));return;}
+            Usuario target=USERS.listarTodos().stream().filter(u->u.getId()==id).findFirst().orElseThrow(()->new PermisoDenegadoException("La cuenta seleccionada ya no existe."));
+            Rol previousRole=target.getRol();
             USERS.cambiarRolComoAdmin(s.user.getId(),id,role,values.get("matricula"),values.get("grado"),values.get("codigoProfesor"),values.get("especialidad"),values.get("telefono"),values.get("ocupacion"));
-            redirect(x,"/usuarios?actualizado=1");
+            if(previousRole!=role&&(role==Rol.ESTUDIANTE||role==Rol.PADRE)){
+                if(!CorreoNotificaciones.aceptaDestinatario(target.getCorreo())){redirect(x,"/cambiar-rol?id="+id+"&notificacion=omitido");return;}
+                try{
+                    if(role==Rol.ESTUDIANTE)CorreoNotificaciones.enviarPerfilEstudiante(new Estudiante(target.getId(),target.getNombre(),target.getApellido(),target.getCorreo(),null,values.get("matricula"),values.get("grado"),0));
+                    else CorreoNotificaciones.enviarPerfilPadre(new Padre(target.getId(),target.getNombre(),target.getApellido(),target.getCorreo(),null,0,values.get("telefono"),values.get("ocupacion")));
+                    redirect(x,"/cambiar-rol?id="+id+"&notificacion=ok");
+                }catch(Exception mailError){System.err.println("No se pudo enviar aviso de creación de perfil estudiante/padre.");redirect(x,"/cambiar-rol?id="+id+"&notificacion=fallida");}
+            }else redirect(x,"/usuarios?actualizado=1");
+
         }catch(PermisoDenegadoException e){page(x,s,changeRolePage(s,"id="+id,e.getMessage()));}
         catch(SQLException e){page(x,s,changeRolePage(s,"id="+id,"No se pudo cambiar el rol. Verifica los datos y la conexión con MySQL."));}
     }
@@ -990,7 +1174,7 @@ public final class WebApp {
                     .append("</td><td><form method='post' action='/eliminar-vinculo' class='inline-form'>").append(hiddenCsrf(s))
                     .append("<input type='hidden' name='padre' value='").append(link.idPadre()).append("'><input type='hidden' name='estudiante' value='")
                     .append(link.idEstudiante()).append("'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar</label><button class='danger' type='submit'>Quitar vínculo</button></form></td></tr>");
-            if(rows.isEmpty())rows.append("<tr><td colspan='5' class='empty'>No hay vínculos registrados.</td></tr>");
+            if(rows.isEmpty())rows.append("<tr><td colspan='7' class='empty'>No hay vínculos registrados.</td></tr>");
             String body="<div class='page-heading'><div><div class='eyebrow'>ADMINISTRACIÓN</div><h1>Vincular padres e hijos</h1><p>Asocia cuentas de padre o tutor con estudiantes registrados.</p></div></div>"
                     +(message==null?"":"<div class='"+(success?"success":"alert")+"' role='status'>"+esc(message)+"</div>")
                     +"<section class='card subject-editor'><h2>Crear vínculo</h2><form method='post' action='/crear-vinculo'>"+hiddenCsrf(s)
@@ -1030,12 +1214,16 @@ public final class WebApp {
     private static String createTeacherPage(WebSession s,String query,String message){
         if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Crear profesor",errorPage("Solo un administrador puede crear cuentas de profesor."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
         boolean success=message==null&&query!=null&&query.contains("creado=1");
-        if(success)message="La cuenta del profesor fue creada. Debe cambiar la contraseña al iniciar sesión.";
+        if(success)message=query.contains("notificacion=ok")
+                ? "Perfil creado y notificación enviada al correo personal del profesor."
+                : query.contains("notificacion=omitido")
+                    ? "Perfil creado. Se omitió el correo: por ahora solo se notifican cuentas personales Gmail, Outlook, Hotmail, Live o MSN."
+                    : "Perfil creado, pero no se pudo enviar el correo. Revisa la configuración SMTP.";
         String body="<div class='page-heading'><div><div class='eyebrow'>ADMINISTRACIÓN</div><h1>Crear profesor</h1><p>Registra una cuenta docente con contraseña inicial.</p></div></div>"
                 +(message==null?"":"<div class='"+(success?"success":"alert")+"' role='status'>"+esc(message)+"</div>")
                 +"<section class='card subject-editor'><form method='post' action='/guardar-profesor'>"+hiddenCsrf(s)
                 +"<div class='subject-fields'><label>Nombre<input name='nombre' maxlength='50' autocomplete='given-name' required></label><label>Apellido<input name='apellido' maxlength='50' autocomplete='family-name' required></label>"
-                +"<label>Correo<input name='correo' type='email' maxlength='100' autocomplete='email' required></label><label>Código de profesor<input name='codigo' maxlength='20' required></label>"
+                +"<label>Correo personal<input name='correo' type='email' maxlength='100' autocomplete='email' required></label><label>Código de profesor<input name='codigo' maxlength='20' required></label>"
                 +"<label>Especialidad<input name='especialidad' maxlength='100' required></label><label>Contraseña inicial<input name='contrasena' type='password' minlength='4' autocomplete='new-password' required></label>"
                 +"<label>Confirmar contraseña<input name='confirmar' type='password' minlength='4' autocomplete='new-password' required></label></div><p class='hint'>La cuenta deberá cambiar esta contraseña al iniciar sesión por primera vez.</p>"
                 +"<div class='subject-actions'><button class='primary' type='submit'>Crear cuenta de profesor</button></div></form></section>";
@@ -1060,7 +1248,15 @@ public final class WebApp {
             if(USERS.existeCodigoProfesor(code)){page(x,s,createTeacherPage(s,null,"Ese código de profesor ya está registrado."));return;}
             Profesor teacher=new Profesor(0,name,surname,email,null,code,specialty);
             USERS.registrarProfesorComoAdmin(teacher,password,s.user.getId());
-            redirect(x,"/crear-profesor?creado=1");
+            String aviso="fallida";
+            if(!CorreoNotificaciones.aceptaDestinatario(teacher.getCorreo())){redirect(x,"/crear-profesor?creado=1&notificacion=omitido");return;}
+            try {
+                CorreoNotificaciones.enviarPerfilProfesor(teacher);
+                aviso="ok";
+            } catch (Exception envio) {
+                System.err.println("No se pudo enviar la notificación de creación del perfil docente.");
+            }
+            redirect(x,"/crear-profesor?creado=1&notificacion="+aviso);
         }catch(PermisoDenegadoException e){page(x,s,createTeacherPage(s,null,e.getMessage()));}
         catch(java.sql.SQLIntegrityConstraintViolationException e){page(x,s,createTeacherPage(s,null,"El correo o código de profesor ya está en uso."));}
         catch(SQLException e){page(x,s,createTeacherPage(s,null,"No se pudo crear la cuenta. Verifica la conexión con MySQL."));}
@@ -1202,7 +1398,7 @@ public final class WebApp {
         String stop = Boolean.TRUE.equals(LOCAL_REQUEST.get())&&Boolean.TRUE.equals(ADMIN_REQUEST.get())
                 ? "<form method='post' action='/shutdown' class='stop-form'><input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='danger' type='submit'>Detener servidor</button></form>" : "";
         String role=ROLE_REQUEST.get();
-        String academicLink="ESTUDIANTE".equals(role)?"<a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/secciones'>Secciones</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/historial-sesiones'>Historial</a>":"";
+        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/historial-sesiones'>Historial</a>":"";
         String nav = logged ? "<header class='topbar'><a class='brand' href='/'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a></nav><div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+stop+"</div></header>"
                 : "<header class='topbar'><a class='brand' href='/'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span></header>";
@@ -1264,7 +1460,7 @@ public final class WebApp {
     private static void redirect(HttpExchange x,String location)throws IOException{x.getResponseHeaders().set("Location",location);x.sendResponseHeaders(303,-1);}
     private static Map<String,String> form(HttpExchange x)throws IOException{
         String raw=new String(x.getRequestBody().readAllBytes(),StandardCharsets.UTF_8);Map<String,String> values=new java.util.HashMap<>();
-        for(String part:raw.split("&")){int i=part.indexOf('=');if(i<0)continue;values.put(URLDecoder.decode(part.substring(0,i),StandardCharsets.UTF_8),URLDecoder.decode(part.substring(i+1),StandardCharsets.UTF_8));}return values;
+        for(String part:raw.split("&")){int i=part.indexOf('=');if(i<0)continue;String key=URLDecoder.decode(part.substring(0,i),StandardCharsets.UTF_8),value=URLDecoder.decode(part.substring(i+1),StandardCharsets.UTF_8);if(key.equals("grados")&&values.containsKey(key))values.put(key,values.get(key)+","+value);else values.put(key,value);}return values;
     }
     private static WebSession sessionFor(HttpExchange x){
         String token=null;String header=x.getRequestHeaders().getFirst("Cookie");

@@ -11,6 +11,7 @@ public class Seccion {
     private String horario;
     private int cupoMaximo;
     private Asignatura asignatura;
+    private GradoCurricular grado;
     private Profesor profesor; // puede ser null (id_profesor es opcional en la BD)
     private int inscritos;     // cuantos estudiantes tiene inscritos (se calcula al listar)
 
@@ -68,6 +69,9 @@ public class Seccion {
         this.asignatura = asignatura;
     }
 
+    public GradoCurricular getGrado() { return grado; }
+
+    public void setGrado(GradoCurricular grado) { this.grado = grado; }
     public Profesor getProfesor() {
         return profesor;
     }

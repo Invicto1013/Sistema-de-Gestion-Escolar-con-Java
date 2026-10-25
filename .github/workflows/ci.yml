@@ -1,0 +1,59 @@
+name: CI SIGE JavaFX and Web
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-package:
+    name: Verify and package (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows
+            os: windows-latest
+            artifact: sige-1.0.0-windows
+            launcher: run-sige.bat
+          - name: linux
+            os: ubuntu-latest
+            artifact: sige-1.0.0-linux
+            launcher: run-sige.sh
+          - name: macos
+            os: macos-latest
+            artifact: sige-1.0.0-macos
+            launcher: run-sige.sh
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up Java 21 and Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Verify and build
+        run: mvn --batch-mode --no-transfer-progress clean verify
+      - name: Assemble portable package
+        run: mvn --batch-mode --no-transfer-progress -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/distribution/lib
+      - name: Stage application and instructions
+        shell: bash
+        run: |
+          mkdir -p target/distribution
+          cp target/sige-1.0.0.jar target/distribution/
+          cp README.md README_WEB.md DEVOPS_PRUEBAS.md GUIA_DESPLIEGUE_NUBE.md GUIA_RED_LOCAL.md db.properties.example target/distribution/
+          cp "${{ matrix.launcher }}" target/distribution/
+          cp -R sql target/distribution/
+      - name: Upload per-operating-system package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: target/distribution/
+          if-no-files-found: error
+          retention-days: 30

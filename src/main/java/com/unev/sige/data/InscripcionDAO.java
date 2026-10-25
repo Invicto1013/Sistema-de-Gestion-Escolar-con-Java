@@ -29,6 +29,9 @@ public class InscripcionDAO {
             SELECT i.id_inscripcion, i.fecha_inscripcion, i.periodo_lectivo, i.estado,
                    d.id_detalle_inscripcion, d.estado_materia,
                    s.id_seccion, s.aula, s.horario, s.cupo_maximo,
+                   cg.id AS grado_id, cg.codigo AS grado_codigo, cg.nivel AS grado_nivel,
+                   cg.ciclo AS grado_ciclo, cg.nombre AS grado_nombre,
+                   ar.codigo AS area_codigo, ar.nombre AS area_nombre,
                    a.id_asignatura, a.codigo_asignatura, a.nombre AS asignatura_nombre,
                    a.creditos, a.descripcion,
                    p.id_profesor, p.codigo_profesor, p.especialidad,
@@ -39,6 +42,9 @@ public class InscripcionDAO {
             JOIN detalle_inscripciones d ON d.id_inscripcion = i.id_inscripcion
             JOIN secciones s ON s.id_seccion = d.id_seccion
             JOIN asignaturas a ON a.id_asignatura = s.id_asignatura
+            LEFT JOIN curriculo_grados cg ON cg.id = s.id_grado
+            LEFT JOIN asignatura_grado_area aga ON aga.id_asignatura = a.id_asignatura AND aga.id_grado = s.id_grado
+            LEFT JOIN areas_curriculares ar ON ar.id = aga.id_area
             LEFT JOIN profesores p ON p.id_profesor = s.id_profesor
             LEFT JOIN usuarios u ON u.id_usuario = p.id_profesor
             LEFT JOIN calificaciones c ON c.id_detalle_inscripcion = d.id_detalle_inscripcion
@@ -240,6 +246,8 @@ public class InscripcionDAO {
         Asignatura asignatura = new Asignatura(rs.getInt("id_asignatura"),
                 rs.getString("codigo_asignatura"), rs.getString("asignatura_nombre"),
                 rs.getInt("creditos"), rs.getString("descripcion"));
+        asignatura.setCodigoArea(rs.getString("area_codigo"));
+        asignatura.setAreaCurricular(rs.getString("area_nombre"));
 
         Profesor profesor = null;
         int idProfesor = rs.getInt("id_profesor");
@@ -251,6 +259,12 @@ public class InscripcionDAO {
 
         Seccion seccion = new Seccion(rs.getInt("id_seccion"), rs.getString("aula"), rs.getString("horario"),
                 rs.getInt("cupo_maximo"), asignatura, profesor);
+        int idGrado = rs.getInt("grado_id");
+        if (!rs.wasNull()) {
+            seccion.setGrado(new com.unev.sige.model.GradoCurricular(idGrado,
+                    rs.getString("grado_codigo"), rs.getString("grado_nivel"),
+                    rs.getString("grado_ciclo"), rs.getString("grado_nombre"), List.of()));
+        }
 
         DetalleInscripcion detalle = new DetalleInscripcion(rs.getInt("id_detalle_inscripcion"),
                 rs.getString("estado_materia"), seccion);

@@ -27,13 +27,16 @@ public class ReporteDAO {
         String sql = """
                 SELECT i.fecha_inscripcion, CONCAT(ue.nombre, ' ', ue.apellido) AS estudiante,
                        e.matricula, i.periodo_lectivo, a.codigo_asignatura, a.nombre AS asignatura,
-                       s.id_seccion, d.estado_materia
+                       s.id_seccion, cg.nombre AS grado, ar.nombre AS area, d.estado_materia
                 FROM inscripciones i
                 JOIN detalle_inscripciones d ON d.id_inscripcion = i.id_inscripcion
                 JOIN estudiantes e ON e.id_estudiante = i.id_estudiante
                 JOIN usuarios ue ON ue.id_usuario = e.id_estudiante
                 JOIN secciones s ON s.id_seccion = d.id_seccion
                 JOIN asignaturas a ON a.id_asignatura = s.id_asignatura
+                LEFT JOIN curriculo_grados cg ON cg.id = s.id_grado
+                LEFT JOIN asignatura_grado_area aga ON aga.id_asignatura = a.id_asignatura AND aga.id_grado = s.id_grado
+                LEFT JOIN areas_curriculares ar ON ar.id = aga.id_area
                 WHERE i.fecha_inscripcion BETWEEN ? AND ?
                 """;
         sql += switch (rolSolicitante) {
@@ -62,8 +65,8 @@ public class ReporteDAO {
                         filas.add(new LineaReporteInscripcion(rs.getDate("fecha_inscripcion").toLocalDate(),
                                 rs.getString("estudiante"), rs.getString("matricula"),
                                 rs.getString("periodo_lectivo"), rs.getString("codigo_asignatura") + " - "
-                                        + rs.getString("asignatura"), rs.getInt("id_seccion"),
-                                rs.getString("estado_materia")));
+                                        + rs.getString("asignatura"), rs.getString("grado"), rs.getString("area"),
+                                rs.getInt("id_seccion"), rs.getString("estado_materia")));
                     }
                 }
             }

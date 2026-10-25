@@ -41,7 +41,7 @@ public class CalificacionesPanel extends VBox {
         @Override
         public String toString() {
             return seccion.getAsignatura().getCodigo() + " - " + seccion.getAsignatura().getNombre()
-                    + " | " + seccion.getHorario() + " | Aula " + seccion.getAula()
+                    + " | " + (seccion.getGrado() == null ? "Grado pendiente" : seccion.getGrado().nombre()) + " | " + seccion.getHorario() + " | Aula " + seccion.getAula()
                     + " | " + seccion.getInscritos() + " inscrito(s)";
         }
     }

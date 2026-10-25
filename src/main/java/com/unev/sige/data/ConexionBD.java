@@ -125,6 +125,11 @@ public final class ConexionBD {
         return DriverManager.getConnection(url, usuario, clave == null ? "" : clave);
     }
 
+    /** Lee una configuración desde una variable de entorno o config.properties/db.properties. */
+    public static String configuracion(String variableEntorno, String clave) {
+        return valor(variableEntorno, clave);
+    }
+
     /** Clave AES-256 de 2FA, definida fuera del código por variable de entorno o db.properties. */
     public static String claveCifrado2FA() {
         return valor("SIGE_2FA_ENCRYPTION_KEY", "2fa.encryption-key");

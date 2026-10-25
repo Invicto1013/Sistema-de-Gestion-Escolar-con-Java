@@ -11,6 +11,10 @@ public class Asignatura {
     private String nombre;
     private int creditos;
     private String descripcion;
+    private String areaCurricular;
+    private String gradosCurriculares;
+    private String codigoArea;
+    private String idsGrados;
 
     public Asignatura() {
     }
@@ -64,6 +68,15 @@ public class Asignatura {
     public void setDescripcion(String descripcion) {
         this.descripcion = descripcion;
     }
+
+    public String getAreaCurricular() { return areaCurricular; }
+    public void setAreaCurricular(String value) { areaCurricular = value; }
+    public String getGradosCurriculares() { return gradosCurriculares; }
+    public void setGradosCurriculares(String value) { gradosCurriculares = value; }
+    public String getCodigoArea() { return codigoArea; }
+    public void setCodigoArea(String value) { codigoArea = value; }
+    public String getIdsGrados() { return idsGrados; }
+    public void setIdsGrados(String value) { idsGrados = value; }
 
     @Override
     public String toString() {

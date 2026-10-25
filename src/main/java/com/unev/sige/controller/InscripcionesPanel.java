@@ -48,6 +48,7 @@ public class InscripcionesPanel extends VBox {
             String profesor = seccion.getProfesor() == null
                     ? "Sin profesor" : seccion.getProfesor().getNombreCompleto();
             return seccion.getAsignatura().getCodigo() + " - " + seccion.getAsignatura().getNombre()
+                    + " | " + (seccion.getGrado() == null ? "Grado pendiente" : seccion.getGrado().nombre())
                     + " | " + profesor + " | " + seccion.getHorario() + " | Aula " + seccion.getAula()
                     + " | " + seccion.getInscritos() + "/" + seccion.getCupoMaximo();
         }

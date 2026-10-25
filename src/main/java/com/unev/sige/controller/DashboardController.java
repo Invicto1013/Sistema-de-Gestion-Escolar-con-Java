@@ -138,6 +138,7 @@ public class DashboardController {
                 agregarOpcion("Crear profesor", () -> mostrarPanelAdmin("Crear profesor",
                         () -> new CrearProfesorPanel(usuario.getId())));
                 agregarOpcion("Asignaturas", () -> mostrarPanelAdmin("Asignaturas", AsignaturasPanel::new));
+                agregarOpcion("Grados y currículo", () -> mostrarPanelAdmin("Grados y currículo", CurriculoPanel::new));
                 agregarOpcion("Secciones", () -> mostrarPanelAdmin("Secciones", SeccionesPanel::new));
                 agregarOpcion("Inscripciones", () -> mostrarPanelAdmin("Inscripciones", InscripcionesPanel::new));
                 agregarOpcion("Calificaciones", () -> mostrarPanelAdmin("Administración de calificaciones",

@@ -68,3 +68,14 @@ Inicia sesión con un usuario existente, verifica 2FA y revisa un módulo por ro
 ## Cambios que se hicieron al proyecto
 - `Dockerfile`: ahora compila en una etapa y ejecuta con `java -cp` en una imagen JRE (antes ejecutaba `mvn javafx:run`, que consume demasiada RAM) y borra `db.properties` de la imagen.
 - `.dockerignore`: excluye cualquier `db.properties`, también el de `src/main/resources`, que antes se habría copiado a la imagen con tu clave local.
+
+## Actualizar la web publicada con cambios nuevos
+
+1. **Primero la base, después el código.** El código nuevo usa columnas y tablas nuevas; si se despliega antes de migrar la base, la web da errores. Aplica en Aiven, en este orden y una sola vez cada una (son repetibles sin riesgo):
+   ```
+   mysql -h HOST -P PUERTO -u avnadmin -p --ssl-mode=REQUIRED sige_db < sql\fase_curriculo_grados.sql
+   mysql -h HOST -P PUERTO -u avnadmin -p --ssl-mode=REQUIRED sige_db < sql\aula_virtual.sql
+   ```
+2. Haz `git commit` y `git push` a `main`. Render reconstruye y publica solo si tiene activado el despliegue automático; si no, usa **Manual Deploy → Deploy latest commit**.
+3. **Aula virtual en el plan gratuito:** los archivos subidos se guardan en el disco del contenedor (`SIGE_UPLOAD_DIR`, por defecto `data/uploads`). Render gratis no tiene disco persistente: los archivos se pierden cuando el servicio se duerme, se reinicia o se vuelve a desplegar. Los registros de materiales y entregas sí quedan en MySQL.
+4. **Correos (opcional):** si defines `SIGE_SMTP_HOST`, `SIGE_SMTP_PORT`, `SIGE_SMTP_USER`, `SIGE_SMTP_PASSWORD` y `SIGE_SMTP_FROM` (y, si aplica, `SIGE_SMTP_AUTH`, `SIGE_SMTP_SSL`, `SIGE_SMTP_STARTTLS`) en Render, SIGE avisa a los usuarios nuevos por correo. Sin ellas, esa función no se usa.

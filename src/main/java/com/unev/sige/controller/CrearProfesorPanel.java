@@ -1,9 +1,11 @@
 package com.unev.sige.controller;
 
 import com.unev.sige.data.PermisoDenegadoException;
+import com.unev.sige.data.CorreoNotificaciones;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.model.Profesor;
 import javafx.geometry.Insets;
+import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -15,6 +17,7 @@ import javafx.scene.layout.VBox;
 
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.util.concurrent.CompletableFuture;
 
 /** Formulario administrativo para crear cuentas de profesor. */
 public class CrearProfesorPanel extends VBox {
@@ -108,9 +111,23 @@ public class CrearProfesorPanel extends VBox {
             }
             Profesor profesor = new Profesor(0, n, a, c, null, cod, esp);
             usuarioDAO.registrarProfesorComoAdmin(profesor, pass, idAdmin);
-            Dialogos.estado(estado, "Cuenta creada para " + profesor.getNombreCompleto()
-                    + ". Comparte las credenciales iniciales de forma segura.", false);
+            Dialogos.estado(estado, "Perfil creado. Enviando notificación a " + profesor.getCorreo() + "…", false);
             limpiarFormulario();
+            CompletableFuture.runAsync(() -> {
+                try {
+                    if (!CorreoNotificaciones.aceptaDestinatario(profesor.getCorreo())) {
+                        Platform.runLater(() -> Dialogos.estado(estado, "Perfil creado. Se omitió el correo: solo se notifican cuentas personales Gmail, Outlook, Hotmail, Live o MSN.", false));
+                        return;
+                    }
+                    CorreoNotificaciones.enviarPerfilProfesor(profesor);
+                    Platform.runLater(() -> Dialogos.estado(estado,
+                            "Perfil creado y notificación enviada a " + profesor.getCorreo() + ".", false));
+                } catch (Exception envio) {
+                    System.err.println("No se pudo enviar la notificación de creación del perfil docente.");
+                    Platform.runLater(() -> Dialogos.estado(estado,
+                            "Perfil creado, pero no se pudo enviar el correo. Revisa la configuración SMTP.", true));
+                }
+            });
         } catch (PermisoDenegadoException e) {
             Dialogos.estado(estado, e.getMessage(), true);
         } catch (SQLIntegrityConstraintViolationException e) {

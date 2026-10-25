@@ -4,3 +4,15 @@ db.user=TU_USUARIO_MYSQL
 db.password=TU_CLAVE_MYSQL
 # AES-256 Base64 generado en PowerShell. No compartir ni subir a Git.
 2fa.encryption-key=
+
+# SMTP opcional; debe permanecer sin activar hasta que SIGE se estabilice.
+# Solo remitentes personales Gmail/Googlemail o Microsoft (Outlook/Hotmail/Live/MSN); no usar correo institucional.
+# Ejemplo Gmail: smtp.gmail.com, puerto 587 y contraseña de aplicación. No usar la contraseña normal.
+mail.smtp.host=smtp.gmail.com
+mail.smtp.port=587
+mail.smtp.auth=true
+mail.smtp.user=TU_CUENTA_PERSONAL@gmail.com
+mail.smtp.password=TU_CONTRASENA_DE_APLICACION
+mail.smtp.from=TU_CUENTA_PERSONAL@gmail.com
+mail.smtp.starttls.enable=true
+mail.smtp.ssl.enable=false

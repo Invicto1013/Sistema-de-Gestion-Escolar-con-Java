@@ -1,5 +1,6 @@
 # Credenciales locales
 db.properties
+config.properties
 
 # Build / IDE
 target/
@@ -10,5 +11,6 @@ target/
 .project
 .settings/
 
-# Configuracion con credenciales (usar config.example.properties como plantilla)
-config.properties
+tmp/
+# SIGE - clases y entregas del Aula Virtual
+/data/uploads/

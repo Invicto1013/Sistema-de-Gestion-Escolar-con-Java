@@ -241,3 +241,8 @@ Al iniciar sesión, la opción Inicio carga cuatro KPI, un gráfico de inscripci
 ## Fase 7: escritorio, tableta y teléfono
 
 La escena aplica los modos `modo-escritorio` (1024 px o más), `modo-tableta` (600 a 1023 px) y `modo-telefono` (menos de 600 px) según el ancho disponible. En teléfono, el menú lateral se sustituye por un selector compacto superior, los KPI se apilan en una columna, los gráficos pasan a filas y la tabla oculta columnas secundarias. En tableta se conservan dos columnas para KPI y se reduce el menú; en escritorio se usan cuatro columnas. Login y registro reducen sus márgenes y campos para la referencia de 412 px. Para las evidencias de la tarea, redimensiona la ventana a 1366x768, 1024x768, 768x1024 y 412x915 y captura login, dashboard y un CRUD.
+
+
+## Catálogo de grados y áreas curriculares
+
+El administrador dispone de la opción Grados y currículo en escritorio y la ruta /curriculo en la versión web. Ambas interfaces consultan las mismas tablas MySQL. Antes de abrirlas, ejecuta una vez sql/fase_curriculo_grados.sql en sige_db. El catálogo incluye 1.º a 6.º de Primaria y 1.º a 6.º de Secundaria, sus ciclos y áreas base; las horas semanales quedan configurables por plan y jornada. En Asignaturas se vincula cada materia con área y grados; al crear Secciones se debe elegir un grado compatible. Calificaciones y las vistas del profesor muestran el grado asociado.

@@ -2,11 +2,13 @@ package com.unev.sige.controller;
 
 import com.unev.sige.app.Navegacion;
 import com.unev.sige.data.UsuarioDAO;
+import com.unev.sige.data.CorreoNotificaciones;
 import com.unev.sige.model.Estudiante;
 import com.unev.sige.model.Padre;
 import com.unev.sige.model.Rol;
 import com.unev.sige.model.Usuario;
 import javafx.fxml.FXML;
+import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -17,6 +19,7 @@ import javafx.stage.Window;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Controlador del formulario de Registro (registro.fxml).
@@ -160,8 +163,21 @@ public class RegistroController {
 
             usuarioDAO.registrar(nuevoUsuario, contrasena);
 
-            mostrarExito("Usuario registrado correctamente: " + nuevoUsuario.getNombreCompleto() + " (" + rol + ")");
+            mostrarExito("Perfil creado. Intentando enviar la notificación por correo...");
             onLimpiar();
+            CompletableFuture.runAsync(() -> {
+                try {
+                    if (!CorreoNotificaciones.aceptaDestinatario(nuevoUsuario.getCorreo())) {
+                        Platform.runLater(() -> mostrarExito("Perfil creado. Se omitió el correo: solo se notifican cuentas personales Gmail, Outlook, Hotmail, Live o MSN."));
+                        return;
+                    }
+                    if (nuevoUsuario instanceof Estudiante estudiante) CorreoNotificaciones.enviarPerfilEstudiante(estudiante);
+                    else if (nuevoUsuario instanceof Padre padre) CorreoNotificaciones.enviarPerfilPadre(padre);
+                    Platform.runLater(() -> mostrarExito("Perfil creado y notificación enviada al correo personal."));
+                } catch (Exception ex) {
+                    Platform.runLater(() -> mostrarError("El perfil se creó, pero no se envió el correo. La administración debe configurar SMTP."));
+                }
+            });
         } catch (SQLIntegrityConstraintViolationException e) {
             mostrarError("Ya existe un registro con esos datos (correo, matrícula o código).");
         } catch (SQLException e) {

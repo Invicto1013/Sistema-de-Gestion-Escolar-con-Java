@@ -1,9 +1,11 @@
 package com.unev.sige.controller;
 
 import com.unev.sige.data.AsignaturaDAO;
+import com.unev.sige.data.CurriculoDAO;
 import com.unev.sige.data.SeccionDAO;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.model.Asignatura;
+import com.unev.sige.model.GradoCurricular;
 import com.unev.sige.model.Profesor;
 import com.unev.sige.model.Seccion;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -39,6 +41,8 @@ public class SeccionesPanel extends VBox {
             return asignatura.getCodigo() + " - " + asignatura.getNombre();
         }
     }
+
+    private record OpcionGrado(GradoCurricular grado) { @Override public String toString() { return grado.nombre(); } }
 
     /** Opcion del combo de profesores; profesor == null significa "sin profesor". */
     private record OpcionProfesor(Profesor profesor) {
@@ -89,6 +93,8 @@ public class SeccionesPanel extends VBox {
         colAsignatura.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getAsignatura().getCodigo() + " - " + c.getValue().getAsignatura().getNombre()));
 
+        TableColumn<Seccion, String> colGrado = new TableColumn<>("Grado");
+        colGrado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getGrado() == null ? "Pendiente" : c.getValue().getGrado().nombre()));
         TableColumn<Seccion, String> colProfesor = new TableColumn<>("Profesor");
         colProfesor.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getProfesor() == null ? "Sin asignar" : c.getValue().getProfesor().getNombreCompleto()));
@@ -105,7 +111,7 @@ public class SeccionesPanel extends VBox {
                 c.getValue().getInscritos() + " / " + c.getValue().getCupoMaximo()));
         colCupo.setMaxWidth(120);
 
-        tabla.getColumns().addAll(colId, colAsignatura, colProfesor, colAula, colHorario, colCupo);
+        tabla.getColumns().addAll(colId, colGrado, colAsignatura, colProfesor, colAula, colHorario, colCupo);
         tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 
@@ -143,8 +149,13 @@ public class SeccionesPanel extends VBox {
                 return;
             }
             List<Profesor> profesores = usuarioDAO.listarProfesores();
+            List<GradoCurricular> grados = new CurriculoDAO().listarGrados();
 
-            Optional<Seccion> resultado = pedirDatos(base, asignaturas, profesores);
+            Optional<Seccion> resultado = pedirDatos(base, asignaturas, profesores, grados);
+            if (resultado.isPresent() && !asignaturaDAO.puedeOfrecerse(resultado.get().getAsignatura().getId(), resultado.get().getGrado().id())) {
+                Dialogos.error("La asignatura no está asociada a ese grado. Revísala en el apartado Asignaturas.");
+                return;
+            }
             if (resultado.isPresent()) {
                 if (base == null) {
                     seccionDAO.insertar(resultado.get());
@@ -186,7 +197,7 @@ public class SeccionesPanel extends VBox {
 
     // ----- Formulario -----
 
-    private Optional<Seccion> pedirDatos(Seccion base, List<Asignatura> asignaturas, List<Profesor> profesores) {
+    private Optional<Seccion> pedirDatos(Seccion base, List<Asignatura> asignaturas, List<Profesor> profesores, List<GradoCurricular> grados) {
         Dialog<ButtonType> dialogo = new Dialog<>();
         dialogo.setTitle(base == null ? "Nueva sección" : "Editar sección");
         dialogo.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -202,6 +213,12 @@ public class SeccionesPanel extends VBox {
         cmbAsignatura.setPromptText("Selecciona una asignatura");
         cmbAsignatura.setMaxWidth(Double.MAX_VALUE);
 
+        ComboBox<OpcionGrado> cmbGrado = new ComboBox<>();
+        for (GradoCurricular g : grados) {
+            OpcionGrado opcion = new OpcionGrado(g); cmbGrado.getItems().add(opcion);
+            if (base != null && base.getGrado() != null && base.getGrado().id() == g.id()) cmbGrado.setValue(opcion);
+        }
+        cmbGrado.setPromptText("Selecciona un grado"); cmbGrado.setMaxWidth(Double.MAX_VALUE);
         ComboBox<OpcionProfesor> cmbProfesor = new ComboBox<>();
         OpcionProfesor sinProfesor = new OpcionProfesor(null);
         cmbProfesor.getItems().add(sinProfesor);
@@ -233,18 +250,19 @@ public class SeccionesPanel extends VBox {
         formulario.setVgap(10);
         formulario.setPadding(new Insets(16));
         formulario.addRow(0, new Label("Asignatura:"), cmbAsignatura);
-        formulario.addRow(1, new Label("Profesor:"), cmbProfesor);
-        formulario.addRow(2, new Label("Aula:"), txtAula);
-        formulario.addRow(3, new Label("Horario:"), txtHorario);
-        formulario.addRow(4, new Label("Cupo máximo:"), txtCupo);
-        formulario.add(lblError, 0, 5, 2, 1);
+        formulario.addRow(1, new Label("Grado:"), cmbGrado);
+        formulario.addRow(2, new Label("Profesor:"), cmbProfesor);
+        formulario.addRow(3, new Label("Aula:"), txtAula);
+        formulario.addRow(4, new Label("Horario:"), txtHorario);
+        formulario.addRow(5, new Label("Cupo máximo:"), txtCupo);
+        formulario.add(lblError, 0, 6, 2, 1);
         dialogo.getDialogPane().setContent(formulario);
 
         int idActual = base == null ? 0 : base.getId();
 
         Button botonAceptar = (Button) dialogo.getDialogPane().lookupButton(ButtonType.OK);
         botonAceptar.addEventFilter(ActionEvent.ACTION, evento -> {
-            String error = validar(cmbAsignatura.getValue(), txtAula.getText(), txtHorario.getText(),
+            String error = cmbGrado.getValue() == null ? "Selecciona un grado curricular." : validar(cmbAsignatura.getValue(), txtAula.getText(), txtHorario.getText(),
                     txtCupo.getText(), idActual);
             if (error != null) {
                 lblError.setText(error);
@@ -255,9 +273,11 @@ public class SeccionesPanel extends VBox {
         Dialogos.prepararModal(dialogo, getScene().getWindow());
         Optional<ButtonType> respuesta = dialogo.showAndWait();
         if (respuesta.isPresent() && respuesta.get() == ButtonType.OK) {
-            return Optional.of(new Seccion(idActual, txtAula.getText().trim(), txtHorario.getText().trim(),
+            Seccion seccion = new Seccion(idActual, txtAula.getText().trim(), txtHorario.getText().trim(),
                     Integer.parseInt(txtCupo.getText().trim()), cmbAsignatura.getValue().asignatura(),
-                    cmbProfesor.getValue().profesor()));
+                    cmbProfesor.getValue().profesor());
+            seccion.setGrado(cmbGrado.getValue().grado());
+            return Optional.of(seccion);
         }
         return Optional.empty();
     }

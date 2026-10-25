@@ -27,6 +27,8 @@ public class MisSeccionesPanel extends VBox {
         colAsignatura.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getAsignatura().getCodigo() + " - " + c.getValue().getAsignatura().getNombre()));
 
+        TableColumn<Seccion, String> colGrado = new TableColumn<>("Grado");
+        colGrado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getGrado() == null ? "Pendiente" : c.getValue().getGrado().nombre()));
         TableColumn<Seccion, Number> colCreditos = new TableColumn<>("Créditos");
         colCreditos.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getAsignatura().getCreditos()));
         colCreditos.setMaxWidth(90);
@@ -43,7 +45,7 @@ public class MisSeccionesPanel extends VBox {
                 c.getValue().getInscritos() + " / " + c.getValue().getCupoMaximo()));
         colCupo.setMaxWidth(120);
 
-        tabla.getColumns().addAll(colAsignatura, colCreditos, colAula, colHorario, colCupo);
+        tabla.getColumns().addAll(colAsignatura, colGrado, colCreditos, colAula, colHorario, colCupo);
         tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(tabla, Priority.ALWAYS);
 

@@ -45,6 +45,14 @@ record FilaMateria(Inscripcion inscripcion, DetalleInscripcion detalle) {
                 c.getValue().detalle().getSeccion().getAsignatura().getCodigo() + " - "
                         + c.getValue().detalle().getSeccion().getAsignatura().getNombre()));
 
+        TableColumn<FilaMateria, String> colArea = new TableColumn<>("Área curricular");
+        colArea.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().detalle().getSeccion().getAsignatura().getAreaCurricular() == null
+                ? "Pendiente" : c.getValue().detalle().getSeccion().getAsignatura().getAreaCurricular()));
+
+        TableColumn<FilaMateria, String> colGrado = new TableColumn<>("Grado");
+        colGrado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().detalle().getSeccion().getGrado() == null
+                ? "Pendiente" : c.getValue().detalle().getSeccion().getGrado().nombre()));
+
         TableColumn<FilaMateria, Number> colCreditos = new TableColumn<>("Créditos");
         colCreditos.setCellValueFactory(c -> new SimpleIntegerProperty(
                 c.getValue().detalle().getSeccion().getAsignatura().getCreditos()));
@@ -68,7 +76,7 @@ record FilaMateria(Inscripcion inscripcion, DetalleInscripcion detalle) {
         colEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().detalle().getEstadoMateria()));
         colEstado.setMaxWidth(90);
 
-        tabla.getColumns().addAll(colPeriodo, colAsignatura, colCreditos, colProfesor, colAula, colHorario,
+        tabla.getColumns().addAll(colPeriodo, colAsignatura, colArea, colGrado, colCreditos, colProfesor, colAula, colHorario,
                 colEstado);
         tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         return tabla;

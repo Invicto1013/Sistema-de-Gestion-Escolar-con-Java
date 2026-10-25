@@ -58,9 +58,11 @@ public class ReporteInscripcionesPanel extends VBox {
         TableColumn<LineaReporteInscripcion, String> matricula = columna("Matrícula", LineaReporteInscripcion::matricula);
         TableColumn<LineaReporteInscripcion, String> periodo = columna("Período", LineaReporteInscripcion::periodo);
         TableColumn<LineaReporteInscripcion, String> asignatura = columna("Asignatura", LineaReporteInscripcion::asignatura);
+        TableColumn<LineaReporteInscripcion, String> grado = columna("Grado", f -> f.grado() == null ? "Pendiente" : f.grado());
+        TableColumn<LineaReporteInscripcion, String> area = columna("Área", f -> f.area() == null ? "Pendiente" : f.area());
         TableColumn<LineaReporteInscripcion, String> seccion = columna("Sección", f -> Integer.toString(f.idSeccion()));
         TableColumn<LineaReporteInscripcion, String> estadoMateria = columna("Estado", LineaReporteInscripcion::estado);
-        tabla.getColumns().addAll(fecha, estudiante, matricula, periodo, asignatura, seccion, estadoMateria);
+        tabla.getColumns().addAll(fecha, estudiante, matricula, periodo, asignatura, grado, area, seccion, estadoMateria);
         tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 
@@ -140,19 +142,20 @@ public class ReporteInscripcionesPanel extends VBox {
 
         GridPane filas = new GridPane();
         filas.setPrefWidth(724);
-        double[] anchos = {12, 21, 12, 11, 24, 8, 12};
+        double[] anchos = {10, 17, 10, 9, 20, 10, 10, 6, 8};
         for (double ancho : anchos) {
             javafx.scene.layout.ColumnConstraints c = new javafx.scene.layout.ColumnConstraints();
             c.setPercentWidth(ancho);
             c.setMinWidth(0);
             filas.getColumnConstraints().add(c);
         }
-        String[] titulos = {"Fecha", "Estudiante", "Matrícula", "Período", "Asignatura", "Sección", "Estado"};
+        String[] titulos = {"Fecha", "Estudiante", "Matrícula", "Período", "Asignatura", "Grado", "Área", "Sección", "Estado"};
         for (int i = 0; i < titulos.length; i++) filas.add(celda(titulos[i], true), i, 0);
         int fila = 1;
         for (LineaReporteInscripcion registro : tabla.getItems()) {
             String[] valores = {registro.fecha().toString(), registro.estudiante(), registro.matricula(),
-                    registro.periodo(), registro.asignatura(), Integer.toString(registro.idSeccion()), registro.estado()};
+                    registro.periodo(), registro.asignatura(), registro.grado() == null ? "Pendiente" : registro.grado(),
+                    registro.area() == null ? "Pendiente" : registro.area(), Integer.toString(registro.idSeccion()), registro.estado()};
             for (int columna = 0; columna < valores.length; columna++) {
                 filas.add(celda(valores[columna], false), columna, fila);
             }

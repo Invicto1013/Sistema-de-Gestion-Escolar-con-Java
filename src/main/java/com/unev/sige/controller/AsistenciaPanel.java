@@ -28,6 +28,7 @@ public class AsistenciaPanel extends VBox {
     private record OpcionSeccion(Seccion seccion) {
         @Override public String toString() {
             return seccion.getAsignatura().getCodigo() + " - " + seccion.getAsignatura().getNombre()
+                    + " | " + (seccion.getGrado() == null ? "Grado pendiente" : seccion.getGrado().nombre())
                     + " | " + seccion.getHorario() + " | Aula " + seccion.getAula();
         }
     }
