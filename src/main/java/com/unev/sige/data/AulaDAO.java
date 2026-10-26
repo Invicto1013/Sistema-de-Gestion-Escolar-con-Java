@@ -13,6 +13,37 @@ public final class AulaDAO {
                            String entregaNombre,long entregaBytes,String entregaFecha,int entregaId,String entregaEstudiante) { }
     public record Archivo(String nombre,String storageKey,String tipo) { }
 
+    /** Guarda el contenido de un archivo en MySQL (tabla aula_archivos) y devuelve su clave. */
+    public String guardarArchivo(byte[] datos) throws SQLException {
+        String key=java.util.UUID.randomUUID().toString();
+        try(Connection c=ConexionBD.obtener();PreparedStatement ps=c.prepareStatement("INSERT INTO aula_archivos(archivo_key,contenido) VALUES(?,?)")){
+            ps.setString(1,key);ps.setBytes(2,datos);ps.executeUpdate();
+        }
+        return key;
+    }
+
+    /** Devuelve el contenido guardado para la clave, o null si no existe (por ejemplo, archivos antiguos en disco). */
+    public byte[] leerArchivo(String key) throws SQLException {
+        try(Connection c=ConexionBD.obtener();PreparedStatement ps=c.prepareStatement("SELECT contenido FROM aula_archivos WHERE archivo_key=?")){
+            ps.setString(1,key);
+            try(ResultSet rs=ps.executeQuery()){return rs.next()?rs.getBytes(1):null;}
+        }
+    }
+
+    public void eliminarArchivo(String key) throws SQLException {
+        try(Connection c=ConexionBD.obtener();PreparedStatement ps=c.prepareStatement("DELETE FROM aula_archivos WHERE archivo_key=?")){
+            ps.setString(1,key);ps.executeUpdate();
+        }
+    }
+
+    /** Borra contenidos que ya no pertenecen a ningún material ni entrega (tareas reemplazadas, secciones eliminadas). */
+    public int limpiarArchivosHuerfanos() throws SQLException {
+        String sql="DELETE FROM aula_archivos WHERE fecha<NOW()-INTERVAL 1 HOUR "
+                +"AND archivo_key NOT IN(SELECT archivo_key FROM aula_materiales WHERE archivo_key IS NOT NULL) "
+                +"AND archivo_key NOT IN(SELECT archivo_key FROM aula_entregas)";
+        try(Connection c=ConexionBD.obtener();PreparedStatement ps=c.prepareStatement(sql)){return ps.executeUpdate();}
+    }
+
     public List<Material> paraProfesor(int id) throws SQLException {
         String sql="SELECT m.*,a.nombre AS asignatura,g.nombre AS grado,e.id_entrega,e.archivo_nombre AS entrega_nombre,e.archivo_bytes AS entrega_bytes,DATE_FORMAT(e.fecha_entrega,'%Y-%m-%d %H:%i') AS entrega_fecha,CONCAT(eu.nombre,' ',eu.apellido) AS entrega_estudiante FROM aula_materiales m JOIN secciones s ON s.id_seccion=m.id_seccion JOIN asignaturas a ON a.id_asignatura=s.id_asignatura LEFT JOIN curriculo_grados g ON g.id=s.id_grado LEFT JOIN aula_entregas e ON e.id_material=m.id_material LEFT JOIN usuarios eu ON eu.id_usuario=e.id_estudiante WHERE m.id_profesor=? ORDER BY m.fecha_publicacion DESC,e.fecha_entrega DESC";
         return listar(sql,id);

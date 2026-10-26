@@ -70,7 +70,7 @@ import java.util.concurrent.Executors;
 public final class WebApp {
     private static final String COOKIE = "SIGEWEB";
     private static final long MAX_IDLE_SECONDS = 8 * 60 * 60;
-    private static final int MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+    private static final int MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
     private static final int MAX_MULTIPART_BYTES = MAX_UPLOAD_BYTES + 256 * 1024;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Map<String, WebSession> SESSIONS = new ConcurrentHashMap<>();
@@ -100,6 +100,11 @@ public final class WebApp {
         EXECUTOR = Executors.newFixedThreadPool(Math.max(4, Runtime.getRuntime().availableProcessors()));
         SERVER.setExecutor(EXECUTOR);
         SERVER.start();
+        Thread limpieza = new Thread(() -> {
+            try { new AulaDAO().limpiarArchivosHuerfanos(); } catch (SQLException ignored) { /* la tabla puede no existir aún */ }
+        }, "SIGE-Limpieza-Aula");
+        limpieza.setDaemon(true);
+        limpieza.start();
         System.out.println("SIGE Web disponible en http://" + host + ":" + port
                 + " (SIGE_WEB_HOST permite configurar la interfaz de red).");
     }
@@ -183,7 +188,7 @@ public final class WebApp {
                 default -> page(x, s, errorPage("Página no encontrada."));
             }
         } catch (UploadTooLargeException e) {
-            send(x,413,"text/plain; charset=utf-8","El archivo supera el límite de 20 MB.");
+            send(x,413,"text/plain; charset=utf-8","El archivo supera el límite de 10 MB.");
         } catch (Exception e) {
             e.printStackTrace();
             page(x, sessionFor(x), errorPage("No se pudo completar la solicitud. Revisa la conexión con la base de datos."));
@@ -697,7 +702,7 @@ public final class WebApp {
                 for(Seccion sec:sections)options.append("<option value='").append(sec.getId()).append("'>").append(esc(sec.getAsignatura().getNombre()+" · "+(sec.getGrado()==null?"Sin grado":sec.getGrado().nombre())+" · sección "+sec.getId())).append("</option>");
                 if(sections.isEmpty())content.append("<section class='card'><p class='empty'>No tienes secciones asignadas. Solicita al administrador que te asigne una sección para publicar.</p></section>");
                 else content.append("<section class='card aula-editor'><h2>Publicar una clase o tarea</h2><form class='aula-form' method='post' action='/aula-publicar' enctype='multipart/form-data'>").append(hiddenCsrf(s))
-                        .append("<label>Sección<select name='seccion' required>").append(options).append("</select></label><div class='aula-fields'><label>Tipo<select name='tipo' required><option value='CLASE'>Clase o material</option><option value='TAREA'>Tarea</option></select></label><label>Título<input name='titulo' maxlength='120' required></label><label>Fecha límite (opcional)<input type='date' name='fecha_limite'></label></div><label>Instrucciones o descripción<textarea name='descripcion' maxlength='5000' rows='4'></textarea></label><label>Archivo adjunto (opcional)<input type='file' name='archivo'><small>Se acepta cualquier formato. Máximo 20 MB por archivo.</small></label><button class='primary' type='submit'>Publicar</button></form></section>");
+                        .append("<label>Sección<select name='seccion' required>").append(options).append("</select></label><div class='aula-fields'><label>Tipo<select name='tipo' required><option value='CLASE'>Clase o material</option><option value='TAREA'>Tarea</option></select></label><label>Título<input name='titulo' maxlength='120' required></label><label>Fecha límite (opcional)<input type='date' name='fecha_limite'></label></div><label>Instrucciones o descripción<textarea name='descripcion' maxlength='5000' rows='4'></textarea></label><label>Archivo adjunto (opcional)<input type='file' name='archivo'><small>Se acepta cualquier formato. Máximo 10 MB por archivo.</small></label><button class='primary' type='submit'>Publicar</button></form></section>");
             }
             if(materials.isEmpty())content.append("<section class='card'><h2>Publicaciones</h2><p class='empty'>Aún no hay clases ni tareas para mostrar.</p></section>");
             else{
@@ -711,7 +716,7 @@ public final class WebApp {
                     if(m.storageKey()!=null)content.append("<p><a class='secondary-link' href='/archivo-aula?material=").append(m.id()).append("'>Descargar material: ").append(esc(m.archivoNombre())).append(" ( ").append(humanBytes(m.archivoBytes())).append(" )</a></p>");
                     if(s.user.getRol()==Rol.ESTUDIANTE&&m.tipo().equals("TAREA")){
                         if(m.entregaId()>0)content.append("<div class='success'>Entrega enviada: ").append(esc(m.entregaNombre())).append(" · ").append(esc(m.entregaFecha())).append(". Puedes reemplazarla con una nueva versión.</div>");
-                        content.append("<form class='submit-work' method='post' action='/aula-entregar' enctype='multipart/form-data'>").append(hiddenCsrf(s)).append("<input type='hidden' name='material' value='").append(m.id()).append("'><label>Archivo de tu entrega<input type='file' name='archivo' required></label><small>Se acepta cualquier formato. Máximo 20 MB.</small><button class='primary' type='submit'>Subir entrega</button></form>");
+                        content.append("<form class='submit-work' method='post' action='/aula-entregar' enctype='multipart/form-data'>").append(hiddenCsrf(s)).append("<input type='hidden' name='material' value='").append(m.id()).append("'><label>Archivo de tu entrega<input type='file' name='archivo' required></label><small>Se acepta cualquier formato. Máximo 10 MB.</small><button class='primary' type='submit'>Subir entrega</button></form>");
                     }else if(s.user.getRol()==Rol.PROFESOR&&m.tipo().equals("TAREA")){
                         content.append("<div class='submissions'><b>Entregas recibidas</b>");
                         for(AulaDAO.Material submission:materials)if(submission.id()==m.id()&&submission.entregaId()>0)content.append("<div class='submission-row'><span><b>").append(esc(submission.entregaEstudiante())).append("</b> · ").append(esc(submission.entregaNombre())).append(" · ").append(esc(submission.entregaFecha())).append("</span><a class='secondary-link' href='/archivo-aula?entrega=").append(submission.entregaId()).append("'>Descargar</a></div>");
@@ -753,13 +758,16 @@ public final class WebApp {
         try{
             AulaDAO dao=new AulaDAO();AulaDAO.Archivo file=material!=null?dao.archivoMaterial(s.user.getId(),s.user.getRol(),material):dao.archivoEntrega(s.user.getId(),s.user.getRol(),submission);
             if(file==null){send(x,404,"text/plain; charset=utf-8","Archivo no encontrado");return;}
-            Path path=uploadRoot().resolve(file.storageKey()).normalize();if(!path.getParent().equals(uploadRoot().toAbsolutePath().normalize())||!Files.isRegularFile(path)){send(x,404,"text/plain; charset=utf-8","Archivo no encontrado");return;}
-            byte[] data=Files.readAllBytes(path);Headers h=x.getResponseHeaders();h.set("Cache-Control","no-store");h.set("X-Content-Type-Options","nosniff");h.set("Content-Disposition","attachment; filename=\"archivo-descargado\"; filename*=UTF-8''"+java.net.URLEncoder.encode(file.nombre(),StandardCharsets.UTF_8).replace("+","%20"));h.set("Content-Type","application/octet-stream");x.sendResponseHeaders(200,data.length);x.getResponseBody().write(data);
+            byte[] data=dao.leerArchivo(file.storageKey());if(data==null)data=leerArchivoAntiguo(file.storageKey());if(data==null){send(x,404,"text/plain; charset=utf-8","Archivo no encontrado");return;}
+            Headers h=x.getResponseHeaders();h.set("Cache-Control","no-store");h.set("X-Content-Type-Options","nosniff");h.set("Content-Disposition","attachment; filename=\"archivo-descargado\"; filename*=UTF-8''"+java.net.URLEncoder.encode(file.nombre(),StandardCharsets.UTF_8).replace("+","%20"));h.set("Content-Type","application/octet-stream");x.sendResponseHeaders(200,data.length);x.getResponseBody().write(data);
         }catch(SQLException|IOException e){send(x,500,"text/plain; charset=utf-8","No se pudo descargar el archivo");}
     }
 
-    private static String saveUpload(byte[] data)throws IOException{if(data.length>MAX_UPLOAD_BYTES)throw new IOException("El archivo supera 20 MB.");Path root=uploadRoot();Files.createDirectories(root);String key=UUID.randomUUID().toString();Files.write(root.resolve(key),data,StandardOpenOption.CREATE_NEW,StandardOpenOption.WRITE);return key;}
-    private static void deleteUpload(String key){try{Files.deleteIfExists(uploadRoot().resolve(key));}catch(IOException ignored){}}
+    /** Guarda el archivo en MySQL (aula_archivos): el disco de los servicios gratuitos se borra al reiniciar. */
+    private static String saveUpload(byte[] data)throws IOException,SQLException{if(data.length>MAX_UPLOAD_BYTES)throw new IOException("El archivo supera 10 MB.");return new AulaDAO().guardarArchivo(data);}
+    /** Lee archivos subidos antes de usar MySQL (carpeta local data/uploads); null si no existe. */
+    private static byte[] leerArchivoAntiguo(String key)throws IOException{Path root=uploadRoot();Path path=root.resolve(key).normalize();if(!root.equals(path.getParent())||!Files.isRegularFile(path))return null;return Files.readAllBytes(path);}
+    private static void deleteUpload(String key){try{new AulaDAO().eliminarArchivo(key);}catch(SQLException ignored){}}
     private static Path uploadRoot(){String configured=System.getenv("SIGE_UPLOAD_DIR");Path root=configured==null||configured.isBlank()?Path.of("data","uploads"):Path.of(configured);return root.toAbsolutePath().normalize();}
     private static String safeFileName(String original){String value=original==null?"archivo":original.replace('\\','/');int slash=value.lastIndexOf('/');if(slash>=0)value=value.substring(slash+1);value=value.replaceAll("[\\p{Cntrl}]", "_").trim();if(value.isBlank()||value.equals(".")||value.equals(".."))value="archivo";return value.length()>180?value.substring(value.length()-180):value;}
     private static String humanBytes(long n){if(n<1024)return n+" B";if(n<1024*1024)return String.format(java.util.Locale.ROOT,"%.1f KB",n/1024.0);return String.format(java.util.Locale.ROOT,"%.1f MB",n/(1024.0*1024));}
