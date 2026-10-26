@@ -459,9 +459,9 @@ public final class WebApp {
         return shell("Cambio de contraseña", (error == null ? "" : alert(error))+"<section class='auth-card'><div class='eyebrow'>SEGURIDAD</div><h1>Cambia tu contraseña</h1>"
                 +(initial?"<p>Debes actualizar la contraseña inicial para continuar.</p>":"<p>Confirma tu contraseña actual para guardar una nueva.</p>")+"<form method='post' action='/change-password'>"+hiddenCsrf(s)
                 +"<label>Contraseña actual<input name='actual' type='password' autocomplete='current-password' required></label>"
-                +"<label>Nueva contraseña<input name='nueva' type='password' minlength='4' autocomplete='new-password' required></label>"
-                +"<label>Confirma la nueva contraseña<input name='confirmar' type='password' minlength='4' autocomplete='new-password' required></label>"
-                +"<button class='primary' type='submit'>"+(initial?"Actualizar y entrar":"Guardar contraseña")+"</button></form></section>", initial, initial?"":s.user.getNombreCompleto());
+                +"<label>Nueva contraseña<input name='nueva' type='password' minlength='8' autocomplete='new-password' required></label>"
+                +"<label>Confirma la nueva contraseña<input name='confirmar' type='password' minlength='8' autocomplete='new-password' required></label>"
+                +"<p class='hint'>"+esc(PoliticaContrasena.REQUISITOS)+"</p>"+"<button class='primary' type='submit'>"+(initial?"Actualizar y entrar":"Guardar contraseña")+"</button></form></section>", initial, initial?"":s.user.getNombreCompleto());
     }
 
     private static String profilePage(WebSession s, String query) {
@@ -1326,8 +1326,8 @@ public final class WebApp {
                 +"<section class='card subject-editor'><form method='post' action='/guardar-profesor'>"+hiddenCsrf(s)
                 +"<div class='subject-fields'><label>Nombre<input name='nombre' maxlength='50' autocomplete='given-name' required></label><label>Apellido<input name='apellido' maxlength='50' autocomplete='family-name' required></label>"
                 +"<label>Correo personal<input name='correo' type='email' maxlength='100' autocomplete='email' required></label><label>Código de profesor<input name='codigo' maxlength='20' required></label>"
-                +"<label>Especialidad<input name='especialidad' maxlength='100' required></label><label>Contraseña inicial<input name='contrasena' type='password' minlength='4' autocomplete='new-password' required></label>"
-                +"<label>Confirmar contraseña<input name='confirmar' type='password' minlength='4' autocomplete='new-password' required></label></div><p class='hint'>La cuenta deberá cambiar esta contraseña al iniciar sesión por primera vez.</p>"
+                +"<label>Especialidad<input name='especialidad' maxlength='100' required></label><label>Contraseña inicial<input name='contrasena' type='password' minlength='8' autocomplete='new-password' required></label>"
+                +"<label>Confirmar contraseña<input name='confirmar' type='password' minlength='8' autocomplete='new-password' required></label></div><p class='hint'>La cuenta deberá cambiar esta contraseña al iniciar sesión por primera vez.</p>"
                 +"<div class='subject-actions'><button class='primary' type='submit'>Crear cuenta de profesor</button></div></form></section>";
         return shell("Crear profesor",body,true,s.user.getNombreCompleto());
     }
@@ -1342,7 +1342,7 @@ public final class WebApp {
         if(name.isBlank()||surname.isBlank()||email.isBlank()||code.isBlank()||specialty.isBlank()||password.isBlank()||confirm.isBlank())error="Completa todos los campos.";
         else if(name.length()>50||surname.length()>50||email.length()>100||code.length()>20||specialty.length()>100)error="Revisa los límites: nombre/apellido 50, correo 100, código 20 y especialidad 100 caracteres.";
         else if(!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"))error="Ingresa un correo electrónico válido.";
-        else if(password.length()<4)error="La contraseña inicial debe tener al menos 4 caracteres.";
+        else if(PoliticaContrasena.validar(password)!=null)error=PoliticaContrasena.validar(password);
         else if(!password.equals(confirm))error="Las contraseñas no coinciden.";
         if(error!=null){page(x,s,createTeacherPage(s,null,error));return;}
         try{

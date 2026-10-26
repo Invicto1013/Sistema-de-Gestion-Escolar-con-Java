@@ -45,7 +45,7 @@ public class CrearProfesorPanel extends VBox {
         correo.setPromptText("docente@institucion.edu.do");
         codigo.setPromptText("Ej. P-001");
         especialidad.setPromptText("Ej. Matemática");
-        contrasena.setPromptText("Mínimo 4 caracteres");
+        contrasena.setPromptText(com.unev.sige.model.PoliticaContrasena.REQUISITOS);
         confirmar.setPromptText("Repite la contraseña");
         agregarFila(formulario, 0, "Nombre:", nombre);
         agregarFila(formulario, 1, "Apellido:", apellido);
@@ -92,8 +92,9 @@ public class CrearProfesorPanel extends VBox {
             Dialogos.estado(estado, "Ingresa un correo electrónico válido.", true);
             return;
         }
-        if (pass.length() < 4) {
-            Dialogos.estado(estado, "La contraseña inicial debe tener al menos 4 caracteres.", true);
+        String incumplimiento = com.unev.sige.model.PoliticaContrasena.validar(pass);
+        if (incumplimiento != null) {
+            Dialogos.estado(estado, incumplimiento, true);
             return;
         }
         if (!pass.equals(pass2)) {

@@ -2,6 +2,7 @@ package com.unev.sige.data;
 
 import com.unev.sige.model.Estudiante;
 import com.unev.sige.model.Padre;
+import com.unev.sige.model.PoliticaContrasena;
 import com.unev.sige.model.Profesor;
 import com.unev.sige.model.Rol;
 import com.unev.sige.model.Usuario;
@@ -72,6 +73,8 @@ public class UsuarioDAO {
      * Al terminar, el objeto recibido queda con su id (y idPadre) generado.
      */
     public void registrar(Usuario usuario, String contrasenaPlana) throws SQLException {
+        String incumplimiento = PoliticaContrasena.validar(contrasenaPlana);
+        if (incumplimiento != null) throw new IllegalArgumentException(incumplimiento);
         String hash = Usuario.hashear(contrasenaPlana);
 
         try (Connection conn = ConexionBD.obtener()) {
@@ -99,6 +102,8 @@ public class UsuarioDAO {
     /** Registra un profesor solo si el usuario que ejecuta la operación es ADMIN. */
     public void registrarProfesorComoAdmin(Profesor profesor, String contrasenaPlana, int idAdmin)
             throws SQLException, PermisoDenegadoException {
+        String incumplimiento = PoliticaContrasena.validar(contrasenaPlana);
+        if (incumplimiento != null) throw new PermisoDenegadoException(incumplimiento);
         String hash = Usuario.hashear(contrasenaPlana);
         try (Connection conn = ConexionBD.obtener()) {
             conn.setAutoCommit(false);
@@ -130,8 +135,9 @@ public class UsuarioDAO {
     /** Valida la contraseña actual y guarda la nueva con BCrypt, eliminando el indicador inicial. */
     public void cambiarContrasena(int idUsuario, String actual, String nueva)
             throws SQLException, PermisoDenegadoException {
-        if (nueva == null || nueva.length() < 4) {
-            throw new PermisoDenegadoException("La nueva contraseña debe tener al menos 4 caracteres.");
+        String incumplimiento = PoliticaContrasena.validar(nueva);
+        if (incumplimiento != null) {
+            throw new PermisoDenegadoException(incumplimiento);
         }
         try (Connection conn = ConexionBD.obtener()) {
             conn.setAutoCommit(false);

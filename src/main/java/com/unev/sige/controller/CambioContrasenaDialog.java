@@ -29,7 +29,7 @@ final class CambioContrasenaDialog {
         PasswordField actual = new PasswordField();
         actual.setPromptText("Contraseña actual");
         PasswordField nueva = new PasswordField();
-        nueva.setPromptText("Mínimo 4 caracteres");
+        nueva.setPromptText(com.unev.sige.model.PoliticaContrasena.REQUISITOS);
         PasswordField confirmar = new PasswordField();
         confirmar.setPromptText("Repite la nueva contraseña");
         Label error = new Label();
@@ -51,8 +51,8 @@ final class CambioContrasenaDialog {
             String mensaje = null;
             if (pedirActual && (actual.getText() == null || actual.getText().isBlank())) {
                 mensaje = "Escribe tu contraseña actual.";
-            } else if (nueva.getText() == null || nueva.getText().length() < 4) {
-                mensaje = "La nueva contraseña debe tener al menos 4 caracteres.";
+            } else if (com.unev.sige.model.PoliticaContrasena.validar(nueva.getText()) != null) {
+                mensaje = com.unev.sige.model.PoliticaContrasena.validar(nueva.getText());
             } else if (!nueva.getText().equals(confirmar.getText())) {
                 mensaje = "Las contraseñas nuevas no coinciden.";
             } else if (pedirActual && nueva.getText().equals(actual.getText())) {

@@ -139,8 +139,9 @@ public class RegistroController {
             return;
         }
 
-        if (contrasena.length() < 4) {
-            mostrarError("La contraseña debe tener al menos 4 caracteres.");
+        String incumplimiento = com.unev.sige.model.PoliticaContrasena.validar(contrasena);
+        if (incumplimiento != null) {
+            mostrarError(incumplimiento);
             return;
         }
 

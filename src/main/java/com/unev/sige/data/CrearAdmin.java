@@ -23,6 +23,12 @@ public class CrearAdmin {
         String correo = args[2].trim().toLowerCase();
         String contrasena = args[3];
 
+        String incumplimiento = com.unev.sige.model.PoliticaContrasena.validar(contrasena);
+        if (incumplimiento != null) {
+            System.err.println(incumplimiento);
+            return;
+        }
+
         UsuarioDAO dao = new UsuarioDAO();
         try {
             if (dao.existeCorreo(correo)) {
