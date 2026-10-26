@@ -54,6 +54,20 @@ public class UsuarioDAO {
         }
     }
 
+    private static final String SQL_BUSCAR_POR_ID =
+            SQL_BUSCAR_POR_CORREO.replace("WHERE u.correo = ?", "WHERE u.id_usuario = ?");
+
+    /** Busca un usuario por su id (la web lo usa para restaurar sesiones guardadas). */
+    public Optional<Usuario> buscarPorId(int idUsuario) throws SQLException {
+        try (Connection conn = ConexionBD.obtener();
+             PreparedStatement ps = conn.prepareStatement(SQL_BUSCAR_POR_ID)) {
+            ps.setInt(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapear(rs)) : Optional.empty();
+            }
+        }
+    }
+
     public boolean existeCorreo(String correo) throws SQLException {
         return existe("SELECT 1 FROM usuarios WHERE correo = ? LIMIT 1", correo);
     }

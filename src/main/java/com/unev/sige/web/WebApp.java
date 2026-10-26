@@ -18,6 +18,7 @@ import com.unev.sige.data.InscripcionInvalidaException;
 import com.unev.sige.data.PermisoDenegadoException;
 import com.unev.sige.data.ReporteDAO;
 import com.unev.sige.data.SesionDAO;
+import com.unev.sige.data.SesionWebDAO;
 import com.unev.sige.data.SeccionDAO;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.data.VinculacionDAO;
@@ -74,6 +75,8 @@ public final class WebApp {
     private static final int MAX_MULTIPART_BYTES = MAX_UPLOAD_BYTES + 256 * 1024;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Map<String, WebSession> SESSIONS = new ConcurrentHashMap<>();
+    private static final SesionWebDAO SESIONES_WEB = new SesionWebDAO();
+    private static volatile long ultimaPurgaSesiones = 0;
     private static volatile HttpServer SERVER;
     private static volatile ExecutorService EXECUTOR;
     private static final ThreadLocal<Boolean> LOCAL_REQUEST = ThreadLocal.withInitial(() -> false);
@@ -314,6 +317,7 @@ public final class WebApp {
                 secret = MFA.guardarSecretoPendienteSiFalta(user.getId(), secret);
                 s.secret = TOTP.descifrar(secret, requireEncryptionKey());
             }
+            persistSession(s);
             redirect(x, "/2fa");
         } catch (SQLException | Configuracion2FAException e) {
             page(x, s, home(s, e.getMessage() == null ? "No se pudo iniciar sesión." : e.getMessage()));
@@ -326,7 +330,7 @@ public final class WebApp {
             if (TOTP.verificar(s.secret, f.get("codigo"))) {
                 MFA.registrarExito(s.pending.getId(), !s.activeMfa);
                 accessLog(s.pending.getId(), s.pending.getCorreo(), "EXITOSO", "Inicio web correcto");
-                if (s.pending.isDebeCambiarContrasena()) { redirect(x, "/password"); return; }
+                if (s.pending.isDebeCambiarContrasena()) { persistSession(s); redirect(x, "/password"); return; }
                 finishLogin(x, s);
             } else {
                 Autenticacion2FADAO.Intento attempt = MFA.registrarIntentoFallido(s.pending.getId());
@@ -366,12 +370,14 @@ public final class WebApp {
         s.secret = null;
         s.passwordWasVerified = false;
         s.login = new SesionDAO().iniciar(s.user.getId(), x.getRemoteAddress().getAddress().getHostAddress());
+        persistSession(s);
         redirect(x, "/");
     }
 
     private static void logout(HttpExchange x, WebSession s) throws SQLException, IOException {
         if (s.login != null) new SesionDAO().cerrar(s.login.getIdSesion());
         SESSIONS.remove(s.id);
+        try { SESIONES_WEB.eliminar(s.id); } catch (SQLException ignored) { /* caduca sola */ }
         clearCookie(x);
         redirect(x, "/");
     }
@@ -390,6 +396,7 @@ public final class WebApp {
             if(SERVER!=null)SERVER.stop(1);
             if(EXECUTOR!=null)EXECUTOR.shutdownNow();
             SESSIONS.clear();
+            try{SESIONES_WEB.eliminarTodas();}catch(SQLException ignored){}
         },"sige-web-shutdown");
         stopper.setDaemon(true);stopper.start();
     }
@@ -1207,6 +1214,7 @@ public final class WebApp {
         try{
             USERS.restablecerContrasenaComoAdmin(s.user.getId(),id,temporary);
             SESSIONS.entrySet().removeIf(entry->entry.getValue().user!=null&&entry.getValue().user.getId()==id);
+            SESIONES_WEB.eliminarDeUsuario(id);
             String body="<div class='page-heading'><div><div class='eyebrow'>ADMINISTRACIÓN</div><h1>Contraseña restablecida</h1></div></div>"
                     +"<section class='card subject-editor'><p>Se generó una clave temporal. Compártela con el usuario de forma segura; se le pedirá cambiarla al iniciar sesión.</p>"
                     +"<label>Clave temporal<input readonly value='"+esc(temporary)+"' onclick='this.select()'></label><p class='help-text'>Esta clave se muestra una sola vez. Si no la guardaste, genera otra desde Usuarios.</p>"
@@ -1447,6 +1455,7 @@ public final class WebApp {
         try{
             new SesionDAO().cerrarComoAdmin(s.user.getId(),sessionId);
             SESSIONS.entrySet().removeIf(entry->entry.getValue().login!=null&&entry.getValue().login.getIdSesion()==sessionId);
+            SESIONES_WEB.eliminarPorLogin(sessionId);
             redirect(x,"/historial-sesiones?cerrada=1");
         }catch(PermisoDenegadoException e){page(x,s,sessionHistoryPage(s,null));}
         catch(SQLException e){page(x,s,errorPage("No se pudo cerrar la sesión. Verifica la conexión con MySQL."));}
@@ -1598,12 +1607,49 @@ public final class WebApp {
     private static WebSession sessionFor(HttpExchange x){
         String token=null;String header=x.getRequestHeaders().getFirst("Cookie");
         if(header!=null)for(String c:header.split(";")){String[] p=c.trim().split("=",2);if(p.length==2&&p[0].equals(COOKIE))token=p[1];}
-        WebSession s=token==null?null:SESSIONS.get(token);if(s==null){s=new WebSession(randomToken());SESSIONS.put(s.id,s);setCookie(x,s.id);}s.last=Instant.now().getEpochSecond();RENDER_CSRF.set(s.csrf);
+        WebSession s=token==null?null:SESSIONS.get(token);if(s==null&&token!=null)s=restoreSession(x,token);if(s==null){s=new WebSession(randomToken());SESSIONS.put(s.id,s);setCookie(x,s.id);}s.last=Instant.now().getEpochSecond();touchSession(s);RENDER_CSRF.set(s.csrf);
         LOCAL_REQUEST.set(x.getRemoteAddress()!=null&&x.getRemoteAddress().getAddress().isLoopbackAddress());
         ADMIN_REQUEST.set(s.user!=null&&s.user.getRol()!=null&&"ADMIN".equals(s.user.getRol().name()));
         ROLE_REQUEST.set(s.user==null||s.user.getRol()==null?null:s.user.getRol().name());return s;
     }
     private static void rotateCookie(HttpExchange x,WebSession s){SESSIONS.remove(s.id);s.id=randomToken();s.csrf=randomToken();SESSIONS.put(s.id,s);setCookie(x,s.id);}
+    /** Reconstruye una sesión guardada en MySQL (tras un reinicio del servidor); null si no existe o ya no vale. */
+    private static WebSession restoreSession(HttpExchange x,String token){
+        try{
+            SesionWebDAO.Datos d=SESIONES_WEB.cargar(token,MAX_IDLE_SECONDS);
+            if(d==null)return null;
+            WebSession s=new WebSession(token);s.csrf=d.csrf();
+            if(d.idUsuario()!=null&&d.idLogin()!=null){
+                Usuario u=USERS.buscarPorId(d.idUsuario()).orElse(null);
+                if(u==null||!u.isActivo()){SESIONES_WEB.eliminar(token);return null;}
+                s.user=u;
+                String ip=x.getRemoteAddress()==null?"0.0.0.0":x.getRemoteAddress().getAddress().getHostAddress();
+                s.login=new ControladorSesion(d.idLogin(),u.getId(),ip);
+            }else if(d.idPendiente()!=null){
+                Usuario u=USERS.buscarPorId(d.idPendiente()).orElse(null);
+                Autenticacion2FADAO.Estado state=u==null?null:MFA.obtenerEstado(u.getId());
+                if(u==null||!u.isActivo()||state==null||state.secretoCifrado()==null||state.secretoCifrado().isBlank()){SESIONES_WEB.eliminar(token);return null;}
+                s.pending=u;s.passwordWasVerified=true;s.activeMfa=d.mfaActivo();
+                s.secret=TOTP.descifrar(state.secretoCifrado(),requireEncryptionKey());
+            }else{SESIONES_WEB.eliminar(token);return null;}
+            s.saved=Instant.now().getEpochSecond();
+            WebSession previous=SESSIONS.putIfAbsent(token,s);return previous!=null?previous:s;
+        }catch(Exception e){return null;}
+    }
+    /** Guarda la sesión en MySQL cuando tiene un usuario o una verificación 2FA pendiente. */
+    private static void persistSession(WebSession s){
+        if(s.user==null&&s.pending==null)return;
+        try{
+            SESIONES_WEB.guardar(s.id,s.csrf,s.user==null?null:s.user.getId(),s.user==null?s.pending.getId():null,s.activeMfa,s.login==null?null:s.login.getIdSesion());
+            s.saved=Instant.now().getEpochSecond();
+        }catch(SQLException e){System.err.println("No se pudo guardar la sesión web: "+e.getMessage());}
+    }
+    /** Renueva el último acceso guardado, como máximo una vez por minuto por sesión. */
+    private static void touchSession(WebSession s){
+        if(s.user==null&&s.pending==null)return;
+        long now=Instant.now().getEpochSecond();if(now-s.saved<60)return;s.saved=now;
+        try{SESIONES_WEB.tocar(s.id);}catch(SQLException ignored){}
+    }
     private static void setCookie(HttpExchange x,String id){String secure="true".equalsIgnoreCase(env("SIGE_WEB_SECURE_COOKIE","false"))?"; Secure":"";x.getResponseHeaders().add("Set-Cookie",COOKIE+"="+id+"; Path=/; HttpOnly; SameSite=Strict; Max-Age="+MAX_IDLE_SECONDS+secure);}
     private static void clearCookie(HttpExchange x){x.getResponseHeaders().add("Set-Cookie",COOKIE+"=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");}
     private static String randomToken(){byte[] bytes=new byte[32];RANDOM.nextBytes(bytes);return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);}
@@ -1617,7 +1663,7 @@ public final class WebApp {
         }catch(WriterException e){return "";}
     }
     private static void accessLog(Integer id,String email,String result,String detail){try{MFA.registrarAcceso(id,email,result,detail);}catch(SQLException ignored){}}
-    private static void cleanupSessions(){long now=Instant.now().getEpochSecond();SESSIONS.entrySet().removeIf(e->now-e.getValue().last>MAX_IDLE_SECONDS);}
+    private static void cleanupSessions(){long now=Instant.now().getEpochSecond();SESSIONS.entrySet().removeIf(e->now-e.getValue().last>MAX_IDLE_SECONDS);if(now-ultimaPurgaSesiones>600){ultimaPurgaSesiones=now;try{SESIONES_WEB.purgarCaducadas(MAX_IDLE_SECONDS);}catch(SQLException ignored){}}}
     private static String env(String key,String fallback){String v=System.getenv(key);return v==null||v.isBlank()?fallback:v.trim();}
     private static String esc(String s){if(s==null)return "";return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;").replace("'","&#39;");}
 
@@ -1625,6 +1671,7 @@ public final class WebApp {
         private String id; private String csrf=randomToken(); private long last=Instant.now().getEpochSecond();
         private Usuario user; private Usuario pending; private String secret; private boolean activeMfa; private boolean passwordWasVerified;
         private ControladorSesion login;
+        private long saved;
         private WebSession(String id){this.id=id;}
     }
 }
