@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 280" role="img" aria-label="Escuela con estudiantes y árboles">
+  <defs>
+    <linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe9f5"/><stop offset="1" stop-color="#eef8f5"/></linearGradient>
+    <linearGradient id="pasto" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a9a8c"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+    <clipPath id="marco"><rect width="480" height="280" rx="16"/></clipPath>
+  </defs>
+  <g clip-path="url(#marco)">
+    <rect width="480" height="280" fill="url(#cielo)"/>
+    <!-- sol -->
+    <circle cx="410" cy="56" r="40" fill="#ffe2d2" opacity=".8"/><circle cx="410" cy="56" r="24" fill="#ef6530"/>
+    <!-- nubes -->
+    <g fill="#fff" opacity=".95">
+      <ellipse cx="86" cy="52" rx="34" ry="12"/><ellipse cx="108" cy="44" rx="22" ry="12"/><ellipse cx="68" cy="46" rx="18" ry="10"/>
+      <ellipse cx="318" cy="36" rx="28" ry="9"/><ellipse cx="336" cy="30" rx="16" ry="9"/>
+    </g>
+    <!-- aves -->
+    <g stroke="#17324d" stroke-width="2.4" fill="none" stroke-linecap="round">
+      <path d="M180 62q6-8 12 0q6-8 12 0"/><path d="M214 44q5-6 10 0q5-6 10 0"/>
+    </g>
+    <!-- colinas -->
+    <path d="M0 196c60-34 130-40 200-20s150 30 280-6v110H0z" fill="#bfe0da"/>
+    <!-- arboles de fondo -->
+    <g>
+      <rect x="62" y="170" width="6" height="30" fill="#17324d"/><circle cx="65" cy="160" r="24" fill="#2a9a8c"/><circle cx="52" cy="170" r="14" fill="#3fb0a0"/>
+      <rect x="416" y="166" width="6" height="34" fill="#17324d"/><circle cx="419" cy="154" r="26" fill="#2a9a8c"/><circle cx="432" cy="166" r="14" fill="#3fb0a0"/>
+    </g>
+    <!-- escuela -->
+    <g>
+      <rect x="118" y="128" width="244" height="96" fill="#ffffff" stroke="#17324d" stroke-width="4"/>
+      <rect x="196" y="100" width="88" height="124" fill="#ffffff" stroke="#17324d" stroke-width="4"/>
+      <path d="M184 102L240 64l56 38z" fill="#17324d"/>
+      <path d="M106 130L148 108h184l42 22z" fill="#17324d" opacity=".0"/>
+      <rect x="112" y="122" width="256" height="10" rx="3" fill="#17324d"/>
+      <circle cx="240" cy="88" r="11" fill="#fff"/><path d="M240 81v7h6" stroke="#17324d" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M240 64V34" stroke="#17324d" stroke-width="4" stroke-linecap="round"/><path d="M240 34h28l-9 8 9 8h-28z" fill="#ef6530"/>
+      <!-- columnas -->
+      <g fill="#d6ece9" stroke="#17324d" stroke-width="2.5">
+        <rect x="204" y="120" width="8" height="104"/><rect x="268" y="120" width="8" height="104"/>
+      </g>
+      <!-- puerta -->
+      <path d="M222 224v-52a18 18 0 0 1 36 0v52z" fill="#0f766e" stroke="#17324d" stroke-width="3"/>
+      <path d="M240 156v68" stroke="#17324d" stroke-width="2.5"/>
+      <!-- ventanas -->
+      <g fill="#cfe9f5" stroke="#17324d" stroke-width="3">
+        <rect x="138" y="152" width="36" height="34" rx="3"/><rect x="306" y="152" width="36" height="34" rx="3"/>
+      </g>
+      <g stroke="#17324d" stroke-width="2"><path d="M156 152v34M138 169h36M324 152v34M306 169h36"/></g>
+      <!-- escalones -->
+      <rect x="206" y="224" width="68" height="7" fill="#d6ece9" stroke="#17324d" stroke-width="2.5"/>
+      <rect x="198" y="231" width="84" height="7" fill="#e8f4f2" stroke="#17324d" stroke-width="2.5"/>
+    </g>
+    <!-- pasto -->
+    <path d="M0 232c80-12 160-14 240-6s170 8 240-6v60H0z" fill="url(#pasto)"/>
+    <!-- sendero -->
+    <path d="M222 238h36l34 42H188z" fill="#f3e7cf"/>
+    <!-- libros -->
+    <g transform="translate(44 232)">
+      <rect x="0" y="22" width="70" height="13" rx="3" fill="#17324d"/>
+      <rect x="6" y="9" width="58" height="13" rx="3" fill="#ef6530"/>
+      <rect x="12" y="-4" width="46" height="13" rx="3" fill="#f2b84b"/>
+    </g>
+    <!-- estudiante izquierda -->
+    <g transform="translate(150 226)">
+      <rect x="-9" y="26" width="7" height="22" rx="3" fill="#17324d"/><rect x="2" y="26" width="7" height="22" rx="3" fill="#17324d"/>
+      <rect x="-12" y="2" width="24" height="30" rx="8" fill="#ef6530"/>
+      <circle cx="0" cy="-8" r="11" fill="#e0a37a"/><path d="M-11-9a11 11 0 0 1 22 0c-5-5-17-5-22 0z" fill="#17324d"/>
+      <rect x="9" y="8" width="10" height="16" rx="3" fill="#f2b84b"/>
+    </g>
+    <!-- estudiante derecha -->
+    <g transform="translate(332 224)">
+      <rect x="-9" y="26" width="7" height="22" rx="3" fill="#17324d"/><rect x="2" y="26" width="7" height="22" rx="3" fill="#17324d"/>
+      <rect x="-12" y="2" width="24" height="30" rx="8" fill="#0f766e"/>
+      <circle cx="0" cy="-8" r="11" fill="#c98763"/><path d="M-12-6a12 12 0 0 1 24 0v6c0-8-5-11-12-11s-12 3-12 11z" fill="#17324d"/>
+      <rect x="-20" y="8" width="10" height="16" rx="3" fill="#ef6530"/>
+    </g>
+    <!-- lápiz -->
+    <g transform="translate(396 188) rotate(22)">
+      <rect x="0" y="0" width="12" height="52" rx="2" fill="#f2b84b"/>
+      <path d="M0 52h12l-6 14z" fill="#ffe3b0"/><path d="M3.8 60h4.4L6 66z" fill="#17324d"/>
+      <rect x="0" y="-7" width="12" height="9" rx="2" fill="#ef6530"/>
+    </g>
+  </g>
+</svg>

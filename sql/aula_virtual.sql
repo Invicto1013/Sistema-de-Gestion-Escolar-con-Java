@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 -- Aula virtual: materiales de clase, tareas y entregas de estudiantes.
 -- Ejecutar en sige_db antes de utilizar /aula.
 -- Se admite cualquier formato como archivo adjunto; el portal los descarga como adjuntos.

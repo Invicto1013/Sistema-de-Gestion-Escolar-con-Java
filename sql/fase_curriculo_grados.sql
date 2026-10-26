@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 -- Catalogo curricular dominicano para Primaria y Secundaria.
 -- Ejecutar en la base sige_db antes de usar /curriculo.
 -- La base nacional es comun; horas y ofertas particulares se configuraran en fases posteriores.

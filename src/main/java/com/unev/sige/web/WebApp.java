@@ -113,6 +113,7 @@ public final class WebApp {
             if (path.equals("/pwa.js") && method.equals("GET")) { send(x,200,"application/javascript; charset=utf-8","if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}document.addEventListener('DOMContentLoaded',()=>{const b=document.querySelector('.menu-toggle'),n=document.querySelector('#main-navigation');if(!b||!n)return;const close=()=>{n.classList.remove('is-open');b.setAttribute('aria-expanded','false');b.setAttribute('aria-label','Abrir menú');};b.addEventListener('click',()=>{const open=b.getAttribute('aria-expanded')!=='true';n.classList.toggle('is-open',open);b.setAttribute('aria-expanded',String(open));b.setAttribute('aria-label',open?'Cerrar menú':'Abrir menú');});n.addEventListener('click',e=>{if(e.target.closest('a'))close();});document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});document.addEventListener('click',e=>{if(!n.contains(e.target)&&!b.contains(e.target))close();});});"); return; }
             if (path.equals("/manifest.webmanifest") && method.equals("GET")) { send(x,200,"application/manifest+json; charset=utf-8",manifest()); return; }
             if (path.equals("/sw.js") && method.equals("GET")) { send(x,200,"application/javascript; charset=utf-8",serviceWorker()); return; }
+            if ((path.equals("/logo.svg") || path.equals("/login-art.svg") || path.equals("/login-hero.svg") || path.equals("/dashboard-hero.svg")) && method.equals("GET")) { svgResource(x, path); return; }
             if (path.equals("/icon.svg") && method.equals("GET")) { send(x,200,"image/svg+xml; charset=utf-8",icon()); return; }
             WebSession s = sessionFor(x);
             if (method.equals("GET")) {
@@ -203,10 +204,19 @@ public final class WebApp {
         }
     }
 
+    private static final String AUTH_BRAND = "<aside class='auth-brand'>"
+        + "<div class='auth-brand-top'><img src='/logo.svg' alt='' width='52' height='52'><div><strong>SIGE</strong><span>Sistema de Gestión Educativa</span></div></div>"
+        + "<div class='auth-brand-body'><img class='auth-hero' src='/login-hero.svg' alt='Boleta de calificaciones con gráficos y birrete' width='440' height='300'><h2>Tu información académica, en un solo lugar</h2>"
+        + "<ul class='auth-features'>"
+        + "<li><b>Calificaciones y boletas</b></li>"
+        + "<li><b>Asistencia y aula virtual</b></li>"
+        + "<li><b>Acceso protegido con verificación en dos pasos</b></li></ul></div>"
+        + "<div class='auth-brand-foot'>UNEV · Programación II</div></aside>";
+
     private static String registroPage(WebSession s, String error, Map<String, String> v) {
         String rol = v.getOrDefault("rol", "ESTUDIANTE");
         return shell("Crear registro", (error == null ? "" : alert(error))
-            + "<section class='auth-card'><div class='eyebrow'>NUEVA CUENTA</div><h1>Crear registro</h1>"
+            + "<div class='auth-split'>" + AUTH_BRAND + "<section class='auth-card auth-panel'><div class='eyebrow'>NUEVA CUENTA</div><h1>Crear registro</h1>"
             + "<p>Completa tus datos para registrarte como estudiante o padre/tutor.</p>"
             + "<form method='post' action='/registro'>" + hiddenCsrf(s)
             + "<label>Tipo de cuenta<select name='rol' required>"
@@ -225,7 +235,7 @@ public final class WebApp {
             + "<label>Teléfono<input name='telefono' maxlength='30' placeholder='809-000-0000' value='" + esc(v.getOrDefault("telefono", "")) + "'></label>"
             + "<label>Ocupación<input name='ocupacion' maxlength='80' value='" + esc(v.getOrDefault("ocupacion", "")) + "'></label></fieldset>"
             + "<button class='primary' type='submit'>Crear cuenta</button></form>"
-            + "<p class='hint'>¿Ya tienes cuenta? <a class='text-link inline-link' href='/'>Iniciar sesión</a></p></section>", false, "");
+            + "<p class='hint'>¿Ya tienes cuenta? <a class='text-link inline-link' href='/'>Iniciar sesión</a></p></section></div>", false, "");
     }
 
     private static void registrar(HttpExchange x, WebSession s, Map<String, String> f) throws IOException {
@@ -381,11 +391,11 @@ public final class WebApp {
 
     private static String home(WebSession s, String error) {
         if (s.user == null) return shell("Iniciar sesión", (error == null ? "" : alert(error))
-                + "<section class='auth-card'><div class='eyebrow'>SISTEMA DE GESTIÓN EDUCATIVA</div><h1>Bienvenido a SIGE</h1>"
-                + "<p>Inicia sesión para consultar tu información académica.</p><form method='post' action='/login'>"
+                + "<div class='auth-split'>" + AUTH_BRAND + "<section class='auth-card auth-panel'><div class='eyebrow'>ACCESO AL SISTEMA</div><h1>Iniciar sesión</h1>"
+                + "<p>Ingresa con tu correo y contraseña para continuar.</p><form method='post' action='/login'>"
                 + hiddenCsrf(s) + "<label>Correo electrónico<input name='correo' type='email' autocomplete='username' required></label>"
                 + "<label>Contraseña<input name='contrasena' type='password' autocomplete='current-password' required></label>"
-                + "<button class='primary' type='submit'>Iniciar sesión</button></form><p class='hint'>¿No tienes cuenta? <a class='text-link inline-link' href='/registro'>Crear registro</a></p><p class='hint'>Las cuentas de profesor las crea la administración.</p></section>", false, "");
+                + "<button class='primary' type='submit'>Iniciar sesión</button></form><p class='hint'>¿No tienes cuenta? <a class='text-link inline-link' href='/registro'>Crear registro</a></p><p class='hint'>Las cuentas de profesor las crea la administración.</p></section></div>", false, "");
         try {
             DashboardDAO.Datos data = new DashboardDAO().cargar(s.user.getRol(), s.user.getId());
             DashboardDAO.Indicadores i = data.indicadores();
@@ -398,6 +408,10 @@ public final class WebApp {
             if (bars.isEmpty()) bars.append("<p class='empty'>Todavía no hay inscripciones para mostrar.</p>");
             StringBuilder states = new StringBuilder();
             double stateTotal = data.porEstado().stream().mapToDouble(DashboardDAO.DatoGrafico::valor).sum();
+            double approvedTotal = data.porEstado().stream()
+                    .filter(d -> d.etiqueta() != null && d.etiqueta().toLowerCase(java.util.Locale.ROOT).contains("aprob"))
+                    .mapToDouble(DashboardDAO.DatoGrafico::valor).sum();
+            int approvedPct = stateTotal == 0 ? 0 : (int) Math.round(approvedTotal / stateTotal * 100);
             for (var d : data.porEstado()) {
                 String normalized=d.etiqueta()==null?"":d.etiqueta().toLowerCase(java.util.Locale.ROOT);
                 String tone=normalized.contains("aprob")?"approved":normalized.contains("reprob")?"failed":"in-progress";
@@ -413,8 +427,9 @@ public final class WebApp {
                     .append(esc(row.estudiante())).append("</td><td>").append(esc(row.asignatura()))
                     .append("</td><td>").append(esc(row.periodo())).append("</td></tr>");
             if (rows.isEmpty()) rows.append("<tr><td colspan='4' class='empty'>No hay actividad académica reciente.</td></tr>");
-            String body = "<div class='page-heading'><div><div class='eyebrow'>PANEL PRINCIPAL</div><h1>Resumen académico</h1>"
-                    + "<p>Indicadores actualizados para tu cuenta.</p></div><span class='role-badge'>"+esc(s.user.getRol().name())+"</span></div>"
+            String body = "<section class='hero'><div class='hero-text'><div class='eyebrow'>PANEL PRINCIPAL</div><h1>Resumen académico</h1>"
+                    + "<p>Hola, "+esc(s.user.getNombreCompleto())+". Estos son los indicadores actualizados de tu cuenta.</p><span class='role-badge'>"+esc(s.user.getRol().name())+"</span></div>"
+                    + heroArt(approvedPct, stateTotal > 0) + "</section>"
                     + "<section class='metrics'>"+metrics+"</section><section class='cards-grid'><article class='card chart-card'><h2>Inscripciones por asignatura</h2>"
                     +bars+"</article><article class='card chart-card'><h2>Estado de las materias</h2>"+states+"</article><article class='card'><h2>Tu cuenta</h2><div class='profile-line'><span>Nombre</span><b>"+esc(s.user.getNombreCompleto())
                     +"</b></div><div class='profile-line'><span>Correo</span><b>"+esc(s.user.getCorreo())+"</b></div><div class='profile-line'><span>Rol</span><b>"
@@ -1486,9 +1501,9 @@ public final class WebApp {
                 ? "<form method='post' action='/shutdown' class='stop-form'><input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='danger' type='submit'>Detener servidor</button></form>" : "";
         String role=ROLE_REQUEST.get();
         String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/historial-sesiones'>Historial</a>":"";
-        String nav = logged ? "<header class='topbar'><a class='brand' href='/'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a></nav><div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
+        String nav = logged ? "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a></nav><div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+stop+"</div></header>"
-                : "<header class='topbar'><a class='brand' href='/'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span></header>";
+                : "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span></header>";
         return "<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                 +"<meta name='theme-color' content='#17324d'><meta name='apple-mobile-web-app-capable' content='yes'><title>"+esc(title)+" · SIGE</title>"
                 +"<link rel='manifest' href='/manifest.webmanifest'><link rel='icon' href='/icon.svg' type='image/svg+xml'><link rel='stylesheet' href='/styles.css'></head><body>"
@@ -1530,6 +1545,29 @@ public final class WebApp {
         LOCAL_REQUEST.remove();ADMIN_REQUEST.remove();
         ROLE_REQUEST.remove();
     }
+    /** Ilustración del dashboard con el anillo de progreso ajustado al porcentaje real de materias aprobadas. */
+    private static String heroArt(int pct, boolean hasData) {
+        try (var in = WebApp.class.getResourceAsStream("/com/unev/sige/web/dashboard-hero.svg")) {
+            if (in == null) return "";
+            String svg = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            double len = 2 * Math.PI * 32;
+            String dash = String.format(java.util.Locale.ROOT, "%.1f %.1f", len * Math.max(0, Math.min(100, pct)) / 100.0, len);
+            return svg.replace("stroke-dasharray=\"150 201\"", "stroke-dasharray=\"" + dash + "\"")
+                    .replace(">75%<", ">" + (hasData ? pct + "%" : "–") + "<")
+                    .replace("<svg ", "<svg class='hero-art' ");
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private static void svgResource(HttpExchange x, String path) throws IOException {
+        try (var in = WebApp.class.getResourceAsStream("/com/unev/sige/web" + path)) {
+            if (in == null) { send(x, 404, "text/plain", "No encontrado"); return; }
+            x.getResponseHeaders().set("Cache-Control", "public, max-age=86400");
+            send(x, 200, "image/svg+xml; charset=utf-8", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
     private static void css(HttpExchange x) throws IOException {
         String css;
         try (var in=WebApp.class.getResourceAsStream("/com/unev/sige/web/styles.css")) {
@@ -1539,8 +1577,8 @@ public final class WebApp {
         send(x,200,"text/css; charset=utf-8",css);
     }
     private static String manifest(){return "{\"id\":\"/\",\"name\":\"SIGE - Sistema de Gestión Educativa\",\"short_name\":\"SIGE\",\"description\":\"Portal académico SIGE\",\"start_url\":\"/\",\"scope\":\"/\",\"display\":\"standalone\",\"background_color\":\"#f3f6fa\",\"theme_color\":\"#17324d\",\"icons\":[{\"src\":\"/icon.svg\",\"sizes\":\"any\",\"type\":\"image/svg+xml\",\"purpose\":\"any maskable\"}]}";}
-    private static String serviceWorker(){return "const CACHE='sige-ui-v2';const ASSETS=['/styles.css','/icon.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
-    private static String icon(){return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='#17324d'/><path d='M106 128h300v58H106zm0 99h300v58H106zm0 99h190v58H106z' fill='#fff'/><circle cx='365' cy='355' r='38' fill='#0f766e'/></svg>";}
+    private static String serviceWorker(){return "const CACHE='sige-ui-v4';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
+    private static String icon(){return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' role='img' aria-label='SIGE'> <rect width='512' height='512' rx='112' fill='#17324d'/> <path d='M256 196C204 166 146 164 100 184v176c46-18 104-16 156 14z' fill='#ffffff'/> <path d='M256 196c52-30 110-32 156-12v176c-46-18-104-16-156 14z' fill='#d6ece9'/> <path d='M256 196v178' stroke='#17324d' stroke-width='9' stroke-linecap='round'/> <g stroke='#0f766e' stroke-width='12' stroke-linecap='round' fill='none'> <path d='M140 238c34-10 68-6 88 6'/><path d='M140 282c34-10 68-6 88 6'/> <path d='M372 238c-34-10-68-6-88 6'/><path d='M372 282c-34-10-68-6-88 6'/> </g> <path d='M256 74l14 38 38 14-38 14-14 38-14-38-38-14 38-14z' fill='#ef6530'/> </svg>";}
     private static void send(HttpExchange x,int status,String type,String body)throws IOException{
         byte[] data=body.getBytes(StandardCharsets.UTF_8); x.getResponseHeaders().set("Content-Type",type); x.sendResponseHeaders(status,data.length);x.getResponseBody().write(data);
     }
