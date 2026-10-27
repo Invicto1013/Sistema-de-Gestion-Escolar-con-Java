@@ -423,6 +423,7 @@ CREATE TABLE `usuarios` (
   `dos_factor_bloqueado_hasta` datetime DEFAULT NULL,
   `login_intentos` int NOT NULL DEFAULT '0',
   `login_bloqueado_hasta` datetime DEFAULT NULL,
+  `pendiente_aprobacion` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id_usuario`),
   UNIQUE KEY `correo` (`correo`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -433,7 +434,7 @@ CREATE TABLE `usuarios` (
 --
 
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` VALUES (1,'Elian','Castro','admin@sige.edu.do','$2a$10$OFwIWmH37FwAgunNJ6qPYOhvuxZUQ.W7sTNNqXYXi4PzDFWdZNclO','ADMIN',0,1,0,NULL,0,NULL,0,NULL),(2,'Julian','Rodriguez','jrodriguez@sige.edu.do','$2a$10$dDXVYKlJXdaXLUw.cqWuJOPyE3GhPp.rVBEnPYMsjGnX4b9hS87Rq','PROFESOR',0,1,0,NULL,0,NULL,0,NULL),(3,'Carlos','Peguero','peguero@sige.edu.do','$2a$10$WeI15G.zP2P3br4V4tfVzeJETWVXw4A5mIo3nOQZZnNLawhtL2FOq','ESTUDIANTE',0,1,0,NULL,0,NULL,0,NULL),(4,'Mariana','Zapata','mariana@sige.edu.do','$2a$10$AI93b/ZNojwr7TE0y90adekcgJSODEBEh/Ry0Z3..6PSBtvtcITE2','PADRE',0,1,0,NULL,0,NULL,0,NULL);
+INSERT INTO `usuarios` VALUES (1,'Elian','Castro','admin@sige.edu.do','$2a$10$OFwIWmH37FwAgunNJ6qPYOhvuxZUQ.W7sTNNqXYXi4PzDFWdZNclO','ADMIN',0,1,0,NULL,0,NULL,0,NULL,0),(2,'Julian','Rodriguez','jrodriguez@sige.edu.do','$2a$10$dDXVYKlJXdaXLUw.cqWuJOPyE3GhPp.rVBEnPYMsjGnX4b9hS87Rq','PROFESOR',0,1,0,NULL,0,NULL,0,NULL,0),(3,'Carlos','Peguero','peguero@sige.edu.do','$2a$10$WeI15G.zP2P3br4V4tfVzeJETWVXw4A5mIo3nOQZZnNLawhtL2FOq','ESTUDIANTE',0,1,0,NULL,0,NULL,0,NULL,0),(4,'Mariana','Zapata','mariana@sige.edu.do','$2a$10$AI93b/ZNojwr7TE0y90adekcgJSODEBEh/Ry0Z3..6PSBtvtcITE2','PADRE',0,1,0,NULL,0,NULL,0,NULL,0);
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 
 --

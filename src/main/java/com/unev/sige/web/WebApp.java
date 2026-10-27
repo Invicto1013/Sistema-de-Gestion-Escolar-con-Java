@@ -145,6 +145,7 @@ public final class WebApp {
                     case "/curriculo" -> page(x,s,curriculumPage(s));
                     case "/secciones" -> page(x,s,sectionsAdminPage(s,x.getRequestURI().getRawQuery(),null,null));
                     case "/usuarios" -> page(x,s,usersAdminPage(s,x.getRequestURI().getRawQuery(),null));
+                    case "/solicitudes" -> page(x,s,solicitudesPage(s,x.getRequestURI().getRawQuery(),null));
                     case "/usuarios.csv" -> downloadUsersCsv(x,s,x.getRequestURI().getRawQuery());
                     case "/cambiar-rol" -> page(x,s,changeRolePage(s,x.getRequestURI().getRawQuery(),null));
                     case "/vinculaciones" -> page(x,s,parentLinksAdminPage(s,x.getRequestURI().getRawQuery(),null));
@@ -168,6 +169,7 @@ public final class WebApp {
             switch (path) {
                 case "/login" -> login(x, s, form);
                 case "/registro" -> registrar(x, s, form);
+                case "/solicitud" -> requestAction(x, s, form);
                 case "/verify-2fa" -> verifyMfa(x, s, form);
                 case "/change-password" -> changePassword(x, s, form);
                 case "/inscribir" -> enroll(x, s, form);
@@ -280,10 +282,11 @@ public final class WebApp {
                 nuevo = new Padre(0, nombre, apellido, correo, null, 0,
                         telefono.isEmpty() ? null : telefono, ocupacion.isEmpty() ? null : ocupacion);
             }
-            USERS.registrar(nuevo, clave);
-            accessLog(nuevo.getId(), correo, "REGISTRO", "Cuenta " + rolTxt + " creada desde la web");
-            page(x, s, shell("Registro completado", "<section class='auth-card'><div class='success' role='status'>Tu cuenta se creó correctamente.</div>"
-                + "<h1>¡Listo, " + esc(nombre) + "!</h1><p>Ya puedes iniciar sesión con tu correo y contraseña.</p>"
+            boolean needsApproval = UsuarioDAO.registroRequiereAprobacion();
+            if (needsApproval) USERS.registrarSolicitud(nuevo, clave); else USERS.registrar(nuevo, clave);
+            accessLog(nuevo.getId(), correo, "REGISTRO", (needsApproval ? "Solicitud " : "Cuenta ") + rolTxt + " desde la web");
+            page(x, s, shell(needsApproval ? "Solicitud enviada" : "Registro completado", "<section class='auth-card'><div class='success' role='status'>" + (needsApproval ? "Tu solicitud de registro fue enviada." : "Tu cuenta se creó correctamente.") + "</div>"
+                + "<h1>¡Listo, " + esc(nombre) + "!</h1><p>" + (needsApproval ? "La administración revisará tu solicitud. Podrás iniciar sesión cuando la apruebe." : "Ya puedes iniciar sesión con tu correo y contraseña.") + "</p>"
                 + "<a class='primary link-button' href='/'>Ir a iniciar sesión</a></section>", false, ""));
         } catch (SQLIntegrityConstraintViolationException e) {
             page(x, s, registroPage(s, "Ya existe un registro con esos datos (correo o matrícula).", v));
@@ -302,7 +305,7 @@ public final class WebApp {
                 accessLog(user == null ? null : user.getId(), correo, "FALLIDO", "Credenciales incorrectas");
                 page(x, s, home(s, "Correo o contraseña incorrectos.")); return;
             }
-            if (!user.isActivo()) { page(x, s, home(s, "La cuenta está desactivada. Contacta al administrador.")); return; }
+            if (!user.isActivo()) { page(x, s, home(s, isPendingApproval(user.getId()) ? "Tu cuenta está pendiente de aprobación por la administración." : "La cuenta está desactivada. Contacta al administrador.")); return; }
             Autenticacion2FADAO.Estado state = MFA.obtenerEstado(user.getId());
             if (state.bloqueado()) { page(x, s, home(s, "El segundo factor está bloqueado temporalmente. Inténtalo más tarde.")); return; }
             rotateCookie(x, s);
@@ -440,7 +443,7 @@ public final class WebApp {
                     .append("</td><td>").append(esc(row.periodo())).append("</td></tr>");
             if (rows.isEmpty()) rows.append("<tr><td colspan='4' class='empty'>No hay actividad académica reciente.</td></tr>");
             String body = "<section class='hero'><div class='hero-text'><div class='eyebrow'>PANEL PRINCIPAL</div><h1>Resumen académico</h1>"
-                    + "<p>Hola, "+esc(s.user.getNombreCompleto())+". Estos son los indicadores actualizados de tu cuenta.</p><span class='role-badge'>"+esc(s.user.getRol().name())+"</span></div>"
+                    + "<p>Hola, "+esc(s.user.getNombreCompleto())+". Estos son los indicadores actualizados de tu cuenta.</p><span class='role-badge'>"+esc(s.user.getRol().name())+"</span>"+pendingNotice(s.user)+"</div>"
                     + heroArt(approvedPct, stateTotal > 0) + "</section>"
                     + "<section class='metrics'>"+metrics+"</section><section class='cards-grid'><article class='card chart-card'><h2>Inscripciones por asignatura</h2>"
                     +bars+"</article><article class='card chart-card'><h2>Estado de las materias</h2>"+states+"</article><article class='card'><h2>Tu cuenta</h2><div class='profile-line'><span>Nombre</span><b>"+esc(s.user.getNombreCompleto())
@@ -1139,13 +1142,62 @@ public final class WebApp {
         }catch(SQLException e){page(x,s,sectionsAdminPage(s,null,"No se pudo eliminar la sección.",null));}
     }
 
+    private static String solicitudesPage(WebSession s,String query,String message){
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Solicitudes de registro",errorPage("Solo un administrador puede revisar solicitudes de registro."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
+        try{
+            boolean success=message==null&&query!=null&&query.contains("atendida=1");
+            if(success)message="La solicitud se atendió correctamente.";
+            List<UsuarioDAO.Solicitud> requests=USERS.listarSolicitudes();
+            StringBuilder rows=new StringBuilder();
+            for(UsuarioDAO.Solicitud r:requests){
+                rows.append("<tr><td>").append(r.id()).append("</td><td><b>").append(esc(r.nombre()+" "+r.apellido())).append("</b></td><td>")
+                        .append(esc(r.correo())).append("</td><td>").append("ESTUDIANTE".equals(r.rol())?"Estudiante":"Padre / tutor").append("</td><td>")
+                        .append(esc(r.detalle())).append("</td><td><div class='user-actions'>")
+                        .append(requestForm(s,r.id(),"aprobar","Aprobar","primary")).append(requestForm(s,r.id(),"rechazar","Rechazar","danger"))
+                        .append("</div></td></tr>");
+            }
+            if(rows.isEmpty())rows.append("<tr><td colspan='6' class='empty'>No hay solicitudes pendientes.</td></tr>");
+            String body="<div class='page-heading'><div><div class='eyebrow'>ADMINISTRACIÓN</div><h1>Solicitudes de registro</h1><p>Aprueba o rechaza las cuentas creadas desde el registro público.</p></div></div>"
+                    +(message==null?"":"<div class='"+(success?"success":"alert")+"' role='status'>"+esc(message)+"</div>")
+                    +"<section class='metrics grade-summary'>"+metric("Pendientes",requests.size())+"</section>"
+                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table users-table'><thead><tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Tipo</th><th>Datos</th><th>Acciones</th></tr></thead><tbody>"
+                    +rows+"</tbody></table></div></section>";
+            return shell("Solicitudes de registro",body,true,s.user.getNombreCompleto());
+        }catch(SQLException e){return shell("Solicitudes de registro",alert("No se pudieron cargar las solicitudes. Comprueba que se ejecutó sql/fase_registro_aprobacion.sql en la base de datos."),true,s.user.getNombreCompleto());}
+    }
+    private static String requestForm(WebSession s,int id,String action,String text,String style){
+        return "<form method='post' action='/solicitud' class='inline-form'>"+hiddenCsrf(s)+"<input type='hidden' name='id' value='"+id+"'><input type='hidden' name='accion' value='"+action
+                +"'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar</label><button class='"+style+"' type='submit'>"+text+"</button></form>";
+    }
+    private static void requestAction(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN){page(x,s,errorPage("Solo un administrador puede atender solicitudes de registro."));return;}
+        if(!"si".equals(values.get("confirmar"))){page(x,s,solicitudesPage(s,null,"Confirma la acción antes de continuar."));return;}
+        int id;try{id=Integer.parseInt(values.getOrDefault("id",""));}catch(NumberFormatException e){page(x,s,solicitudesPage(s,null,"La solicitud seleccionada no es válida."));return;}
+        String action=values.getOrDefault("accion","");boolean approve="aprobar".equals(action);
+        if(!approve&&!"rechazar".equals(action)){page(x,s,solicitudesPage(s,null,"La acción solicitada no es válida."));return;}
+        try{
+            String email=approve?USERS.aprobarSolicitudComoAdmin(s.user.getId(),id):USERS.rechazarSolicitudComoAdmin(s.user.getId(),id);
+            accessLog(approve?id:null,email,approve?"APROBADO":"RECHAZADO","Solicitud de registro "+(approve?"aprobada":"rechazada")+" por admin "+s.user.getId());
+            redirect(x,"/solicitudes?atendida=1");
+        }catch(PermisoDenegadoException e){page(x,s,solicitudesPage(s,null,e.getMessage()));}
+        catch(SQLException e){page(x,s,solicitudesPage(s,null,"No se pudo atender la solicitud. Verifica la conexión con MySQL."));}
+    }
+    private static boolean isPendingApproval(int id){try{return USERS.estaPendienteAprobacion(id);}catch(SQLException e){return false;}}
+    private static java.util.Set<Integer> pendingIds(){try{return USERS.idsPendientes();}catch(SQLException e){return java.util.Set.of();}}
+    private static String pendingNotice(Usuario u){
+        if(u==null||u.getRol()!=Rol.ADMIN)return "";
+        try{int n=USERS.contarPendientes();if(n<1)return "";
+            return "<a class='hero-notice' href='/solicitudes'>"+n+(n==1?" solicitud de registro pendiente":" solicitudes de registro pendientes")+" →</a>";
+        }catch(SQLException e){return "";}
+    }
+
     private static String usersAdminPage(WebSession s,String query,String message){
         if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Usuarios",errorPage("Solo un administrador puede gestionar cuentas."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
         try{
             List<Usuario> allUsers=USERS.listarTodos();String search=queryValue(query,"q");if(search==null)search="";if(search.length()>120)search=search.substring(0,120);
             String role=queryValue(query,"rol");if(role==null||!List.of("ADMIN","PROFESOR","ESTUDIANTE","PADRE").contains(role))role="";
             String state=queryValue(query,"estado");if(state==null||!List.of("activa","inactiva").contains(state))state="";
-            List<Usuario> users=USERS.buscarTodos(search,role,state);
+            List<Usuario> users=USERS.buscarTodos(search,role,state);java.util.Set<Integer> pending=pendingIds();
             boolean success=message==null&&query!=null&&query.contains("actualizado=1");
             if(message==null&&success)message="La acción se completó correctamente.";
             long active=allUsers.stream().filter(Usuario::isActivo).count();
@@ -1153,7 +1205,7 @@ public final class WebApp {
             for(Usuario u:users){
                 rows.append("<tr><td>").append(u.getId()).append("</td><td><b>").append(esc(u.getNombreCompleto())).append("</b></td><td>")
                         .append(esc(u.getCorreo())).append("</td><td>").append(u.getRol()==null?"?":u.getRol().name()).append("</td><td><span class='state-pill ")
-                        .append(u.isActivo()?"account-active":"account-disabled").append("'>").append(u.isActivo()?"Activa":"Inactiva").append("</span></td><td><div class='user-actions'>")
+                        .append(u.isActivo()?"account-active":"account-disabled").append("'>").append(u.isActivo()?"Activa":pending.contains(u.getId())?"Pendiente":"Inactiva").append("</span></td><td><div class='user-actions'>")
                         .append("<form method='post' action='/accion-usuario' class='inline-form'>").append(hiddenCsrf(s)).append("<input type='hidden' name='id' value='").append(u.getId())
                         .append("'><input type='hidden' name='accion' value='estado'><input type='hidden' name='activo' value='").append(!u.isActivo())
                         .append("'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar</label><button class='").append(u.isActivo()?"danger":"primary")
@@ -1517,7 +1569,7 @@ public final class WebApp {
         String stop = Boolean.TRUE.equals(LOCAL_REQUEST.get())&&Boolean.TRUE.equals(ADMIN_REQUEST.get())
                 ? "<form method='post' action='/shutdown' class='stop-form'><input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='danger' type='submit'>Detener servidor</button></form>" : "";
         String role=ROLE_REQUEST.get();
-        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/historial-sesiones'>Historial</a>":"";
+        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/historial-sesiones'>Historial</a>":"";
         String nav = logged ? "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a></nav><div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+stop+"</div></header>"
                 : "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span></header>";

@@ -162,6 +162,12 @@ public class RegistroController {
                         "Ese rol se crea desde el panel del administrador.");
             };
 
+            if (UsuarioDAO.registroRequiereAprobacion()) {
+                usuarioDAO.registrarSolicitud(nuevoUsuario, contrasena);
+                onLimpiar();
+                mostrarExito("Solicitud enviada. Podrás iniciar sesión cuando la administración la apruebe.");
+                return;
+            }
             usuarioDAO.registrar(nuevoUsuario, contrasena);
 
             mostrarExito("Perfil creado. Intentando enviar la notificación por correo...");

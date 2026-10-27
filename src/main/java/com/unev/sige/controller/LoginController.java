@@ -69,8 +69,11 @@ public class LoginController {
             Usuario usuario = usuarioEncontrado.get();
             if (usuario.autenticar(correoIngresado, contrasenaIngresada)) {
                 if (!usuario.isActivo()) {
-                    registrarAcceso(usuario.getId(), correoIngresado, "FALLIDO", "Cuenta desactivada");
-                    mostrarError("La cuenta está desactivada. Contacta al administrador.");
+                    boolean pendiente = usuarioDAO.estaPendienteAprobacion(usuario.getId());
+                    registrarAcceso(usuario.getId(), correoIngresado, "FALLIDO",
+                            pendiente ? "Cuenta pendiente de aprobación" : "Cuenta desactivada");
+                    mostrarError(pendiente ? "Tu cuenta está pendiente de aprobación por la administración."
+                            : "La cuenta está desactivada. Contacta al administrador.");
                     return;
                 }
                 if (!Autenticacion2FA.exigir(btnIniciarSesion.getScene().getWindow(), usuario)) return;

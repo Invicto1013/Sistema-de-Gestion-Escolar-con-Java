@@ -13,8 +13,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.mindrot.jbcrypt.BCrypt;
 
 /**
@@ -87,6 +89,27 @@ public class UsuarioDAO {
      * Al terminar, el objeto recibido queda con su id (y idPadre) generado.
      */
     public void registrar(Usuario usuario, String contrasenaPlana) throws SQLException {
+        registrarInterno(usuario, contrasenaPlana, false);
+    }
+
+    /**
+     * Registro público (web o escritorio) cuando la institución exige aprobación: la cuenta se crea
+     * inactiva y marcada como pendiente hasta que un administrador la apruebe.
+     */
+    public void registrarSolicitud(Usuario usuario, String contrasenaPlana) throws SQLException {
+        registrarInterno(usuario, contrasenaPlana, true);
+    }
+
+    /**
+     * Indica si los registros públicos deben ser aprobados por un administrador. Por defecto sí;
+     * se desactiva con SIGE_REGISTRO_REQUIERE_APROBACION=false (o registro.requiere.aprobacion=false).
+     */
+    public static boolean registroRequiereAprobacion() {
+        String valor = ConexionBD.configuracion("SIGE_REGISTRO_REQUIERE_APROBACION", "registro.requiere.aprobacion");
+        return valor == null || !valor.trim().equalsIgnoreCase("false");
+    }
+
+    private void registrarInterno(Usuario usuario, String contrasenaPlana, boolean pendiente) throws SQLException {
         String incumplimiento = PoliticaContrasena.validar(contrasenaPlana);
         if (incumplimiento != null) throw new IllegalArgumentException(incumplimiento);
         String hash = Usuario.hashear(contrasenaPlana);
@@ -105,8 +128,124 @@ public class UsuarioDAO {
                     pa.setIdPadre(insertarPadre(conn, id, pa));
                 }
 
+                if (pendiente) {
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "UPDATE usuarios SET activo = 0, pendiente_aprobacion = 1 WHERE id_usuario = ?")) {
+                        ps.setInt(1, id);
+                        ps.executeUpdate();
+                    }
+                }
+
                 conn.commit();
             } catch (SQLException | RuntimeException ex) {
+                conn.rollback();
+                throw ex;
+            }
+        }
+    }
+
+    /** Solicitud de registro público pendiente de revisión. detalle resume matrícula/grado o teléfono/ocupación. */
+    public record Solicitud(int id, String nombre, String apellido, String correo, String rol, String detalle) { }
+
+    /** true si la cuenta está inactiva porque espera la aprobación de un administrador. */
+    public boolean estaPendienteAprobacion(int idUsuario) throws SQLException {
+        try (Connection conn = ConexionBD.obtener();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT 1 FROM usuarios WHERE id_usuario = ? AND activo = 0 AND pendiente_aprobacion = 1 LIMIT 1")) {
+            ps.setInt(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public int contarPendientes() throws SQLException {
+        try (Connection conn = ConexionBD.obtener();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT COUNT(*) FROM usuarios WHERE activo = 0 AND pendiente_aprobacion = 1");
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    public Set<Integer> idsPendientes() throws SQLException {
+        Set<Integer> ids = new LinkedHashSet<>();
+        try (Connection conn = ConexionBD.obtener();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT id_usuario FROM usuarios WHERE activo = 0 AND pendiente_aprobacion = 1");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                ids.add(rs.getInt(1));
+            }
+        }
+        return ids;
+    }
+
+    public List<Solicitud> listarSolicitudes() throws SQLException {
+        String sql = "SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.rol, e.matricula, e.grado, "
+                + "pa.telefono_contacto, pa.ocupacion FROM usuarios u "
+                + "LEFT JOIN estudiantes e ON e.id_estudiante = u.id_usuario "
+                + "LEFT JOIN padres pa ON pa.id_usuario = u.id_usuario "
+                + "WHERE u.activo = 0 AND u.pendiente_aprobacion = 1 ORDER BY u.id_usuario";
+        List<Solicitud> lista = new ArrayList<>();
+        try (Connection conn = ConexionBD.obtener();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                String rol = rs.getString("rol");
+                String detalle;
+                if ("ESTUDIANTE".equals(rol)) {
+                    detalle = "Matrícula " + valorODash(rs.getString("matricula")) + " · Grado " + valorODash(rs.getString("grado"));
+                } else {
+                    detalle = "Teléfono " + valorODash(rs.getString("telefono_contacto"))
+                            + " · Ocupación " + valorODash(rs.getString("ocupacion"));
+                }
+                lista.add(new Solicitud(rs.getInt("id_usuario"), rs.getString("nombre"), rs.getString("apellido"),
+                        rs.getString("correo"), rol, detalle));
+            }
+        }
+        return lista;
+    }
+
+    private static String valorODash(String valor) {
+        return valor == null || valor.isBlank() ? "—" : valor;
+    }
+
+    /** Activa una cuenta pendiente. Devuelve su correo para el registro de auditoría. */
+    public String aprobarSolicitudComoAdmin(int idAdmin, int idUsuario) throws SQLException, PermisoDenegadoException {
+        return resolverSolicitud(idAdmin, idUsuario, true);
+    }
+
+    /** Elimina una cuenta pendiente (y sus datos de perfil). Devuelve su correo para la auditoría. */
+    public String rechazarSolicitudComoAdmin(int idAdmin, int idUsuario) throws SQLException, PermisoDenegadoException {
+        return resolverSolicitud(idAdmin, idUsuario, false);
+    }
+
+    private String resolverSolicitud(int idAdmin, int idUsuario, boolean aprobar)
+            throws SQLException, PermisoDenegadoException {
+        try (Connection conn = ConexionBD.obtener()) {
+            conn.setAutoCommit(false);
+            try {
+                validarAdministrador(conn, idAdmin);
+                String correo;
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT correo FROM usuarios WHERE id_usuario = ? AND activo = 0 AND pendiente_aprobacion = 1 FOR UPDATE")) {
+                    ps.setInt(1, idUsuario);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) throw new PermisoDenegadoException("La solicitud ya fue atendida o no existe.");
+                        correo = rs.getString(1);
+                    }
+                }
+                String sql = aprobar
+                        ? "UPDATE usuarios SET activo = 1, pendiente_aprobacion = 0 WHERE id_usuario = ?"
+                        : "DELETE FROM usuarios WHERE id_usuario = ?";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setInt(1, idUsuario);
+                    ps.executeUpdate();
+                }
+                conn.commit();
+                return correo;
+            } catch (SQLException | PermisoDenegadoException | RuntimeException ex) {
                 conn.rollback();
                 throw ex;
             }
@@ -296,7 +435,7 @@ public class UsuarioDAO {
                     }
                 }
                 try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE usuarios SET activo = ? WHERE id_usuario = ?")) {
+                        "UPDATE usuarios SET activo = ?, pendiente_aprobacion = 0 WHERE id_usuario = ?")) {
                     ps.setBoolean(1, activo);
                     ps.setInt(2, idUsuario);
                     ps.executeUpdate();
