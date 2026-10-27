@@ -2,7 +2,7 @@
 REM Genera el ejecutable de SIGE (Fase 9 de la rubrica).
 REM   empaquetar.bat            -> JAR ejecutable + carpeta portable (jpackage app-image)
 REM   empaquetar.bat exe        -> ademas, instalador .exe (requiere WiX Toolset 3.x o 4+)
-REM Requisitos: JDK 21 (con jpackage) y Maven en el PATH, y config.properties en esta carpeta.
+REM Requisitos: JDK 25 (con jpackage) y Maven en el PATH, y config.properties en esta carpeta.
 setlocal
 cd /d "%~dp0"
 set VERSION=1.0.0

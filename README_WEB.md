@@ -6,7 +6,7 @@ SIGE Web agrega una interfaz adaptable e instalable desde el navegador (PWA), ma
 
 ## Requisitos del servidor
 
-- Java 21 y Maven.
+- Java 25 y Maven.
 - MySQL con la misma base `sige_db` de SIGE y los scripts de esquema/migración ya aplicados, en particular `sql/fase5_2fa.sql`.
 - `db.properties` en la carpeta desde la que se inicia Maven, configurado con la conexión del **servidor**. Nunca publiques ese archivo ni las contraseñas.
 - La misma clave AES configurada como `2fa.encryption-key` o `SIGE_2FA_ENCRYPTION_KEY` que ya protege los secretos 2FA de las cuentas.

@@ -2,7 +2,7 @@
 
 ## 1. Alcance del análisis
 
-SIGE es una aplicación Java 21 que conserva una interfaz de escritorio JavaFX y añade SIGE Web, un servidor Java HTTP con páginas adaptables que reutiliza MySQL. El repositorio remoto configurado es `https://github.com/Invicto1013/Sistema-de-Gestion-Escolar-con-Java.git`. El proyecto ya tiene `pom.xml`, `README_WEB.md`, `Dockerfile`, `GUIA_DESPLIEGUE_NUBE.md`, ejemplo de configuración y reglas Git para omitir `db.properties` y `target/`.
+SIGE es una aplicación Java 25 que conserva una interfaz de escritorio JavaFX y añade SIGE Web, un servidor Java HTTP con páginas adaptables que reutiliza MySQL. El repositorio remoto configurado es `https://github.com/Invicto1013/Sistema-de-Gestion-Escolar-con-Java.git`. El proyecto ya tiene `pom.xml`, `README_WEB.md`, `Dockerfile`, `GUIA_DESPLIEGUE_NUBE.md`, ejemplo de configuración y reglas Git para omitir `db.properties` y `target/`.
 
 La web no es JavaFX ejecutándose en Chrome. El componente publicado como servicio es el backend web ligero. MySQL y sus credenciales deben vivir fuera del repositorio y del contenedor.
 
@@ -35,7 +35,7 @@ Git guarda el historial distribuido. GitHub y GitLab alojan repositorios Git y a
 
 ### GitHub Actions: elementos
 
-Un **workflow** es el proceso YAML guardado en `.github/workflows/`. Un **evento** (`push`, `pull_request`, manual) lo inicia. Un **job** corre en un runner; **steps** ejecutan comandos o acciones. El workflow de SIGE usa `setup-java` con Java 21, `mvn clean verify` y luego copia dependencias runtime y archivos de ejecución a un artefacto por sistema operativo. Si una prueba falla, `verify` devuelve error y ese job no llega a la etapa de empaquetado/subida.
+Un **workflow** es el proceso YAML guardado en `.github/workflows/`. Un **evento** (`push`, `pull_request`, manual) lo inicia. Un **job** corre en un runner; **steps** ejecutan comandos o acciones. El workflow de SIGE usa `setup-java` con Java 25, `mvn clean verify` y luego copia dependencias runtime y archivos de ejecución a un artefacto por sistema operativo. Si una prueba falla, `verify` devuelve error y ese job no llega a la etapa de empaquetado/subida.
 
 Cache y artifact no significan lo mismo: la cache evita volver a descargar dependencias sin cambiar el resultado lógico del build; artifact conserva el resultado generado para descargarlo. En el workflow de SIGE se activa cache de Maven y se sube la carpeta de distribución como artifact temporal.
 
@@ -79,7 +79,7 @@ Intercambiar con un compañero el ZIP/Release y el repositorio. No usar informac
 2. **GitHub Actions**: compilar, ejecutar JUnit y generar paquetes cada push/PR sin configurar un servidor Jenkins.
 3. **JUnit 5**: verificar rápidamente reglas de negocio como notas y validaciones sin conectarse a MySQL.
 
-Docker ya se aprovecha para la parte web; JDK `jpackage` conviene evaluar después para un instalador JavaFX verdaderamente autocontenido. `jpackage` genera paquetes específicos de cada sistema operativo, por lo que debe construirse en runner Windows/macOS/Linux correspondiente. El artifact de Maven no se debe llamar instalador certificado: debe probarse en otra computadora con JDK 21 y MySQL configurado.
+Docker ya se aprovecha para la parte web; JDK `jpackage` conviene evaluar después para un instalador JavaFX verdaderamente autocontenido. `jpackage` genera paquetes específicos de cada sistema operativo, por lo que debe construirse en runner Windows/macOS/Linux correspondiente. El artifact de Maven no se debe llamar instalador certificado: debe probarse en otra computadora con JDK 25 y MySQL configurado.
 
 ## 8. Pasos para cerrar la entrega
 
@@ -110,4 +110,4 @@ Docker ya se aprovecha para la parte web; JDK `jpackage` conviene evaluar despu�
 - Vault: https://developer.hashicorp.com/vault/docs/about-vault/what-is-vault
 - JUnit: https://docs.junit.org/5.4.2/user-guide/index.html
 - JavaFX: https://openjfx.io/openjfx-docs/
-- Java 21 jpackage: https://docs.oracle.com/en/java/javase/21/docs/specs/man/jpackage.html
+- Java 25 jpackage: https://docs.oracle.com/en/java/javase/25/docs/specs/man/jpackage.html

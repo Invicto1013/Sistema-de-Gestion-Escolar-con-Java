@@ -5,7 +5,7 @@ Datos verificados en octubre de 2026. Los planes gratis cambian seguido; confirm
 ## Qué necesita SIGE
 | Requisito | Detalle |
 |---|---|
-| Servidor | Java 21, contenedor Docker, escucha en el `PORT` que da la plataforma |
+| Servidor | Java 25, contenedor Docker, escucha en el `PORT` que da la plataforma |
 | Memoria | ~300 MB con el nuevo `Dockerfile` (cabe en 512 MB) |
 | Base de datos | MySQL con la base `sige_db` |
 | HTTPS | Obligatorio (cookie `Secure` y PWA) |

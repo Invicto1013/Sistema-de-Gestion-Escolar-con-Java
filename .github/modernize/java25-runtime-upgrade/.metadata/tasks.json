@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Tasks template for the SIGE Java 25 runtime upgrade.",
+  "tasks": [
+    {
+      "type": "upgrade",
+      "id": "001-upgrade-java-21-to-25",
+      "description": "Upgrade SIGE from Java 21 to Java 25 while preserving application behavior.",
+      "reason": "The assessment found Java 21 version settings in the Maven project and reports that the application is not using the latest LTS Java version.",
+      "requirements": "Addresses assessment issues: Java Version is not the latest LTS (azure-java-version-02000; three incidents in pom.xml at lines 11, 12, and 49). Set Java 25 as the target runtime and align the Maven source/target/release/compiler settings, CI JDK, Docker build and runtime images, packaging/jpackage requirements, and Java-version references in relevant documentation. Verify JavaFX and other Java runtime/build dependencies with Java 25 and change their versions only if required for compatible build or execution. Review existing launch scripts and update them only if needed for Java 25 compatibility. Preserve existing desktop and web behavior, packaging purpose, and deployment model. Do not upgrade Spring or other application frameworks, migrate services, change database behavior, or address unrelated assessment findings.",
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "security",
+      "id": "002-security-review-java25-toolchain",
+      "description": "Review Java 25 upgrade-related toolchain and runtime components for relevant vulnerabilities.",
+      "reason": "Confirm that components changed specifically to support the Java 25 upgrade do not introduce known dependency or runtime vulnerabilities.",
+      "requirements": "Limit vulnerability review and any remediation to the JDK/runtime, build/compiler tooling, or dependency versions changed as a direct requirement of the Java 25 upgrade. Record and defer unrelated application dependency or cloud-readiness findings; do not broaden the Java upgrade scope.",
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    }
+  ],
+  "metadata": {
+    "planName": "java25-runtime-upgrade",
+    "projectName": "sige",
+    "language": "java",
+    "createdAt": "2026-10-27T12:09:00Z",
+    "version": "1.0"
+  }
+}
