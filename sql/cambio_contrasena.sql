@@ -1,3 +1,5 @@
+-- Codificación: guarda este archivo como UTF-8 (sin BOM) y ejecútalo con la conexión en utf8mb4.
+SET NAMES utf8mb4;
 -- Agrega el indicador de cambio obligatorio para la contraseña inicial del profesor.
 -- Ejecutar en MySQL Workbench antes de iniciar la versión actualizada de SIGE.
 USE sige_db;

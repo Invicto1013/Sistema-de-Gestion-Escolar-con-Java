@@ -1,3 +1,5 @@
+-- Codificación: guarda este archivo como UTF-8 (sin BOM) y ejecútalo con la conexión en utf8mb4.
+SET NAMES utf8mb4;
 -- SIGE Release 2.0, Fase 4: activación de cuentas y estado de 2FA.
 -- Selecciona primero sige_db en Workbench y ejecuta este script una sola vez;
 -- las comprobaciones permiten volver a ejecutarlo sin duplicar las columnas.

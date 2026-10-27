@@ -1,3 +1,5 @@
+-- Codificación: guarda este archivo como UTF-8 (sin BOM) y ejecútalo con la conexión en utf8mb4.
+SET NAMES utf8mb4;
 -- SIGE Fase 5: bitácora de intentos de acceso y autenticación 2FA.
 -- Ejecutar en MySQL Workbench después de aplicar fase4_gestion_usuarios.sql.
 USE sige_db;

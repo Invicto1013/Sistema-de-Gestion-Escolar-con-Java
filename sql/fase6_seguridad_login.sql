@@ -1,3 +1,5 @@
+-- Codificación: guarda este archivo como UTF-8 (sin BOM) y ejecútalo con la conexión en utf8mb4.
+SET NAMES utf8mb4;
 -- Bloqueo temporal por contraseñas incorrectas (5 intentos -> 15 minutos).
 -- Ejecutar una sola vez en MySQL Workbench antes de iniciar esta versión de SIGE.
 -- Es seguro repetirlo: solo agrega las columnas que falten.

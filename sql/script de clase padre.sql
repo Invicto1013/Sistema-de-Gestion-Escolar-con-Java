@@ -1,3 +1,5 @@
+-- Codificación: guarda este archivo como UTF-8 (sin BOM) y ejecútalo con la conexión en utf8mb4.
+SET NAMES utf8mb4;
 USE sige_db;
 
 -- 1. Crear la tabla de Padres
@@ -7,7 +9,7 @@ CREATE TABLE IF NOT EXISTS padres (
     telefono_contacto VARCHAR(20),
     ocupacion VARCHAR(100),
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 2. Tabla de relación Muchos a Muchos entre Padres y Estudiantes (Tutoría)
 CREATE TABLE IF NOT EXISTS estudiante_padre (
@@ -17,4 +19,4 @@ CREATE TABLE IF NOT EXISTS estudiante_padre (
     PRIMARY KEY (id_estudiante, id_padre),
     FOREIGN KEY (id_estudiante) REFERENCES estudiantes(id_estudiante) ON DELETE CASCADE,
     FOREIGN KEY (id_padre) REFERENCES padres(id_padre) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

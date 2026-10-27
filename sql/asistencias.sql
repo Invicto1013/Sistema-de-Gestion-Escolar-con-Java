@@ -1,3 +1,5 @@
+-- Codificación: guarda este archivo como UTF-8 (sin BOM) y ejecútalo con la conexión en utf8mb4.
+SET NAMES utf8mb4;
 -- Tabla de asistencias para SIGE.
 -- Ejecutar una sola vez en MySQL Workbench sobre la base sige_db.
 -- Un registro por materia inscrita (detalle_inscripciones) y por dia.

@@ -1,3 +1,5 @@
+-- Codificación: guarda este archivo como UTF-8 (sin BOM) y ejecútalo con la conexión en utf8mb4.
+SET NAMES utf8mb4;
 -- Tablas para vincular cuentas de padres/tutores con estudiantes.
 -- Ejecutar una vez en MySQL Workbench sobre sige_db.
 -- Las tablas usuarios y estudiantes deben existir previamente.
