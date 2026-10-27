@@ -1,0 +1,44 @@
+name: Pruebas de integracion MySQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Integracion contra MySQL 8.4
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sige_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Cargar el esquema completo
+        run: mysql --protocol=tcp -h 127.0.0.1 -uroot -proot --default-character-set=utf8mb4 sige_test < sql/sige_completo.sql
+      - name: Ejecutar pruebas de integracion
+        env:
+          SIGE_IT_DB: 'true'
+          SIGE_DB_URL: jdbc:mysql://127.0.0.1:3306/sige_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+          SIGE_DB_USER: root
+          SIGE_DB_PASSWORD: root
+        run: mvn --batch-mode --no-transfer-progress -Dtest='*IntegracionTest' -Dsurefire.failIfNoSpecifiedTests=false test
