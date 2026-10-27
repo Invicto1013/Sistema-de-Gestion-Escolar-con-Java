@@ -1,0 +1,22 @@
+name: Mantener SIGE despierto
+
+# Respaldo opcional: llama a /health cada 10 minutos para que Render (plan gratis, se duerme a los
+# 15 min sin visitas) y la base de datos no se queden inactivos. Lo ideal es usar ademas un monitor
+# externo (UptimeRobot, cada 5 minutos). Para otra direccion, crea la variable de repositorio SIGE_URL.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Llamar a /health
+        env:
+          URL: ${{ vars.SIGE_URL || 'https://sistema-de-gestion-escolar-con-java.onrender.com' }}
+        run: curl -fsS --max-time 90 --retry 3 --retry-delay 20 --retry-all-errors "$URL/health?db=1"

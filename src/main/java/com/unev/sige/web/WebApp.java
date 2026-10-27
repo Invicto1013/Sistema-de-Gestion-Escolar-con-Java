@@ -124,6 +124,7 @@ public final class WebApp {
             if (path.equals("/sw.js") && method.equals("GET")) { send(x,200,"application/javascript; charset=utf-8",serviceWorker()); return; }
             if ((path.equals("/logo.svg") || path.equals("/login-art.svg") || path.equals("/login-hero.svg") || path.equals("/dashboard-hero.svg")) && method.equals("GET")) { svgResource(x, path); return; }
             if (path.equals("/icon.svg") && method.equals("GET")) { send(x,200,"image/svg+xml; charset=utf-8",icon()); return; }
+            if (path.equals("/health") && (method.equals("GET") || method.equals("HEAD"))) { health(x); return; }
             WebSession s = sessionFor(x);
             if (method.equals("GET")) {
                 switch (path) {
@@ -217,6 +218,23 @@ public final class WebApp {
             if (ahora != registroVentana) { registroVentana = ahora; registroCuenta = 0; }
             return ++registroCuenta <= 20;
         }
+    }
+
+    // ---- Comprobación de salud (para monitores externos que evitan que Render se duerma) ----
+    private static final CacheSalud SALUD_DB = new CacheSalud(() -> {
+        try (java.sql.Connection c = ConexionBD.obtener(); java.sql.Statement st = c.createStatement();
+             java.sql.ResultSet rs = st.executeQuery("SELECT 1")) {
+            return rs.next();
+        } catch (SQLException e) { return false; }
+    }, 30);
+
+    /** /health responde "ok" sin tocar sesiones; con ?db=1 comprueba también MySQL (503 si no responde). */
+    private static void health(HttpExchange x) throws IOException {
+        String query = x.getRequestURI().getRawQuery();
+        boolean conBase = query != null && query.contains("db=1");
+        x.getResponseHeaders().set("Cache-Control", "no-store");
+        if (conBase && !SALUD_DB.estaSano()) { send(x, 503, "text/plain; charset=utf-8", "base de datos no disponible"); return; }
+        send(x, 200, "text/plain; charset=utf-8", conBase ? "ok db" : "ok");
     }
 
     // ---- Límite de intentos fallidos de login por IP ----
