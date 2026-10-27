@@ -166,6 +166,8 @@ public final class WebApp {
                 MultipartData data=multipartForm(x,contentType);form=data.fields();files=data.files();
             }else form=form(x);
             if (!constantEquals(s.csrf, form.get("_csrf"))) { page(x, s, errorPage("La solicitud expiró. Recarga la página e inténtalo otra vez.")); return; }
+            String campoInvalido = LimitesCampos.validar(path, form);
+            if (campoInvalido != null) { page(x, s, errorPage(campoInvalido)); return; }
             switch (path) {
                 case "/login" -> login(x, s, form);
                 case "/registro" -> registrar(x, s, form);
@@ -194,6 +196,8 @@ public final class WebApp {
             }
         } catch (UploadTooLargeException e) {
             send(x,413,"text/plain; charset=utf-8","El archivo supera el límite de 10 MB.");
+        } catch (FormTooLargeException e) {
+            send(x,413,"text/plain; charset=utf-8","La solicitud es demasiado grande.");
         } catch (Exception e) {
             e.printStackTrace();
             page(x, sessionFor(x), errorPage("No se pudo completar la solicitud. Revisa la conexión con la base de datos."));
@@ -257,17 +261,17 @@ public final class WebApp {
             + "<label>Tipo de cuenta<select name='rol' required>"
             + "<option value='ESTUDIANTE'" + ("ESTUDIANTE".equals(rol) ? " selected" : "") + ">Estudiante</option>"
             + "<option value='PADRE'" + ("PADRE".equals(rol) ? " selected" : "") + ">Padre / tutor</option></select></label>"
-            + "<label>Nombre<input name='nombre' maxlength='80' required value='" + esc(v.getOrDefault("nombre", "")) + "'></label>"
-            + "<label>Apellido<input name='apellido' maxlength='80' required value='" + esc(v.getOrDefault("apellido", "")) + "'></label>"
-            + "<label>Correo electrónico<input name='correo' type='email' maxlength='120' autocomplete='username' required value='" + esc(v.getOrDefault("correo", "")) + "'></label>"
+            + "<label>Nombre<input name='nombre' maxlength='50' required value='" + esc(v.getOrDefault("nombre", "")) + "'></label>"
+            + "<label>Apellido<input name='apellido' maxlength='50' required value='" + esc(v.getOrDefault("apellido", "")) + "'></label>"
+            + "<label>Correo electrónico<input name='correo' type='email' maxlength='100' autocomplete='username' required value='" + esc(v.getOrDefault("correo", "")) + "'></label>"
             + "<label>Contraseña<input name='contrasena' type='password' autocomplete='new-password' required></label>"
             + "<label>Confirmar contraseña<input name='confirmar' type='password' autocomplete='new-password' required></label>"
             + "<p class='hint'>" + esc(PoliticaContrasena.REQUISITOS) + "</p>"
             + "<fieldset class='reg-extra'><legend>Solo estudiantes</legend>"
-            + "<label>Matrícula<input name='matricula' maxlength='30' placeholder='M-2026-001' value='" + esc(v.getOrDefault("matricula", "")) + "'></label>"
+            + "<label>Matrícula<input name='matricula' maxlength='20' placeholder='M-2026-001' value='" + esc(v.getOrDefault("matricula", "")) + "'></label>"
             + "<label>Grado<input name='grado' maxlength='30' placeholder='8vo' value='" + esc(v.getOrDefault("grado", "")) + "'></label></fieldset>"
             + "<fieldset class='reg-extra'><legend>Solo padres / tutores (opcional)</legend>"
-            + "<label>Teléfono<input name='telefono' maxlength='30' placeholder='809-000-0000' value='" + esc(v.getOrDefault("telefono", "")) + "'></label>"
+            + "<label>Teléfono<input name='telefono' maxlength='20' placeholder='809-000-0000' value='" + esc(v.getOrDefault("telefono", "")) + "'></label>"
             + "<label>Ocupación<input name='ocupacion' maxlength='80' value='" + esc(v.getOrDefault("ocupacion", "")) + "'></label></fieldset>"
             + "<button class='primary' type='submit'>Crear cuenta</button></form>"
             + "<p class='hint'>¿Ya tienes cuenta? <a class='text-link inline-link' href='/'>Iniciar sesión</a></p></section></div>", false, "");
@@ -827,6 +831,7 @@ public final class WebApp {
     private static String dispositionValue(String header,String name){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(?:^|;)\\s*"+name+"=\"([^\"]*)\"|(?:^|;)\\s*"+name+"=([^;]*)",java.util.regex.Pattern.CASE_INSENSITIVE).matcher(header);if(!m.find())return null;return m.group(1)!=null?m.group(1):m.group(2).trim();}
     private static int indexOf(byte[] data,byte[] needle,int from){outer:for(int i=Math.max(0,from);i<=data.length-needle.length;i++){for(int j=0;j<needle.length;j++)if(data[i+j]!=needle[j])continue outer;return i;}return -1;}
     private static final class UploadTooLargeException extends IOException{private static final long serialVersionUID=1L;}
+    private static final class FormTooLargeException extends IOException{private static final long serialVersionUID=1L;}
 
 
     private static Integer parseQueryInteger(String query,String key){
@@ -1248,7 +1253,7 @@ public final class WebApp {
             String body="<div class='page-heading'><div><div class='eyebrow'>ADMINISTRACIÓN</div><h1>Usuarios</h1><p>Administra el acceso y el segundo factor de las cuentas.</p></div></div>"
                     +(message==null?"":"<div class='"+(success?"success":"alert")+"' role='status'>"+esc(message)+"</div>")
                     +"<section class='metrics grade-summary'>"+metric("Cuentas",allUsers.size())+metric("Activas",active)+metric("Inactivas",allUsers.size()-active)+"</section>"
-                    +"<section class='card section-picker'><form method='get' action='/usuarios' class='subject-fields'><label>Buscar nombre o correo<input name='q' maxlength='120' value='"+esc(search)+"' placeholder='Nombre, apellido o correo'></label><label>Rol<select name='rol'><option value=''>Todos</option><option value='ADMIN' "+("ADMIN".equals(role)?"selected":"")+">Administrador</option><option value='PROFESOR' "+("PROFESOR".equals(role)?"selected":"")+">Profesor</option><option value='ESTUDIANTE' "+("ESTUDIANTE".equals(role)?"selected":"")+">Estudiante</option><option value='PADRE' "+("PADRE".equals(role)?"selected":"")+">Padre/tutor</option></select></label><label>Estado<select name='estado'><option value=''>Todos</option><option value='activa' "+("activa".equals(state)?"selected":"")+">Activas</option><option value='inactiva' "+("inactiva".equals(state)?"selected":"")+">Inactivas</option></select></label><button class='primary' type='submit'>Filtrar</button><a class='secondary-link' href='/usuarios'>Limpiar</a></form><p class='help-text'>Resultados: "+users.size()+" cuenta(s)</p><a class='primary link-button' href='/usuarios.csv?q="+java.net.URLEncoder.encode(search,StandardCharsets.UTF_8)+"&amp;rol="+role+"&amp;estado="+state+"'>Exportar resultados CSV</a></section>"
+                    +"<section class='card section-picker'><form method='get' action='/usuarios' class='subject-fields'><label>Buscar nombre o correo<input name='q' maxlength='100' value='"+esc(search)+"' placeholder='Nombre, apellido o correo'></label><label>Rol<select name='rol'><option value=''>Todos</option><option value='ADMIN' "+("ADMIN".equals(role)?"selected":"")+">Administrador</option><option value='PROFESOR' "+("PROFESOR".equals(role)?"selected":"")+">Profesor</option><option value='ESTUDIANTE' "+("ESTUDIANTE".equals(role)?"selected":"")+">Estudiante</option><option value='PADRE' "+("PADRE".equals(role)?"selected":"")+">Padre/tutor</option></select></label><label>Estado<select name='estado'><option value=''>Todos</option><option value='activa' "+("activa".equals(state)?"selected":"")+">Activas</option><option value='inactiva' "+("inactiva".equals(state)?"selected":"")+">Inactivas</option></select></label><button class='primary' type='submit'>Filtrar</button><a class='secondary-link' href='/usuarios'>Limpiar</a></form><p class='help-text'>Resultados: "+users.size()+" cuenta(s)</p><a class='primary link-button' href='/usuarios.csv?q="+java.net.URLEncoder.encode(search,StandardCharsets.UTF_8)+"&amp;rol="+role+"&amp;estado="+state+"'>Exportar resultados CSV</a></section>"
                     +"<section class='card table-card'><div class='table-wrap'><table class='grade-table users-table'><thead><tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>"
                     +rows+"</tbody></table></div></section>";
             return shell("Usuarios",body,true,s.user.getNombreCompleto());
@@ -1319,7 +1324,7 @@ public final class WebApp {
             StringBuilder options=new StringBuilder("<option value=''>Selecciona una cuenta...</option>");Usuario selected=null;
             for(Usuario u:users){if(u.getId()==s.user.getId())continue;boolean isSelected=selectedId!=null&&selectedId==u.getId();if(isSelected)selected=u;
                 options.append("<option value='").append(u.getId()).append("'").append(isSelected?" selected":"").append(">").append(esc(u.getNombreCompleto()+" · "+u.getCorreo()+" · "+(u.getRol()==null?"?":u.getRol().name()))).append("</option>");}
-            String profile=selected==null?"": "<div class='role-profile-fields'><label>Matrícula (estudiante)<input name='matricula' maxlength='20'></label><label>Grado (estudiante)<input name='grado' maxlength='30'></label><label>Código de profesor<input name='codigoProfesor' maxlength='20'></label><label>Especialidad<input name='especialidad' maxlength='100'></label><label>Teléfono (padre/tutor)<input name='telefono' maxlength='30'></label><label>Ocupación (padre/tutor)<input name='ocupacion' maxlength='100'></label></div>";
+            String profile=selected==null?"": "<div class='role-profile-fields'><label>Matrícula (estudiante)<input name='matricula' maxlength='20'></label><label>Grado (estudiante)<input name='grado' maxlength='30'></label><label>Código de profesor<input name='codigoProfesor' maxlength='20'></label><label>Especialidad<input name='especialidad' maxlength='50'></label><label>Teléfono (padre/tutor)<input name='telefono' maxlength='20'></label><label>Ocupación (padre/tutor)<input name='ocupacion' maxlength='100'></label></div>";
             String picked=selected==null?"<p>Elige la cuenta que deseas actualizar. No puedes modificar tu propio rol.</p>":"<div class='notice'><b>Cuenta:</b> "+esc(selected.getNombreCompleto())+" · rol actual <b>"+esc(selected.getRol()==null?"?":selected.getRol().name())+"</b></div>";
             String body="<div class='page-heading'><div><div class='eyebrow'>ADMINISTRACIÓN</div><h1>Cambiar rol de usuario</h1><p>Actualiza el tipo de cuenta y crea el perfil que corresponde.</p></div></div>"+(message==null?"":"<div class='alert' role='status'>"+esc(message)+"</div>")
                     +"<section class='card subject-editor'>"+picked+"<form method='get' action='/cambiar-rol' class='section-picker'><label>Cuenta<select name='id' required>"+options+"</select></label><button class='secondary' type='submit'>Seleccionar cuenta</button></form>"
@@ -1421,8 +1426,8 @@ public final class WebApp {
                 +(message==null?"":"<div class='"+(success?"success":"alert")+"' role='status'>"+esc(message)+"</div>")
                 +"<section class='card subject-editor'><form method='post' action='/guardar-profesor'>"+hiddenCsrf(s)
                 +"<div class='subject-fields'><label>Nombre<input name='nombre' maxlength='50' autocomplete='given-name' required></label><label>Apellido<input name='apellido' maxlength='50' autocomplete='family-name' required></label>"
-                +"<label>Correo personal<input name='correo' type='email' maxlength='100' autocomplete='email' required></label><label>Código de profesor<input name='codigo' maxlength='20' required></label>"
-                +"<label>Especialidad<input name='especialidad' maxlength='100' required></label><label>Contraseña inicial<input name='contrasena' type='password' minlength='8' autocomplete='new-password' required></label>"
+                +"<label>Correo personal<input name='correo' type='email' maxlength='100' autocomplete='email' required></label><label>Código de profesor<input name='codigo' maxlength='10' required></label>"
+                +"<label>Especialidad<input name='especialidad' maxlength='50' required></label><label>Contraseña inicial<input name='contrasena' type='password' minlength='8' autocomplete='new-password' required></label>"
                 +"<label>Confirmar contraseña<input name='confirmar' type='password' minlength='8' autocomplete='new-password' required></label></div><p class='hint'>La cuenta deberá cambiar esta contraseña al iniciar sesión por primera vez.</p>"
                 +"<div class='subject-actions'><button class='primary' type='submit'>Crear cuenta de profesor</button></div></form></section>";
         return shell("Crear profesor",body,true,s.user.getNombreCompleto());
@@ -1505,7 +1510,7 @@ public final class WebApp {
             if(rows.isEmpty())rows.append("<tr><td colspan='8' class='empty'>No hay sesiones registradas.</td></tr>");
             String body="<div class='page-heading'><div><div class='eyebrow'>SEGURIDAD</div><h1>Historial de sesiones</h1><p>Hasta 500 accesos recientes registrados por SIGE.</p></div><a class='text-link' href='/historial-sesiones'>Actualizar</a></div>"
                     +(justClosed?"<div class='success' role='status'>La sesión fue cerrada.</div>":"")
-                    +"<section class='card section-picker'><form method='get' action='/historial-sesiones' class='subject-fields'><label>Buscar usuario o correo<input name='q' maxlength='120' value='"+esc(search)+"' placeholder='Nombre, apellido o correo'></label><label>Estado<select name='estado'><option value=''>Todos</option><option value='Activa' "+("Activa".equals(state)?"selected":"")+">Activas</option><option value='Cerrada' "+("Cerrada".equals(state)?"selected":"")+">Cerradas</option></select></label><label>Desde<input type='date' name='desde' value='"+(from==null?"":from)+"'></label><label>Hasta<input type='date' name='hasta' value='"+(to==null?"":to)+"'></label><button class='primary' type='submit'>Filtrar</button><a class='secondary-link' href='/historial-sesiones'>Limpiar</a></form><a class='primary link-button' href='/historial-sesiones.csv?q="+java.net.URLEncoder.encode(search,StandardCharsets.UTF_8)+"&amp;estado="+java.net.URLEncoder.encode(state,StandardCharsets.UTF_8)+"&amp;desde="+(from==null?"":from)+"&amp;hasta="+(to==null?"":to)+"'>Exportar resultados CSV</a></section>"
+                    +"<section class='card section-picker'><form method='get' action='/historial-sesiones' class='subject-fields'><label>Buscar usuario o correo<input name='q' maxlength='100' value='"+esc(search)+"' placeholder='Nombre, apellido o correo'></label><label>Estado<select name='estado'><option value=''>Todos</option><option value='Activa' "+("Activa".equals(state)?"selected":"")+">Activas</option><option value='Cerrada' "+("Cerrada".equals(state)?"selected":"")+">Cerradas</option></select></label><label>Desde<input type='date' name='desde' value='"+(from==null?"":from)+"'></label><label>Hasta<input type='date' name='hasta' value='"+(to==null?"":to)+"'></label><button class='primary' type='submit'>Filtrar</button><a class='secondary-link' href='/historial-sesiones'>Limpiar</a></form><a class='primary link-button' href='/historial-sesiones.csv?q="+java.net.URLEncoder.encode(search,StandardCharsets.UTF_8)+"&amp;estado="+java.net.URLEncoder.encode(state,StandardCharsets.UTF_8)+"&amp;desde="+(from==null?"":from)+"&amp;hasta="+(to==null?"":to)+"'>Exportar resultados CSV</a></section>"
                     +"<section class='metrics grade-summary'>"+metric("Sesiones mostradas",sessions.size())+metric("Activas",sessions.stream().filter(r->"Activa".equals(r.estado())).count())
                     +metric("Cerradas",sessions.stream().filter(r->"Cerrada".equals(r.estado())).count())+"</section>"
                     +"<section class='card table-card'><div class='table-wrap'><table class='grade-table session-table'><thead><tr><th>ID</th><th>Usuario</th><th>Correo</th><th>Inicio</th><th>Cierre</th><th>Dirección IP</th><th>Estado</th><th>Acción</th></tr></thead><tbody>"+rows+"</tbody></table></div></section>";
@@ -1681,7 +1686,9 @@ public final class WebApp {
     }
     private static void redirect(HttpExchange x,String location)throws IOException{x.getResponseHeaders().set("Location",location);x.sendResponseHeaders(303,-1);}
     private static Map<String,String> form(HttpExchange x)throws IOException{
-        String raw=new String(x.getRequestBody().readAllBytes(),StandardCharsets.UTF_8);Map<String,String> values=new java.util.HashMap<>();
+        byte[] bytes=x.getRequestBody().readNBytes(LimitesCampos.MAX_BYTES_FORMULARIO+1);
+        if(bytes.length>LimitesCampos.MAX_BYTES_FORMULARIO)throw new FormTooLargeException();
+        String raw=new String(bytes,StandardCharsets.UTF_8);Map<String,String> values=new java.util.HashMap<>();
         for(String part:raw.split("&")){int i=part.indexOf('=');if(i<0)continue;String key=URLDecoder.decode(part.substring(0,i),StandardCharsets.UTF_8),value=URLDecoder.decode(part.substring(i+1),StandardCharsets.UTF_8);if(key.equals("grados")&&values.containsKey(key))values.put(key,values.get(key)+","+value);else values.put(key,value);}return values;
     }
     private static WebSession sessionFor(HttpExchange x){
