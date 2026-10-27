@@ -214,6 +214,31 @@ public final class WebApp {
         }
     }
 
+    // ---- Límite de intentos fallidos de login por IP ----
+    private static final boolean TRUST_PROXY = "true".equalsIgnoreCase(env("SIGE_WEB_TRUST_PROXY", "false"));
+    private static final LimiteIntentos LOGIN_POR_IP = new LimiteIntentos(
+            positivo(env("SIGE_LOGIN_MAX_FALLOS_IP", "20"), 20), 600);
+
+    private static int positivo(String texto, int porDefecto) {
+        try { int n = Integer.parseInt(texto.trim()); return n < 1 ? porDefecto : n; }
+        catch (NumberFormatException e) { return porDefecto; }
+    }
+
+    private static String clientIp(HttpExchange x) {
+        String remota = x.getRemoteAddress() == null ? null : x.getRemoteAddress().getAddress().getHostAddress();
+        return LimiteIntentos.ipCliente(remota, x.getRequestHeaders().getFirst("X-Forwarded-For"),
+                x.getRequestHeaders().getFirst("CF-Connecting-IP"), TRUST_PROXY);
+    }
+
+    private static boolean ipBloqueada(HttpExchange x, WebSession s) throws IOException {
+        String ip = clientIp(x);
+        long espera = LOGIN_POR_IP.segundosRestantes(ip);
+        if (espera <= 0) return false;
+        accessLog(null, "(ip " + ip + ")", "BLOQUEADO", "Demasiados intentos desde la IP");
+        page(x, s, home(s, "Demasiados intentos fallidos desde tu conexión. Inténtalo de nuevo en " + ((espera + 59) / 60) + " minuto(s)."));
+        return true;
+    }
+
     private static final String AUTH_BRAND = "<aside class='auth-brand'>"
         + "<div class='auth-brand-top'><img src='/logo.svg' alt='' width='52' height='52'><div><strong>SIGE</strong><span>Sistema de Gestión Educativa</span></div></div>"
         + "<div class='auth-brand-body'><img class='auth-hero' src='/login-hero.svg' alt='Boleta de calificaciones con gráficos y birrete' width='440' height='300'><h2>Tu información académica, en un solo lugar</h2>"
@@ -299,9 +324,11 @@ public final class WebApp {
         String correo = f.getOrDefault("correo", "").trim();
         String password = f.getOrDefault("contrasena", "");
         if (correo.isBlank() || password.isBlank()) { page(x, s, home(s, "Completa el correo y la contraseña.")); return; }
+        if (ipBloqueada(x, s)) return;
         try {
             Usuario user = USERS.buscarPorCorreo(correo).orElse(null);
             if (user == null || !user.autenticar(correo, password)) {
+                LOGIN_POR_IP.registrarFallo(clientIp(x));
                 accessLog(user == null ? null : user.getId(), correo, "FALLIDO", "Credenciales incorrectas");
                 page(x, s, home(s, "Correo o contraseña incorrectos.")); return;
             }
@@ -336,6 +363,7 @@ public final class WebApp {
                 if (s.pending.isDebeCambiarContrasena()) { persistSession(s); redirect(x, "/password"); return; }
                 finishLogin(x, s);
             } else {
+                LOGIN_POR_IP.registrarFallo(clientIp(x));
                 Autenticacion2FADAO.Intento attempt = MFA.registrarIntentoFallido(s.pending.getId());
                 accessLog(s.pending.getId(), s.pending.getCorreo(), "FALLIDO", "Código 2FA web incorrecto");
                 page(x, s, mfaPage(s, attempt.bloqueado()
@@ -372,7 +400,7 @@ public final class WebApp {
         s.pending = null;
         s.secret = null;
         s.passwordWasVerified = false;
-        s.login = new SesionDAO().iniciar(s.user.getId(), x.getRemoteAddress().getAddress().getHostAddress());
+        s.login = new SesionDAO().iniciar(s.user.getId(), clientIp(x));
         persistSession(s);
         redirect(x, "/");
     }
@@ -1675,7 +1703,7 @@ public final class WebApp {
                 Usuario u=USERS.buscarPorId(d.idUsuario()).orElse(null);
                 if(u==null||!u.isActivo()){SESIONES_WEB.eliminar(token);return null;}
                 s.user=u;
-                String ip=x.getRemoteAddress()==null?"0.0.0.0":x.getRemoteAddress().getAddress().getHostAddress();
+                String ip=clientIp(x);
                 s.login=new ControladorSesion(d.idLogin(),u.getId(),ip);
             }else if(d.idPendiente()!=null){
                 Usuario u=USERS.buscarPorId(d.idPendiente()).orElse(null);
@@ -1715,7 +1743,7 @@ public final class WebApp {
         }catch(WriterException e){return "";}
     }
     private static void accessLog(Integer id,String email,String result,String detail){try{MFA.registrarAcceso(id,email,result,detail);}catch(SQLException ignored){}}
-    private static void cleanupSessions(){long now=Instant.now().getEpochSecond();SESSIONS.entrySet().removeIf(e->now-e.getValue().last>MAX_IDLE_SECONDS);if(now-ultimaPurgaSesiones>600){ultimaPurgaSesiones=now;try{SESIONES_WEB.purgarCaducadas(MAX_IDLE_SECONDS);}catch(SQLException ignored){}}}
+    private static void cleanupSessions(){long now=Instant.now().getEpochSecond();SESSIONS.entrySet().removeIf(e->now-e.getValue().last>MAX_IDLE_SECONDS);if(now-ultimaPurgaSesiones>600){LOGIN_POR_IP.purgar();ultimaPurgaSesiones=now;try{SESIONES_WEB.purgarCaducadas(MAX_IDLE_SECONDS);}catch(SQLException ignored){}}}
     private static String env(String key,String fallback){String v=System.getenv(key);return v==null||v.isBlank()?fallback:v.trim();}
     private static String esc(String s){if(s==null)return "";return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;").replace("'","&#39;");}
 
