@@ -88,6 +88,7 @@ public final class WebApp {
     private WebApp() { }
 
     public static void main(String[] args) throws IOException {
+        com.unev.sige.app.RegistroLog.iniciar();
         String host = env("SIGE_WEB_HOST", "127.0.0.1");
         // En hosting (por ejemplo Render), PORT lo asigna la plataforma.
         // SIGE_WEB_PORT conserva prioridad para desarrollo y despliegues propios.

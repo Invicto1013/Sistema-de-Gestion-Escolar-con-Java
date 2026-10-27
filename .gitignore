@@ -14,3 +14,5 @@ target/
 tmp/
 # SIGE - clases y entregas del Aula Virtual
 /data/uploads/
+
+logs/
