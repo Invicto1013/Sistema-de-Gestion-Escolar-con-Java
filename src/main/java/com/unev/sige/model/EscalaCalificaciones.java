@@ -1,9 +1,14 @@
 package com.unev.sige.model;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 /**
  * Reglas de calificacion del centro, TODAS en un solo lugar: pesos de cada nota, nota minima
  * para aprobar y escala de letras. Si tu institucion usa otras reglas, cambia solo este archivo.
  * Las notas van de 0 a 100.
+ * Los calculos se hacen con BigDecimal para que el redondeo a 2 decimales sea exacto (con double,
+ * por ejemplo 67.19, 57.68 y 89.96 daban 73.44 en vez de 73.45). La API publica sigue usando double.
  */
 public final class EscalaCalificaciones {
 
@@ -15,6 +20,10 @@ public final class EscalaCalificaciones {
     /** Nota final minima para aprobar una materia. */
     public static final double NOTA_MINIMA_APROBAR = 70.0;
 
+    private static final BigDecimal P1 = BigDecimal.valueOf(PESO_PARCIAL1);
+    private static final BigDecimal P2 = BigDecimal.valueOf(PESO_PARCIAL2);
+    private static final BigDecimal PF = BigDecimal.valueOf(PESO_EXAMEN_FINAL);
+
     private EscalaCalificaciones() {
     }
 
@@ -22,8 +31,10 @@ public final class EscalaCalificaciones {
      * Nota final = parcial 1 * peso + parcial 2 * peso + examen final * peso, redondeada a 2 decimales.
      */
     public static double calcularNotaFinal(double parcial1, double parcial2, double examenFinal) {
-        double nota = parcial1 * PESO_PARCIAL1 + parcial2 * PESO_PARCIAL2 + examenFinal * PESO_EXAMEN_FINAL;
-        return Math.round(nota * 100.0) / 100.0;
+        BigDecimal nota = BigDecimal.valueOf(parcial1).multiply(P1)
+                .add(BigDecimal.valueOf(parcial2).multiply(P2))
+                .add(BigDecimal.valueOf(examenFinal).multiply(PF));
+        return nota.setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 
     /**

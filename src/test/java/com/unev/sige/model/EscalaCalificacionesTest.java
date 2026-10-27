@@ -26,4 +26,18 @@ class EscalaCalificacionesTest {
         assertTrue(EscalaCalificaciones.aprueba(70));
         assertFalse(EscalaCalificaciones.aprueba(69.99));
     }
+
+    @Test
+    void redondeaConExactitudDecimalDondeDoubleFallaba() {
+        assertEquals(73.45, EscalaCalificaciones.calcularNotaFinal(67.19, 57.68, 89.96), 0.0);
+        assertEquals(76.62, EscalaCalificaciones.calcularNotaFinal(95.15, 58.54, 76.27), 0.0);
+        assertEquals(72.70, EscalaCalificaciones.calcularNotaFinal(62.63, 58.26, 91.07), 0.0);
+    }
+
+    @Test
+    void notasExtremasDanResultadosExactos() {
+        assertEquals(0.0, EscalaCalificaciones.calcularNotaFinal(0, 0, 0), 0.0);
+        assertEquals(100.0, EscalaCalificaciones.calcularNotaFinal(100, 100, 100), 0.0);
+        assertEquals(70.0, EscalaCalificaciones.calcularNotaFinal(70, 70, 70), 0.0);
+    }
 }
