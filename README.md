@@ -1,10 +1,10 @@
 # SIGE - Sistema de Gestión Educativa
 
-Aplicación de gestión escolar para primaria y secundaria, desarrollada con Java 25, JavaFX, MySQL y un módulo web adaptable. La aplicación de escritorio sirve a la operación local; SIGE Web es un servidor Java HTTP que reutiliza la capa de datos de MySQL. La interfaz web no es una aplicación JavaFX ejecutada en el navegador.
+Aplicación de gestión escolar para primaria y secundaria, desarrollada con Java 21, JavaFX, MySQL y un módulo web adaptable. La aplicación de escritorio sirve a la operación local; SIGE Web es un servidor Java HTTP que reutiliza la capa de datos de MySQL. La interfaz web no es una aplicación JavaFX ejecutada en el navegador.
 
 ## Requisitos
 
-- JDK 25 (JavaFX runtime se resuelve con Maven).
+- JDK 21 (JavaFX runtime se resuelve con Maven).
 - Maven 3.9 o posterior.
 - MySQL 8 y el esquema de `sql/` aplicado.
 - Credenciales locales en `db.properties`, creado desde `db.properties.example`. El archivo real es ignorado por Git.

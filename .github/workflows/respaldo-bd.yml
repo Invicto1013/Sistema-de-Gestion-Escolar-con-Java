@@ -1,0 +1,69 @@
+name: Respaldo de la base de datos
+
+# Cada dia hace una copia completa de la base (mysqldump), la comprime, la CIFRA con una clave
+# que solo tienes tu y la guarda como artefacto del workflow durante 30 dias.
+# Requiere los secretos descritos en RESPALDOS.md. Tambien se puede lanzar a mano (Run workflow).
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  respaldo:
+    name: Volcar, cifrar y guardar
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SIGE_DB_HOST: ${{ secrets.SIGE_DB_HOST }}
+      SIGE_DB_PORT: ${{ secrets.SIGE_DB_PORT }}
+      SIGE_DB_USER: ${{ secrets.SIGE_DB_USER }}
+      SIGE_DB_NAME: ${{ secrets.SIGE_DB_NAME }}
+      MYSQL_PWD: ${{ secrets.SIGE_DB_PASSWORD }}
+      SIGE_BACKUP_PASSPHRASE: ${{ secrets.SIGE_BACKUP_PASSPHRASE }}
+    steps:
+      - name: Comprobar que estan todos los secretos
+        run: |
+          faltan=0
+          for v in SIGE_DB_HOST SIGE_DB_PORT SIGE_DB_USER SIGE_DB_NAME MYSQL_PWD SIGE_BACKUP_PASSPHRASE; do
+            if [ -z "${!v}" ]; then echo "::error::Falta el secreto correspondiente a $v (ver RESPALDOS.md)"; faltan=1; fi
+          done
+          exit $faltan
+
+      - name: Volcar la base de datos
+        run: |
+          set -euo pipefail
+          FECHA=$(date -u +%Y-%m-%d_%H%M)
+          echo "FECHA=$FECHA" >> "$GITHUB_ENV"
+          docker run --rm -e MYSQL_PWD mysql:8.4 mysqldump \
+            -h "$SIGE_DB_HOST" -P "$SIGE_DB_PORT" -u "$SIGE_DB_USER" \
+            --ssl-mode=REQUIRED --single-transaction --routines --triggers \
+            --no-tablespaces --set-gtid-purged=OFF --default-character-set=utf8mb4 \
+            "$SIGE_DB_NAME" | gzip -9 > "sige_${FECHA}.sql.gz"
+
+      - name: Comprobar que la copia es valida
+        run: |
+          set -euo pipefail
+          f="sige_${FECHA}.sql.gz"
+          tam=$(stat -c %s "$f")
+          echo "Tamano comprimido: $tam bytes"
+          [ "$tam" -gt 2000 ] || { echo "::error::La copia es demasiado pequena"; exit 1; }
+          gunzip -c "$f" | grep -q 'CREATE TABLE `usuarios`' || { echo "::error::La copia no contiene la tabla usuarios"; exit 1; }
+          gunzip -c "$f" | grep -q 'Dump completed' || { echo "::error::La copia esta incompleta"; exit 1; }
+
+      - name: Cifrar la copia (AES-256) y borrar el original
+        run: |
+          set -euo pipefail
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$SIGE_BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 --output "sige_${FECHA}.sql.gz.gpg" "sige_${FECHA}.sql.gz"
+          rm -f "sige_${FECHA}.sql.gz"
+
+      - name: Guardar el respaldo cifrado (30 dias)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sige-respaldo-${{ env.FECHA }}
+          path: sige_${{ env.FECHA }}.sql.gz.gpg
+          retention-days: 30
+          if-no-files-found: error
