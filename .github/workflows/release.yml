@@ -1,0 +1,83 @@
+name: Release automatico
+
+# Se activa al subir una etiqueta que empiece por "v" (por ejemplo v1.1.0):
+#   git tag v1.1.0
+#   git push origin v1.1.0
+# Compila y prueba en Windows, Linux y macOS (el JAR lleva las librerias de JavaFX de cada sistema,
+# por eso hace falta un paquete por sistema operativo) y publica un Release con los tres .zip.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  paquete:
+    name: Paquete (${{ matrix.name }})
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: windows
+            os: windows-latest
+            launcher: run-sige.bat
+          - name: linux
+            os: ubuntu-latest
+            launcher: run-sige.sh
+          - name: macos
+            os: macos-latest
+            launcher: run-sige.sh
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Compilar y probar
+        run: mvn --batch-mode --no-transfer-progress clean verify
+      - name: Reunir dependencias
+        run: mvn --batch-mode --no-transfer-progress -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/distribution/lib
+      - name: Armar el paquete portable
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/distribution
+          cp target/sige-1.0.0.jar target/distribution/
+          cp README.md README_WEB.md DEVOPS_PRUEBAS.md GUIA_DESPLIEGUE_NUBE.md GUIA_RED_LOCAL.md config.example.properties target/distribution/
+          cp "${{ matrix.launcher }}" target/distribution/
+          cp -R sql target/distribution/
+          PY=$(command -v python3 || command -v python)
+          "$PY" -c "import shutil,sys; shutil.make_archive('sige-${{ github.ref_name }}-${{ matrix.name }}', 'zip', 'target/distribution')"
+          ls -l sige-*.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sige-${{ matrix.name }}
+          path: sige-*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  publicar:
+    name: Publicar el Release
+    needs: paquete
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: paquetes
+          merge-multiple: true
+      - name: Crear el Release en GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ls -l paquetes
+          gh release create "$TAG" paquetes/*.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "SIGE $TAG" \
+            --generate-notes

@@ -1,0 +1,40 @@
+name: Cobertura de pruebas (JaCoCo)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cobertura:
+    name: Pruebas y cobertura
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Ejecutar pruebas con JaCoCo
+        run: mvn --batch-mode --no-transfer-progress clean verify
+      - name: Resumen de cobertura
+        if: always()
+        run: |
+          if [ -f target/site/jacoco/jacoco.csv ]; then
+            bash .github/scripts/resumen-cobertura.sh | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No se genero el informe de cobertura." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Guardar el informe HTML de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-cobertura-jacoco
+          path: target/site/jacoco/
+          if-no-files-found: warn
+          retention-days: 30

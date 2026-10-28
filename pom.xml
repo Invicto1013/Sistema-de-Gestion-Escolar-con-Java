@@ -64,6 +64,23 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>3.8.1</version>
             </plugin>
+            <!-- Cobertura de las pruebas: mvn clean verify -> target/site/jacoco/index.html (y jacoco.csv) -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- JAR ejecutable unico (con JavaFX, MySQL, jBCrypt y ZXing incluidos):
                  mvn clean package  ->  target/sige-1.0.0.jar
                  Se ejecuta con: java -jar target/sige-1.0.0.jar -->
