@@ -42,14 +42,14 @@ final class Autenticacion2FA {
             if(secretoCifrado==null || secretoCifrado.isBlank()) {
                 String clave=ConexionBD.claveCifrado2FA();
                 if(clave==null || clave.isBlank()) throw new Configuracion2FAException(
-                        "Falta configurar 2fa.encryption-key en db.properties (o SIGE_2FA_ENCRYPTION_KEY). Genera una clave AES-256 y vuelve a abrir SIGE.");
+                        "Falta configurar 2fa.encryption-key en config.properties (o SIGE_2FA_ENCRYPTION_KEY). Genera una clave AES-256 y vuelve a abrir SIGE.");
                 secretoCifrado=TOTP.cifrar(TOTP.nuevoSecreto(),clave);
             }
             secretoCifrado=DAO.guardarSecretoPendienteSiFalta(id,secretoCifrado);
         }
         String clave=ConexionBD.claveCifrado2FA();
         if(clave==null || clave.isBlank()) throw new Configuracion2FAException(
-                "Falta configurar 2fa.encryption-key en db.properties (o SIGE_2FA_ENCRYPTION_KEY).");
+                "Falta configurar 2fa.encryption-key en config.properties (o SIGE_2FA_ENCRYPTION_KEY).");
         String secreto=TOTP.descifrar(secretoCifrado,clave);
         if(inscripcion && !mostrarInscripcion(owner,correo,secreto)) {
             auditar(id,correo,"FALLIDO","Inscripción 2FA cancelada"); return false;

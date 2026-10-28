@@ -189,7 +189,7 @@ public class RegistroController {
             mostrarError("Ya existe un registro con esos datos (correo, matrícula o código).");
         } catch (SQLException e) {
             e.printStackTrace();
-            mostrarError("No se pudo guardar en la base de datos. Revisa db.properties y que MySQL esté activo.");
+            mostrarError("No se pudo guardar en la base de datos. Revisa config.properties y que MySQL esté activo.");
         }
     }
 

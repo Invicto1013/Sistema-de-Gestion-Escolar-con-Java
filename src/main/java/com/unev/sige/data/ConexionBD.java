@@ -24,15 +24,20 @@ import com.zaxxer.hikari.HikariPoolMXBean;
  * Tamano maximo: variable SIGE_DB_POOL_SIZE (por defecto 5, entre 1 y 20).
  * Las credenciales NO estan en el codigo. Se buscan, en este orden:
  * 1) variables de entorno SIGE_DB_URL, SIGE_DB_USER y SIGE_DB_PASSWORD;
- * 2) archivo config.properties (o db.properties) en la carpeta desde donde se ejecuta la aplicacion
+ * 2) archivo config.properties en la carpeta desde donde se ejecuta la aplicacion
  *    o, si no esta alli, en la carpeta donde esta el .jar;
  * 3) archivo dentro del classpath (solo desarrollo; el JAR de entrega no lo incluye).
- * config.properties y db.properties estan en .gitignore; usa config.example.properties como plantilla.
+ * config.properties es el UNICO archivo de configuracion (base de datos, clave 2FA, correo y registro).
+ * Esta en .gitignore: copia config.example.properties como plantilla y nunca lo subas a GitHub.
+ * db.properties se sigue leyendo solo si no existe config.properties (nombre antiguo, con aviso).
  */
 public final class ConexionBD {
 
-    /** Nombres aceptados, en orden de prioridad (config.properties es el nombre que pide la rubrica). */
-    private static final String[] ARCHIVOS = {"config.properties", "db.properties"};
+    /** Nombre oficial del archivo de configuracion. */
+    static final String ARCHIVO_PRINCIPAL = "config.properties";
+    /** Nombre antiguo: solo se usa si no existe el principal y se avisa en la consola. */
+    static final String ARCHIVO_ANTIGUO = "db.properties";
+    private static final String[] ARCHIVOS = {ARCHIVO_PRINCIPAL, ARCHIVO_ANTIGUO};
     private static final Properties PROPIEDADES = cargarPropiedades();
 
     private ConexionBD() {
@@ -58,17 +63,14 @@ public final class ConexionBD {
         if (app != null) {
             carpetas.add(app);
         }
-        for (Path carpeta : carpetas) {
-            for (String archivo : ARCHIVOS) {
-                Path ruta = carpeta.resolve(archivo);
-                if (Files.exists(ruta)) {
-                    try {
-                        leer(props, Files.readAllBytes(ruta));
-                        return props;
-                    } catch (IOException e) {
-                        System.err.println("No se pudo leer " + ruta + ": " + e.getMessage());
-                    }
-                }
+        Path elegido = localizar(carpetas);
+        if (elegido != null) {
+            try {
+                leer(props, Files.readAllBytes(elegido));
+                avisarSiHaceFalta(elegido);
+                return props;
+            } catch (IOException e) {
+                System.err.println("No se pudo leer " + elegido + ": " + e.getMessage());
             }
         }
 
@@ -84,6 +86,37 @@ public final class ConexionBD {
             }
         }
         return props;
+    }
+
+    /**
+     * Busca el archivo de configuracion en las carpetas dadas, en orden. En cada carpeta gana
+     * config.properties; db.properties (nombre antiguo) solo se usa si no existe el principal.
+     * Devuelve null si no hay ninguno.
+     */
+    static Path localizar(List<Path> carpetas) {
+        for (Path carpeta : carpetas) {
+            Path principal = carpeta.resolve(ARCHIVO_PRINCIPAL);
+            if (Files.exists(principal)) {
+                return principal;
+            }
+            Path antiguo = carpeta.resolve(ARCHIVO_ANTIGUO);
+            if (Files.exists(antiguo)) {
+                return antiguo;
+            }
+        }
+        return null;
+    }
+
+    /** Avisa (sin mostrar valores) si se usa el nombre antiguo o si quedan los dos archivos. */
+    private static void avisarSiHaceFalta(Path elegido) {
+        String nombre = elegido.getFileName().toString();
+        if (ARCHIVO_ANTIGUO.equals(nombre)) {
+            System.err.println("AVISO: se esta usando " + elegido + ". Renombralo a " + ARCHIVO_PRINCIPAL
+                    + ": es el unico nombre oficial (db.properties dejara de leerse en una version futura).");
+        } else if (Files.exists(elegido.resolveSibling(ARCHIVO_ANTIGUO))) {
+            System.err.println("AVISO: existen " + ARCHIVO_PRINCIPAL + " y " + ARCHIVO_ANTIGUO + " en la misma carpeta. "
+                    + "Solo se lee " + ARCHIVO_PRINCIPAL + "; borra " + ARCHIVO_ANTIGUO + " para evitar confusiones.");
+        }
     }
 
     /**

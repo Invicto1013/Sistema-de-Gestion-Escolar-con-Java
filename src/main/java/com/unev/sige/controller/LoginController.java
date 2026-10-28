@@ -100,7 +100,7 @@ public class LoginController {
             mostrarError(e.getMessage());
         } catch (SQLException e) {
             e.printStackTrace();
-            mostrarError("No se pudo conectar con la base de datos. Revisa db.properties y que MySQL esté activo.");
+            mostrarError("No se pudo conectar con la base de datos. Revisa config.properties y que MySQL esté activo.");
         }
     }
 

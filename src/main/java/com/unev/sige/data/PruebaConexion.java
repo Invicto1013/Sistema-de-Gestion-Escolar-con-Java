@@ -5,7 +5,7 @@ import java.sql.SQLException;
 
 /**
  * Prueba rapida de conexion a sige_db usando la misma configuracion que el resto de la app
- * (variables de entorno o db.properties).
+ * (variables de entorno o config.properties).
  */
 public class PruebaConexion {
 
@@ -19,7 +19,7 @@ public class PruebaConexion {
                 System.out.println("--------------------------------------------------");
             }
         } catch (SQLException e) {
-            System.err.println("Error al conectar a MySQL. Verifica db.properties, el usuario, la contraseña, "
+            System.err.println("Error al conectar a MySQL. Verifica config.properties, el usuario, la contraseña, "
                     + "que MySQL esté activo y que el driver esté en el pom.xml.");
             e.printStackTrace();
         }
