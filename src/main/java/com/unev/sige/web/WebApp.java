@@ -82,6 +82,7 @@ public final class WebApp {
     private static final ThreadLocal<Boolean> LOCAL_REQUEST = ThreadLocal.withInitial(() -> false);
     private static final ThreadLocal<Boolean> ADMIN_REQUEST = ThreadLocal.withInitial(() -> false);
     private static final ThreadLocal<String> ROLE_REQUEST = new ThreadLocal<>();
+    private static final ThreadLocal<String> PATH_REQUEST = new ThreadLocal<>();
     private static final UsuarioDAO USERS = new UsuarioDAO();
     private static final Autenticacion2FADAO MFA = new Autenticacion2FADAO();
 
@@ -117,6 +118,7 @@ public final class WebApp {
         try {
             cleanupSessions();
             String path = x.getRequestURI().getPath();
+            PATH_REQUEST.set(path);
             String method = x.getRequestMethod();
             if (path.equals("/styles.css") && method.equals("GET")) { css(x); return; }
             if (path.equals("/pwa.js") && method.equals("GET")) { send(x,200,"application/javascript; charset=utf-8","if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}document.addEventListener('DOMContentLoaded',()=>{const b=document.querySelector('.menu-toggle'),n=document.querySelector('#main-navigation');if(!b||!n)return;const close=()=>{n.classList.remove('is-open');b.setAttribute('aria-expanded','false');b.setAttribute('aria-label','Abrir menú');};b.addEventListener('click',()=>{const open=b.getAttribute('aria-expanded')!=='true';n.classList.toggle('is-open',open);b.setAttribute('aria-expanded',String(open));b.setAttribute('aria-label',open?'Cerrar menú':'Abrir menú');});n.addEventListener('click',e=>{if(e.target.closest('a'))close();});document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});document.addEventListener('click',e=>{if(!n.contains(e.target)&&!b.contains(e.target))close();});});"); return; }
@@ -204,6 +206,7 @@ public final class WebApp {
             e.printStackTrace();
             page(x, sessionFor(x), errorPage("No se pudo completar la solicitud. Revisa la conexión con la base de datos."));
         } finally {
+            PATH_REQUEST.remove();
             x.close();
         }
     }
@@ -1622,13 +1625,16 @@ public final class WebApp {
                 ? "<form method='post' action='/shutdown' class='stop-form'><input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='danger' type='submit'>Detener servidor</button></form>" : "";
         String role=ROLE_REQUEST.get();
         String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/historial-sesiones'>Historial</a>":"";
-        String nav = logged ? "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a></nav><div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
+        String nav = logged ? "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation' aria-label='Navegación principal'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a></nav><div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+stop+"</div></header>"
                 : "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span></header>";
+        nav = Accesibilidad.marcarPaginaActual(nav, PATH_REQUEST.get());
+        body = Accesibilidad.mejorar(body);
         return "<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                 +"<meta name='theme-color' content='#17324d'><meta name='apple-mobile-web-app-capable' content='yes'><title>"+esc(title)+" · SIGE</title>"
                 +"<link rel='manifest' href='/manifest.webmanifest'><link rel='icon' href='/icon.svg' type='image/svg+xml'><link rel='stylesheet' href='/styles.css'></head><body>"
-                +nav+"<main class='layout'>"+body+"</main><footer> SIGE · Sistema de Gestión Educativa</footer><script src='/pwa.js' defer></script></body></html>";
+                +"<a class='skip-link' href='#contenido'>Saltar al contenido</a>"
+                +nav+"<main class='layout' id='contenido' tabindex='-1'>"+body+"</main><footer> SIGE · Sistema de Gestión Educativa</footer><script src='/pwa.js' defer></script></body></html>";
     }
 
     // The request thread holds the currently rendered CSRF token in this ThreadLocal.
@@ -1698,7 +1704,7 @@ public final class WebApp {
         send(x,200,"text/css; charset=utf-8",css);
     }
     private static String manifest(){return "{\"id\":\"/\",\"name\":\"SIGE - Sistema de Gestión Educativa\",\"short_name\":\"SIGE\",\"description\":\"Portal académico SIGE\",\"start_url\":\"/\",\"scope\":\"/\",\"display\":\"standalone\",\"background_color\":\"#f3f6fa\",\"theme_color\":\"#17324d\",\"icons\":[{\"src\":\"/icon.svg\",\"sizes\":\"any\",\"type\":\"image/svg+xml\",\"purpose\":\"any maskable\"}]}";}
-    private static String serviceWorker(){return "const CACHE='sige-ui-v4';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
+    private static String serviceWorker(){return "const CACHE='sige-ui-v5';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
     private static String icon(){return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' role='img' aria-label='SIGE'> <rect width='512' height='512' rx='112' fill='#17324d'/> <path d='M256 196C204 166 146 164 100 184v176c46-18 104-16 156 14z' fill='#ffffff'/> <path d='M256 196c52-30 110-32 156-12v176c-46-18-104-16-156 14z' fill='#d6ece9'/> <path d='M256 196v178' stroke='#17324d' stroke-width='9' stroke-linecap='round'/> <g stroke='#0f766e' stroke-width='12' stroke-linecap='round' fill='none'> <path d='M140 238c34-10 68-6 88 6'/><path d='M140 282c34-10 68-6 88 6'/> <path d='M372 238c-34-10-68-6-88 6'/><path d='M372 282c-34-10-68-6-88 6'/> </g> <path d='M256 74l14 38 38 14-38 14-14 38-14-38-38-14 38-14z' fill='#ef6530'/> </svg>";}
     private static void send(HttpExchange x,int status,String type,String body)throws IOException{
         byte[] data=body.getBytes(StandardCharsets.UTF_8); x.getResponseHeaders().set("Content-Type",type); if("HEAD".equalsIgnoreCase(x.getRequestMethod())){x.sendResponseHeaders(status,-1);return;}x.sendResponseHeaders(status,data.length);x.getResponseBody().write(data);

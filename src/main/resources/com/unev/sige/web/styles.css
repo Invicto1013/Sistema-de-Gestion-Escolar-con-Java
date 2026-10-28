@@ -50,3 +50,14 @@
 .hero-art{height:170px;width:auto;max-width:52%;flex:0 1 auto}
 @media(max-width:700px){.hero{min-height:0;padding:22px 20px}.hero-art{display:none}}
 .hero-notice{display:inline-block;margin:14px 0 0 10px;padding:6px 13px;border-radius:999px;background:#ef6530;color:#fff;font-size:.82rem;font-weight:700;text-decoration:none}.hero-notice:hover{background:#d95525}.account-pending{background:#fff4e5;color:#8a4b00;border-color:#f3d3a4}
+/* ---- Accesibilidad (WCAG 2.1 AA) ---- */
+.skip-link{position:absolute;left:12px;top:-80px;z-index:100;padding:10px 16px;border:2px solid #17324d;border-radius:8px;background:#fff;color:#17324d;font-weight:700;text-decoration:none}.skip-link:focus{top:10px}
+:focus-visible{outline:3px solid #1d4ed8;outline-offset:2px}
+.topbar :focus-visible,.auth-brand :focus-visible{outline-color:#ffd166}
+main:focus{outline:none}
+.top-nav a[aria-current=page]{font-weight:800;text-decoration:underline;text-underline-offset:6px}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #1d4ed8!important;outline-offset:2px!important}
+.table-wrap:focus-visible{outline:3px solid #1d4ed8;outline-offset:-3px}
+footer{color:#566577}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media (forced-colors:active){.state-pill{border:1px solid CanvasText}.skip-link:focus{outline:2px solid Highlight}}
