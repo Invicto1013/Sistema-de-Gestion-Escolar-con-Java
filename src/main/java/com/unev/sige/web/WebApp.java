@@ -133,7 +133,7 @@ public final class WebApp {
                     case "/" -> page(x, s, home(s, null));
                     case "/registro" -> { if (s.user != null) redirect(x, "/"); else page(x, s, registroPage(s, null, Map.of())); }
                     case "/perfil" -> page(x, s, s.user == null ? errorPage("Inicia sesión para ver tu perfil.") : profilePage(s, x.getRequestURI().getRawQuery()));
-                    case "/aula" -> page(x,s,aulaPage(s,x.getRequestURI().getRawQuery(),null));
+                    case "/aula" -> openAula(x,s);
                     case "/archivo-aula" -> downloadAulaFile(x,s,x.getRequestURI().getRawQuery());
                     case "/boleta" -> page(x, s, boletaPage(s, x.getRequestURI().getRawQuery()));
                     case "/asistencia" -> page(x, s, attendancePage(s, x.getRequestURI().getRawQuery()));
@@ -652,9 +652,22 @@ public final class WebApp {
         try{
             if(message==null&&query!=null&&query.contains("resultado=ok"))message="La inscripción se guardó correctamente.";
             List<Seccion> sections=new SeccionDAO().listarTodas();
+            List<Seccion> openSections=sections.stream().filter(z->z.getInscritos()<z.getCupoMaximo()).toList();int totalAvailable=openSections.size();
+            final String fq=Filtros.texto(queryValue(query,"q"),100),fg=Filtros.entero(queryValue(query,"grado"))==0?"":String.valueOf(Filtros.entero(queryValue(query,"grado")));
+            Map<String,String> areaFilter=new java.util.TreeMap<>(),gradeFilter=new java.util.LinkedHashMap<>(),teacherFilter=new java.util.TreeMap<>();
+            for(Seccion z:openSections){
+                if(z.getAsignatura().getAreaCurricular()!=null)areaFilter.put(z.getAsignatura().getAreaCurricular(),z.getAsignatura().getAreaCurricular());
+                if(z.getGrado()!=null)gradeFilter.putIfAbsent(String.valueOf(z.getGrado().id()),z.getGrado().nombre());
+                if(z.getProfesor()!=null)teacherFilter.put(String.valueOf(z.getProfesor().getId()),z.getProfesor().getNombreCompleto());
+            }
+            final String fa=Filtros.opcion(queryValue(query,"area"),areaFilter.keySet()),fp=Filtros.opcion(queryValue(query,"profesor"),teacherFilter.keySet());
+            java.util.function.Predicate<Seccion> passes=z->(fg.isEmpty()||(z.getGrado()!=null&&String.valueOf(z.getGrado().id()).equals(fg)))&&(fa.isEmpty()||fa.equals(z.getAsignatura().getAreaCurricular()))
+                    &&(fp.isEmpty()||(z.getProfesor()!=null&&String.valueOf(z.getProfesor().getId()).equals(fp)))
+                    &&Filtros.coincide(fq,z.getAsignatura().getCodigo(),z.getAsignatura().getNombre(),z.getProfesor()==null?"":z.getProfesor().getNombreCompleto(),z.getAula(),z.getHorario());
+            String enrollBar=Filtros.barra("/inscripciones",Map.of(),Filtros.campoTexto("q","Buscar",fq,"Asignatura, profesor, aula u horario")+Filtros.campoLista("grado","Grado",fg,gradeFilter)+Filtros.campoLista("area","Área curricular",fa,areaFilter)+Filtros.campoLista("profesor","Profesor",fp,teacherFilter),!fq.isEmpty()||!fg.isEmpty()||!fa.isEmpty()||!fp.isEmpty(),(int)openSections.stream().filter(passes).count(),totalAvailable);
             StringBuilder rows=new StringBuilder();int available=0;
             for(Seccion section:sections){
-                if(section.getInscritos()>=section.getCupoMaximo())continue;
+                if(section.getInscritos()>=section.getCupoMaximo()||!passes.test(section))continue;
                 available++;
                 var subject=section.getAsignatura();var teacher=section.getProfesor();
                 rows.append("<tr><td><b>").append(esc(subject.getCodigo())).append("</b><br>").append(esc(subject.getNombre()))
@@ -669,10 +682,10 @@ public final class WebApp {
                         .append("<label>Período lectivo<input name='periodo' maxlength='20' placeholder='Ej. 2026-2' required></label>")
                         .append("<button class='primary' type='submit'>Inscribirme</button></form></td></tr>");
             }
-            if(rows.isEmpty())rows.append("<tr><td colspan='9' class='empty'>No hay secciones con cupo disponible en este momento.</td></tr>");
+            if(rows.isEmpty())rows.append("<tr><td colspan='9' class='empty'>"+(totalAvailable==0?"No hay secciones con cupo disponible en este momento.":"Ninguna sección coincide con los filtros.")+"</td></tr>");
             String notice=message==null?"":"<div class='success' role='status'>"+esc(message)+"</div>";
-            String body="<div class='page-heading'><div><div class='eyebrow'>INSCRIPCIÓN ACADÉMICA</div><h1>Secciones disponibles</h1><p>Elige una sección con espacio e indica el período lectivo que corresponde.</p></div><span class='role-badge'>"+available+" disponibles</span></div>"
-                    +notice+"<section class='card table-card'><div class='table-wrap'><table class='grade-table enrollment-table'><thead><tr><th>Asignatura</th><th>Área curricular</th><th>Grado</th><th>Créditos</th><th>Profesor</th><th>Horario</th><th>Aula</th><th>Cupo</th><th>Inscripción</th></tr></thead><tbody>"
+            String body="<div class='page-heading'><div><div class='eyebrow'>INSCRIPCIÓN ACADÉMICA</div><h1>Secciones disponibles</h1><p>Elige una sección con espacio e indica el período lectivo que corresponde.</p></div><span class='role-badge'>"+(available==totalAvailable?String.valueOf(available):available+" de "+totalAvailable)+" disponibles</span></div>"
+                    +notice+enrollBar+"<section class='card table-card'><div class='table-wrap'><table class='grade-table enrollment-table'><thead><tr><th>Asignatura</th><th>Área curricular</th><th>Grado</th><th>Créditos</th><th>Profesor</th><th>Horario</th><th>Aula</th><th>Cupo</th><th>Inscripción</th></tr></thead><tbody>"
                     +rows+"</tbody></table></div></section><p class='hint'>El sistema valida cupo y materias repetidas al guardar la inscripción.</p>";
             return shell("Secciones disponibles",body,true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Inscripciones",alert("No se pudieron cargar las secciones. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
@@ -699,11 +712,16 @@ public final class WebApp {
                     .append(options).append("</select></label><button class='primary' type='submit'>Consultar estudiantes</button></form></section>");
             if(selected!=null&&active==null)body.append(alert("La sección elegida no está asignada a tu cuenta."));
             if(active!=null){
-                List<NotaEstudiante> students=new CalificacionDAO().listarPorSeccion(active.getId());
+                List<NotaEstudiante> allStudents=new CalificacionDAO().listarPorSeccion(active.getId());
+                final String fq=Filtros.texto(queryValue(query,"q"),100);
+                Map<String,String> stateFilter=new java.util.TreeMap<>();for(NotaEstudiante n:allStudents)if(n.estadoMateria()!=null)stateFilter.put(n.estadoMateria(),n.estadoMateria());
+                final String fe=Filtros.opcion(queryValue(query,"estado"),stateFilter.keySet());
+                List<NotaEstudiante> students=allStudents.stream().filter(n->(fe.isEmpty()||fe.equals(n.estadoMateria()))&&Filtros.coincide(fq,n.estudiante().getNombreCompleto(),n.estudiante().getMatricula(),n.periodo())).toList();
+                body.append(Filtros.barra("/calificaciones",Map.of("seccion",String.valueOf(active.getId())),Filtros.campoTexto("q","Buscar estudiante",fq,"Nombre, matrícula o período")+Filtros.campoLista("estado","Estado",fe,stateFilter),!fq.isEmpty()||!fe.isEmpty(),students.size(),allStudents.size()));
                 body.append("<section class='card table-card'><h2>").append(esc(active.getAsignatura().getCodigo()+" · "+active.getAsignatura().getNombre()+" · "+(active.getGrado()==null?"Grado pendiente":active.getGrado().nombre())))
-                        .append("</h2><p class='muted'>").append(esc(active.getHorario()+" · Aula "+active.getAula()+" · "+students.size()+" estudiante(s)"))
+                        .append("</h2><p class='muted'>").append(esc(active.getHorario()+" · Aula "+active.getAula()+" · "+allStudents.size()+" estudiante(s)"))
                         .append("</p><div class='table-wrap'><table class='grade-table teacher-grades'><thead><tr><th>Estudiante</th><th>Matrícula</th><th>Período</th><th>Parcial 1</th><th>Parcial 2</th><th>Examen</th><th>Final calculado</th><th>Estado</th><th>Guardar</th></tr></thead><tbody>");
-                if(students.isEmpty())body.append("<tr><td colspan='9' class='empty'>Esta sección todavía no tiene estudiantes inscritos.</td></tr>");
+                if(students.isEmpty())body.append("<tr><td colspan='9' class='empty'>"+(allStudents.isEmpty()?"Esta sección todavía no tiene estudiantes inscritos.":"Ningún estudiante coincide con los filtros.")+"</td></tr>");
                 for(NotaEstudiante student:students){
                     Calificacion grade=student.calificacion();
                     String formId="grade-"+student.idDetalleInscripcion();
@@ -751,6 +769,15 @@ public final class WebApp {
         return grade;
     }
 
+    /** Con SIGE_AULA_URL y SIGE_AULA_SSO_SECRET abre el Aula Virtual (subsistema aparte) ya autenticado; si no, usa el aula integrada. */
+    private static void openAula(HttpExchange x,WebSession s)throws IOException{
+        boolean eligible=s.user!=null&&(s.user.getRol()==Rol.PROFESOR||s.user.getRol()==Rol.ESTUDIANTE);
+        if(eligible&&AulaSso.configurado()){
+            redirect(x,AulaSso.urlDeAcceso(s.user.getId(),s.user.getRol().name(),s.user.getNombreCompleto()));
+            return;
+        }
+        page(x,s,aulaPage(s,x.getRequestURI().getRawQuery(),null));
+    }
     private static String aulaPage(WebSession s,String query,String message){
         if(s.user==null)return shell("Aula y tareas",errorPage("Inicia sesión para continuar."),false,"");
         if(s.user.getRol()!=Rol.PROFESOR&&s.user.getRol()!=Rol.ESTUDIANTE)return shell("Aula y tareas",errorPage("El aula está disponible para profesores y estudiantes."),true,s.user.getNombreCompleto());
@@ -980,13 +1007,15 @@ public final class WebApp {
                 else if(java.time.temporal.ChronoUnit.DAYS.between(from,to)>366)error="El rango máximo del reporte es de 366 días.";
                 else records=new AsistenciaDAO().listarReportePorSeccion(selectedSection.getId(),s.user.getId(),s.user.getRol()==Rol.ADMIN,from,to);
             }
+            final String fq=Filtros.texto(queryValue(query,"q"),100),fe=Filtros.opcion(queryValue(query,"estado"),List.of("presente","ausente"));int totalMarcas=records.size();
+            records=filtrarMarcas(records,fq,fe);
             long present=records.stream().filter(row->Boolean.TRUE.equals(row.presente())).count();long absent=records.stream().filter(row->Boolean.FALSE.equals(row.presente())).count();
             for(FilaAsistencia row:records)rows.append("<tr><td>").append(esc(row.fecha().toString())).append("</td><td>").append(esc(row.matricula())).append("</td><td><b>").append(esc(row.estudiante())).append("</b></td><td><span class='state-pill ").append(Boolean.TRUE.equals(row.presente())?"account-active":"account-disabled").append("'>").append(Boolean.TRUE.equals(row.presente())?"Presente":"Ausente").append("</span></td></tr>");
             if(records.size()>5000){error="Hay más de 5,000 marcas. Reduce el rango de fechas para consultar el reporte completo.";records=List.of();rows.setLength(0);present=0;absent=0;}
             if(rows.isEmpty())rows.append("<tr><td colspan='4' class='empty'>No hay marcas de asistencia en el rango seleccionado.</td></tr>");
             String body="<div class='page-heading'><div><div class='eyebrow'>INFORME ACADÉMICO</div><h1>Reporte de asistencia</h1><p>Consulta las marcas registradas por sección y período.</p></div></div>"+(error==null?"":"<div class='alert' role='status'>"+esc(error)+"</div>")
-                    +"<section class='card section-picker'><form method='get' action='/reporte-asistencia'><label>Sección<select name='seccion' required>"+options+"</select></label><label>Desde<input type='date' name='desde' value='"+from+"' required></label><label>Hasta<input type='date' name='hasta' value='"+to+"' required></label><button class='primary' type='submit'>Consultar</button></form></section>"
-                    +(selectedSection==null?"":"<section class='metrics grade-summary'>"+metric("Marcas",records.size())+metric("Presentes",present)+metric("Ausentes",absent)+metric("Asistencia",String.format(java.util.Locale.ROOT,"%.1f%%",records.isEmpty()?0:present*100.0/records.size()))+"</section><section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Fecha</th><th>Matrícula</th><th>Estudiante</th><th>Estado</th></tr></thead><tbody>"+rows+"</tbody></table></div><a class='primary link-button' href='/reporte-asistencia.csv?seccion="+selectedSection.getId()+"&amp;desde="+from+"&amp;hasta="+to+"'>Descargar CSV</a></section>");
+                    +"<section class='card section-picker'><form method='get' action='/reporte-asistencia'><label>Sección<select name='seccion' required>"+options+"</select></label><label>Desde<input type='date' name='desde' value='"+from+"' required></label><label>Hasta<input type='date' name='hasta' value='"+to+"' required></label>"+Filtros.campoTexto("q","Estudiante",fq,"Nombre o matrícula")+Filtros.campoLista("estado","Estado",fe,estadoAsistenciaFiltro())+"<button class='primary' type='submit'>Consultar</button></form>"+(selectedSection==null?"":"<p class='filtros-resumen muted' role='status'>"+Filtros.resumen(records.size(),totalMarcas,!fq.isEmpty()||!fe.isEmpty())+"</p>")+"</section>"
+                    +(selectedSection==null?"":"<section class='metrics grade-summary'>"+metric("Marcas",records.size())+metric("Presentes",present)+metric("Ausentes",absent)+metric("Asistencia",String.format(java.util.Locale.ROOT,"%.1f%%",records.isEmpty()?0:present*100.0/records.size()))+"</section><section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Fecha</th><th>Matrícula</th><th>Estudiante</th><th>Estado</th></tr></thead><tbody>"+rows+"</tbody></table></div><a class='primary link-button' href='/reporte-asistencia.csv?seccion="+selectedSection.getId()+"&amp;desde="+from+"&amp;hasta="+to+"&amp;q="+java.net.URLEncoder.encode(fq,StandardCharsets.UTF_8)+"&amp;estado="+fe+"'>Descargar CSV</a></section>");
             return shell("Reporte de asistencia",body,true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Reporte de asistencia",alert("No se pudo cargar el reporte. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
     }
@@ -1001,10 +1030,19 @@ public final class WebApp {
             if(allowed.stream().noneMatch(section->section.getId()==sectionId)){send(x,403,"text/plain; charset=utf-8","No tienes permiso para consultar esa sección.");return;}
             List<FilaAsistencia> rows=new AsistenciaDAO().listarReportePorSeccion(sectionId,s.user.getId(),s.user.getRol()==Rol.ADMIN,from,to);
             if(rows.size()>5000){send(x,413,"text/plain; charset=utf-8","El reporte supera 5,000 marcas. Reduce el rango de fechas.");return;}
+            rows=filtrarMarcas(rows,Filtros.texto(queryValue(query,"q"),100),Filtros.opcion(queryValue(query,"estado"),List.of("presente","ausente")));
             StringBuilder csv=new StringBuilder("\uFEFFFecha,Matrícula,Estudiante,Estado\r\n");
             for(FilaAsistencia row:rows)csv.append(csv(row.fecha().toString())).append(',').append(csv(row.matricula())).append(',').append(csv(row.estudiante())).append(',').append(csv(Boolean.TRUE.equals(row.presente())?"Presente":"Ausente")).append("\r\n");
             x.getResponseHeaders().set("Content-Disposition","attachment; filename=\"reporte-asistencia-sige.csv\"");send(x,200,"text/csv; charset=utf-8",csv.toString());
         }catch(SQLException e){send(x,500,"text/plain; charset=utf-8","No se pudo generar el reporte. Verifica la conexión con MySQL.");}
+    }
+
+    private static Map<String,String> tipoFiltro(){Map<String,String> m=new java.util.LinkedHashMap<>();m.put("ESTUDIANTE","Estudiante");m.put("PADRE","Padre / tutor");return m;}
+    private static Map<String,String> estadoAsistenciaFiltro(){Map<String,String> m=new java.util.LinkedHashMap<>();m.put("presente","Presente");m.put("ausente","Ausente");return m;}
+
+    /** Aplica los filtros de estudiante (texto) y estado (presente/ausente) a las marcas del reporte. */
+    private static List<FilaAsistencia> filtrarMarcas(List<FilaAsistencia> marcas,String texto,String estado){
+        return marcas.stream().filter(r->(estado.isEmpty()||("presente".equals(estado)?Boolean.TRUE.equals(r.presente()):Boolean.FALSE.equals(r.presente())))&&Filtros.coincide(texto,r.estudiante(),r.matricula())).toList();
     }
 
     private static java.time.LocalDate parseDate(String value,java.time.LocalDate fallback){
@@ -1057,6 +1095,11 @@ public final class WebApp {
             if(message==null&&query!=null&&query.contains("guardado=1"))message="La asignatura se guardó correctamente.";
             if(message==null&&query!=null&&query.contains("eliminado=1"))message="La asignatura se eliminó correctamente.";
             Asignatura value=editing==null?new Asignatura(0,"","",0,""):editing;
+            String fq=Filtros.texto(queryValue(query,"q"),100),fa=Filtros.opcion(queryValue(query,"area"),areas.keySet()),fg=String.valueOf(Filtros.entero(queryValue(query,"grado")));if("0".equals(fg))fg="";
+            final String filterArea=fa,filterGrade=fg,filterText=fq;
+            List<Asignatura> visibleSubjects=subjects.stream().filter(a->(filterArea.isEmpty()||filterArea.equals(a.getCodigoArea()))&&(filterGrade.isEmpty()||(a.getIdsGrados()!=null&&List.of(a.getIdsGrados().split(",")).contains(filterGrade)))&&Filtros.coincide(filterText,a.getCodigo(),a.getNombre(),a.getDescripcion())).toList();
+            Map<String,String> gradeFilterOptions=new java.util.LinkedHashMap<>();for(GradoCurricular g:grades)gradeFilterOptions.put(String.valueOf(g.id()),g.nombre());
+            String subjectBar=Filtros.barra("/asignaturas",Map.of(),Filtros.campoTexto("q","Buscar","".equals(fq)?"":fq,"Código, nombre o descripción")+Filtros.campoLista("area","Área curricular",fa,areas)+Filtros.campoLista("grado","Grado",fg,gradeFilterOptions),!fq.isEmpty()||!fa.isEmpty()||!fg.isEmpty(),visibleSubjects.size(),subjects.size());
             StringBuilder areaOptions=new StringBuilder("<option value=''>Selecciona el área...</option>");
             areas.forEach((code,name)->areaOptions.append("<option value='").append(esc(code)).append("'").append(code.equals(value.getCodigoArea())?" selected":"").append(">").append(esc(name)).append("</option>"));
             StringBuilder gradeOptions=new StringBuilder();
@@ -1068,13 +1111,13 @@ public final class WebApp {
                     +"<label>Nombre<input name='nombre' maxlength='100' value='"+esc(value.getNombre())+"' required></label><label>Área curricular<select name='area' required>"+areaOptions+"</select></label><label>Grados (puedes elegir varios)<select name='grados' multiple size='4' required>"+gradeOptions+"</select></label><label>Créditos / carga<input name='creditos' type='number' min='0' max='99' value='"+value.getCreditos()+"' required></label>"
                     +"<label class='subject-description'>Descripción<textarea name='descripcion' rows='3'>"+esc(value.getDescripcion())+"</textarea></label></div><div class='subject-actions'><button class='primary' type='submit'>"+(value.getId()==0?"Crear asignatura":"Guardar cambios")+"</button>"
                     +(value.getId()==0?"":"<a class='text-link' href='/asignaturas'>Cancelar edición</a>")+"</div></form></section>"
-                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Código</th><th>Nombre</th><th>Área curricular</th><th>Grados</th><th>Créditos</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody>";
+                    +subjectBar+"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Código</th><th>Nombre</th><th>Área curricular</th><th>Grados</th><th>Créditos</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody>";
             StringBuilder rows=new StringBuilder();
-            for(Asignatura a:subjects)rows.append("<tr><td><b>").append(esc(a.getCodigo())).append("</b></td><td>").append(esc(a.getNombre()))
+            for(Asignatura a:visibleSubjects)rows.append("<tr><td><b>").append(esc(a.getCodigo())).append("</b></td><td>").append(esc(a.getNombre()))
                     .append("</td><td>").append(esc(a.getAreaCurricular()==null?"Pendiente":a.getAreaCurricular())).append("</td><td>").append(esc(a.getGradosCurriculares()==null?"Pendiente":a.getGradosCurriculares())).append("</td><td>").append(a.getCreditos()).append("</td><td>").append(esc(a.getDescripcion())).append("</td><td><div class='subject-actions'><a class='text-link' href='/asignaturas?editar=")
                     .append(a.getId()).append("'>Editar</a><form method='post' action='/eliminar-asignatura' class='inline-form'>").append(hiddenCsrf(s))
                     .append("<input type='hidden' name='id' value='").append(a.getId()).append("'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar eliminación</label><button class='danger' type='submit'>Eliminar</button></form></div></td></tr>");
-            if(rows.isEmpty())rows.append("<tr><td colspan='7' class='empty'>No hay asignaturas registradas.</td></tr>");
+            if(rows.isEmpty())rows.append("<tr><td colspan='7' class='empty'>"+(subjects.isEmpty()?"No hay asignaturas registradas.":"Ninguna asignatura coincide con los filtros.")+"</td></tr>");
             return shell("Asignaturas",body+rows+"</tbody></table></div></section>",true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Asignaturas",alert("No se pudo cargar el catálogo. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
     }
@@ -1126,6 +1169,18 @@ public final class WebApp {
             if(message==null&&query!=null&&query.contains("guardado=1"))message="La sección se guardó correctamente.";
             if(message==null&&query!=null&&query.contains("eliminado=1"))message="La sección se eliminó correctamente.";
             Seccion value=editing==null?new Seccion(0,"","",30,null,null):editing;
+            final String fq=Filtros.texto(queryValue(query,"q"),100),fg=Filtros.entero(queryValue(query,"grado"))==0?"":String.valueOf(Filtros.entero(queryValue(query,"grado")));
+            java.util.Set<String> teacherIds=new java.util.HashSet<>();for(Profesor p:teachers)teacherIds.add(String.valueOf(p.getId()));teacherIds.add("sin");
+            final String fp=Filtros.opcion(queryValue(query,"profesor"),teacherIds);
+            final String fc=Filtros.opcion(queryValue(query,"cupo"),List.of("disponible","llena"));
+            List<Seccion> visibleSections=sections.stream().filter(z->(fg.isEmpty()||(z.getGrado()!=null&&String.valueOf(z.getGrado().id()).equals(fg)))
+                    &&(fp.isEmpty()||("sin".equals(fp)?z.getProfesor()==null:z.getProfesor()!=null&&String.valueOf(z.getProfesor().getId()).equals(fp)))
+                    &&(fc.isEmpty()||("llena".equals(fc)==(z.getInscritos()>=z.getCupoMaximo())))
+                    &&Filtros.coincide(fq,z.getAsignatura().getCodigo(),z.getAsignatura().getNombre(),z.getProfesor()==null?"":z.getProfesor().getNombreCompleto(),z.getAula(),z.getHorario())).toList();
+            Map<String,String> gradeFilter=new java.util.LinkedHashMap<>();for(GradoCurricular g:grades)gradeFilter.put(String.valueOf(g.id()),g.nombre());
+            Map<String,String> teacherFilter=new java.util.LinkedHashMap<>();teacherFilter.put("sin","Sin profesor asignado");for(Profesor p:teachers)teacherFilter.put(String.valueOf(p.getId()),p.getNombreCompleto());
+            Map<String,String> quotaFilter=new java.util.LinkedHashMap<>();quotaFilter.put("disponible","Con cupo disponible");quotaFilter.put("llena","Llenas");
+            String sectionBar=Filtros.barra("/secciones",Map.of(),Filtros.campoTexto("q","Buscar",fq,"Asignatura, profesor, aula u horario")+Filtros.campoLista("grado","Grado",fg,gradeFilter)+Filtros.campoLista("profesor","Profesor",fp,teacherFilter)+Filtros.campoLista("cupo","Cupo",fc,quotaFilter),!fq.isEmpty()||!fg.isEmpty()||!fp.isEmpty()||!fc.isEmpty(),visibleSections.size(),sections.size());
             StringBuilder subjectOptions=new StringBuilder("<option value=''>Selecciona una asignatura...</option>");
             for(Asignatura a:subjects)subjectOptions.append("<option value='").append(a.getId()).append("'")
                     .append(value.getAsignatura()!=null&&value.getAsignatura().getId()==a.getId()?" selected":"").append(">")
@@ -1143,16 +1198,16 @@ public final class WebApp {
                     +"<label>Grado<select name='grado' required>"+gradeOptions+"</select></label><label>Profesor<select name='profesor'>"+teacherOptions+"</select></label><label>Aula<input name='aula' maxlength='20' value='"+esc(value.getAula())+"' required></label>"
                     +"<label>Horario<input name='horario' maxlength='50' value='"+esc(value.getHorario())+"' required></label><label>Cupo máximo<input name='cupo' type='number' min='1' max='500' value='"+value.getCupoMaximo()+"' required></label></div>"
                     +"<div class='subject-actions'><button class='primary' type='submit'>"+(value.getId()==0?"Crear sección":"Guardar cambios")+"</button>"+(value.getId()==0?"":"<a class='text-link' href='/secciones'>Cancelar edición</a>")+"</div></form></section>"
-                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>ID</th><th>Grado</th><th>Asignatura</th><th>Profesor</th><th>Aula</th><th>Horario</th><th>Inscritos / Cupo</th><th>Acciones</th></tr></thead><tbody>";
+                    +sectionBar+"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>ID</th><th>Grado</th><th>Asignatura</th><th>Profesor</th><th>Aula</th><th>Horario</th><th>Inscritos / Cupo</th><th>Acciones</th></tr></thead><tbody>";
             StringBuilder rows=new StringBuilder();
-            for(Seccion section:sections)rows.append("<tr><td>").append(section.getId()).append("</td><td>").append(esc(section.getGrado()==null?"Pendiente":section.getGrado().nombre())).append("</td><td><b>").append(esc(section.getAsignatura().getCodigo()))
+            for(Seccion section:visibleSections)rows.append("<tr><td>").append(section.getId()).append("</td><td>").append(esc(section.getGrado()==null?"Pendiente":section.getGrado().nombre())).append("</td><td><b>").append(esc(section.getAsignatura().getCodigo()))
                     .append("</b><br>").append(esc(section.getAsignatura().getNombre())).append("</td><td>")
                     .append(esc(section.getProfesor()==null?"Sin asignar":section.getProfesor().getNombreCompleto())).append("</td><td>")
                     .append(esc(section.getAula())).append("</td><td>").append(esc(section.getHorario())).append("</td><td>")
                     .append(section.getInscritos()).append(" / ").append(section.getCupoMaximo()).append("</td><td><div class='subject-actions'><a class='text-link' href='/secciones?editar=")
                     .append(section.getId()).append("'>Editar</a><form method='post' action='/eliminar-seccion' class='inline-form'>").append(hiddenCsrf(s))
                     .append("<input type='hidden' name='id' value='").append(section.getId()).append("'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar</label><button class='danger' type='submit'>Eliminar</button></form></div></td></tr>");
-            if(rows.isEmpty())rows.append("<tr><td colspan='8' class='empty'>No hay secciones registradas.</td></tr>");
+            if(rows.isEmpty())rows.append("<tr><td colspan='8' class='empty'>"+(sections.isEmpty()?"No hay secciones registradas.":"Ninguna sección coincide con los filtros.")+"</td></tr>");
             return shell("Secciones",body+rows+"</tbody></table></div></section>",true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Secciones",alert("No se pudo cargar la gestión de secciones. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
     }
@@ -1202,7 +1257,10 @@ public final class WebApp {
         try{
             boolean success=message==null&&query!=null&&query.contains("atendida=1");
             if(success)message="La solicitud se atendió correctamente.";
-            List<UsuarioDAO.Solicitud> requests=USERS.listarSolicitudes();
+            List<UsuarioDAO.Solicitud> allRequests=USERS.listarSolicitudes();
+            String fq=Filtros.texto(queryValue(query,"q"),100),ft=Filtros.opcion(queryValue(query,"tipo"),List.of("ESTUDIANTE","PADRE"));
+            List<UsuarioDAO.Solicitud> requests=allRequests.stream().filter(r->(ft.isEmpty()||ft.equals(r.rol()))&&Filtros.coincide(fq,r.nombre(),r.apellido(),r.nombre()+" "+r.apellido(),r.correo(),r.detalle())).toList();
+            String requestBar=Filtros.barra("/solicitudes",Map.of(),Filtros.campoTexto("q","Buscar","".equals(fq)?"":fq,"Nombre, correo o datos")+Filtros.campoLista("tipo","Tipo",ft,tipoFiltro()),!fq.isEmpty()||!ft.isEmpty(),requests.size(),allRequests.size());
             StringBuilder rows=new StringBuilder();
             for(UsuarioDAO.Solicitud r:requests){
                 rows.append("<tr><td>").append(r.id()).append("</td><td><b>").append(esc(r.nombre()+" "+r.apellido())).append("</b></td><td>")
@@ -1211,11 +1269,11 @@ public final class WebApp {
                         .append(requestForm(s,r.id(),"aprobar","Aprobar","primary")).append(requestForm(s,r.id(),"rechazar","Rechazar","danger"))
                         .append("</div></td></tr>");
             }
-            if(rows.isEmpty())rows.append("<tr><td colspan='6' class='empty'>No hay solicitudes pendientes.</td></tr>");
+            if(rows.isEmpty())rows.append("<tr><td colspan='6' class='empty'>"+(allRequests.isEmpty()?"No hay solicitudes pendientes.":"Ninguna solicitud coincide con los filtros.")+"</td></tr>");
             String body="<div class='page-heading'><div><div class='eyebrow'>ADMINISTRACIÓN</div><h1>Solicitudes de registro</h1><p>Aprueba o rechaza las cuentas creadas desde el registro público.</p></div></div>"
                     +(message==null?"":"<div class='"+(success?"success":"alert")+"' role='status'>"+esc(message)+"</div>")
-                    +"<section class='metrics grade-summary'>"+metric("Pendientes",requests.size())+"</section>"
-                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table users-table'><thead><tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Tipo</th><th>Datos</th><th>Acciones</th></tr></thead><tbody>"
+                    +"<section class='metrics grade-summary'>"+metric("Pendientes",allRequests.size())+"</section>"
+                    +requestBar+"<section class='card table-card'><div class='table-wrap'><table class='grade-table users-table'><thead><tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Tipo</th><th>Datos</th><th>Acciones</th></tr></thead><tbody>"
                     +rows+"</tbody></table></div></section>";
             return shell("Solicitudes de registro",body,true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Solicitudes de registro",alert("No se pudieron cargar las solicitudes. Comprueba que se ejecutó sql/fase_registro_aprobacion.sql en la base de datos."),true,s.user.getNombreCompleto());}
@@ -1704,7 +1762,7 @@ public final class WebApp {
         send(x,200,"text/css; charset=utf-8",css);
     }
     private static String manifest(){return "{\"id\":\"/\",\"name\":\"SIGE - Sistema de Gestión Educativa\",\"short_name\":\"SIGE\",\"description\":\"Portal académico SIGE\",\"start_url\":\"/\",\"scope\":\"/\",\"display\":\"standalone\",\"background_color\":\"#f3f6fa\",\"theme_color\":\"#17324d\",\"icons\":[{\"src\":\"/icon.svg\",\"sizes\":\"any\",\"type\":\"image/svg+xml\",\"purpose\":\"any maskable\"}]}";}
-    private static String serviceWorker(){return "const CACHE='sige-ui-v5';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
+    private static String serviceWorker(){return "const CACHE='sige-ui-v6';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
     private static String icon(){return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' role='img' aria-label='SIGE'> <rect width='512' height='512' rx='112' fill='#17324d'/> <path d='M256 196C204 166 146 164 100 184v176c46-18 104-16 156 14z' fill='#ffffff'/> <path d='M256 196c52-30 110-32 156-12v176c-46-18-104-16-156 14z' fill='#d6ece9'/> <path d='M256 196v178' stroke='#17324d' stroke-width='9' stroke-linecap='round'/> <g stroke='#0f766e' stroke-width='12' stroke-linecap='round' fill='none'> <path d='M140 238c34-10 68-6 88 6'/><path d='M140 282c34-10 68-6 88 6'/> <path d='M372 238c-34-10-68-6-88 6'/><path d='M372 282c-34-10-68-6-88 6'/> </g> <path d='M256 74l14 38 38 14-38 14-14 38-14-38-38-14 38-14z' fill='#ef6530'/> </svg>";}
     private static void send(HttpExchange x,int status,String type,String body)throws IOException{
         byte[] data=body.getBytes(StandardCharsets.UTF_8); x.getResponseHeaders().set("Content-Type",type); if("HEAD".equalsIgnoreCase(x.getRequestMethod())){x.sendResponseHeaders(status,-1);return;}x.sendResponseHeaders(status,data.length);x.getResponseBody().write(data);

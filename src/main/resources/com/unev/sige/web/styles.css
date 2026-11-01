@@ -61,3 +61,8 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px soli
 footer{color:#566577}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 @media (forced-colors:active){.state-pill{border:1px solid CanvasText}.skip-link:focus{outline:2px solid Highlight}}
+
+/* Filtros de búsqueda */
+.filtros .filtros-resumen{margin:.6rem 0 0;font-size:.875rem}
+.filtros form{align-items:end}
+.filtros input[type=search]{min-width:12rem}
