@@ -10,11 +10,11 @@ import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Inicio de sesión único hacia el Aula Virtual (subsistema aparte, sige-aula).
- * Firma un token de 60 s con un secreto compartido. El formato es el mismo que verifica el Aula en Sso.java.
+ * Firma un token de 180 s con un secreto compartido. El formato es el mismo que verifica el Aula en Sso.java.
  * Se activa con SIGE_AULA_URL y SIGE_AULA_SSO_SECRET; sin ellas, SIGE sigue usando el aula integrada.
  */
 public final class AulaSso {
-    public static final int TTL_SEGUNDOS = 60;
+    public static final int TTL_SEGUNDOS = 180;
     private static final SecureRandom AZAR = new SecureRandom();
 
     private AulaSso() { }

@@ -9,7 +9,7 @@ class AulaSsoTest {
 
     @Test void vectorFijoIgualAlDelAula() {
         // Mismo vector que SsoTest.vectorFijoCompatibleConSige en el proyecto sige-aula.
-        assertEquals("v1.aWQ9NyZyb2w9RVNUVURJQU5URSZub21icmU9THVpcytHJUMzJUIzbWV6JmV4cD0xODAwMDAwMDYwJmp0aT1qdGktZmlqbw.A1-ctKVpcH1vmllhKoPtEmqW_HWjRSRyPI13GP7ezz0",
+        assertEquals("v1.aWQ9NyZyb2w9RVNUVURJQU5URSZub21icmU9THVpcytHJUMzJUIzbWV6JmV4cD0xODAwMDAwMTgwJmp0aT1qdGktZmlqbw.x_x_H3NLjukIbrMM_Qq1Rotuy0ZMOyWU4VsS8drUaHI",
                 AulaSso.crear(SECRETO, 7, "ESTUDIANTE", "Luis Gómez", 1_800_000_000L, "jti-fijo"));
     }
 
