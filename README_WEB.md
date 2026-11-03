@@ -107,3 +107,5 @@ Antes de usar estas funciones ejecuta una vez `sql/fase_periodos_auditoria.sql` 
 - **Períodos**: crear (nombre tipo `2026-1`), cerrar y reabrir con motivo. Al cerrar se guarda el historial académico de cada estudiante (aprobado, reprobado o incompleto) y se bloquean las notas y las matrículas del período.
 - **Bloqueo de notas**: en un período cerrado el profesor solo puede consultar. El administrador puede hacer una corrección excepcional indicando un motivo de 10 a 300 caracteres; queda auditada con el valor anterior y el nuevo.
 - **Auditoría**: registro de solo añadir (quién, qué, cuándo y por qué) de notas, cierres, matrículas, secciones, roles y cuentas, incluidos los intentos denegados. Filtros por texto, acción, resultado y fechas, y descarga en `/auditoria.csv`.
+
+Las fechas de la auditoría y del cierre de períodos se muestran en hora de República Dominicana (-04:00) aunque MySQL guarde en UTC. Para otra zona define la variable `SIGE_ZONA_HORARIA` (por ejemplo `-05:00`). El CSV de auditoría usa `;` como separador, fechas `dd/MM/aaaa HH:mm:ss` y codificación UTF-8 con BOM, así que abre directamente en columnas en Excel en español.

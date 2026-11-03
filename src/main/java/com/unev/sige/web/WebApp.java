@@ -1728,11 +1728,26 @@ public final class WebApp {
         try{
             AuditoriaDAO dao=new AuditoriaDAO();AuditoriaDAO.Filtro filter=auditFilter(query,dao.acciones());
             if(filter.desde()!=null&&filter.hasta()!=null&&filter.desde().isAfter(filter.hasta())){send(x,400,"text/plain; charset=utf-8","La fecha inicial no puede ser posterior a la fecha final.");return;}
-            StringBuilder csv=new StringBuilder("﻿ID,Fecha,Usuario,Rol,Acción,Entidad,ID entidad,Detalle,Motivo,Resultado\r\n");
-            for(AuditoriaDAO.Registro r:dao.listar(filter,5000,0))csv.append(r.id()).append(',').append(csv(r.fecha())).append(',').append(csv(r.usuario())).append(',').append(csv(r.rol())).append(',').append(csv(r.accion())).append(',')
-                    .append(csv(r.entidad())).append(',').append(csv(r.idEntidad())).append(',').append(csv(r.detalle())).append(',').append(csv(r.motivo())).append(',').append(csv(r.resultado())).append("\r\n");
-            x.getResponseHeaders().set("Content-Disposition","attachment; filename=\"auditoria-sige.csv\"");send(x,200,"text/csv; charset=utf-8",csv.toString());
+            StringBuilder csv=new StringBuilder("\uFEFFID;Fecha y hora;Usuario;Rol;Acción;Entidad;ID entidad;Detalle;Motivo;Resultado\r\n");
+            for(AuditoriaDAO.Registro r:dao.listar(filter,5000,0))
+                csv.append(r.id()).append(';').append(csvCampo(auditDate(r.fecha()))).append(';').append(csvCampo(r.usuario()==null?"Sistema":r.usuario())).append(';').append(csvCampo(r.rol())).append(';')
+                    .append(csvCampo(r.accion())).append(';').append(csvCampo(r.entidad())).append(';').append(csvCampo(r.idEntidad())).append(';').append(csvCampo(r.detalle())).append(';')
+                    .append(csvCampo(r.motivo())).append(';').append("DENEGADO".equals(r.resultado())?"Denegado":"Correcto").append("\r\n");
+            x.getResponseHeaders().set("Content-Disposition","attachment; filename=\"auditoria-sige-"+java.time.LocalDate.now(java.time.ZoneOffset.of(com.unev.sige.model.ZonaVisual.desplazamiento()))+".csv\"");send(x,200,"text/csv; charset=utf-8",csv.toString());
         }catch(SQLException e){send(x,500,"text/plain; charset=utf-8","No se pudo exportar la auditoría. Verifica la conexión con MySQL.");}
+    }
+
+    /** Campo CSV para Excel en español (separador ;): se entrecomilla solo si hace falta y se neutralizan fórmulas. */
+    private static String csvCampo(String value){
+        String safe=value==null?"":value.replace("\r"," ").replace("\n"," ").trim();
+        if(!safe.isEmpty()&&"=+-@\t".indexOf(safe.charAt(0))>=0)safe="'"+safe;
+        return safe.indexOf(';')>=0||safe.indexOf('"')>=0?"\""+safe.replace("\"","\"\"")+"\"":safe;
+    }
+
+    /** yyyy-MM-dd HH:mm:ss pasa a dd/MM/yyyy HH:mm:ss, que Excel reconoce como fecha. */
+    private static String auditDate(String value){
+        if(value==null||value.length()<19||value.charAt(4)!='-')return value==null?"":value;
+        return value.substring(8,10)+"/"+value.substring(5,7)+"/"+value.substring(0,4)+value.substring(10,19);
     }
 
     private static void correctGrade(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{

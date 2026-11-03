@@ -3,6 +3,7 @@ package com.unev.sige.data;
 import com.unev.sige.model.EstadoPeriodo;
 import com.unev.sige.model.Periodo;
 import com.unev.sige.model.ReglasPeriodo;
+import com.unev.sige.model.ZonaVisual;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -40,7 +41,8 @@ public class PeriodoDAO {
     private static final String SQL_BASE = """
             SELECT p.id_periodo, p.nombre, p.fecha_inicio, p.fecha_fin, p.estado,
                    CONCAT(u.nombre, ' ', u.apellido) AS cerrado_por,
-                   DATE_FORMAT(p.fecha_cierre, '%Y-%m-%d %H:%i') AS fecha_cierre_texto
+                   DATE_FORMAT(""" + ZonaVisual.sql("p.fecha_cierre") + """
+            , '%Y-%m-%d %H:%i') AS fecha_cierre_texto
             FROM periodos_lectivos p
             LEFT JOIN usuarios u ON u.id_usuario = p.cerrado_por
             """;

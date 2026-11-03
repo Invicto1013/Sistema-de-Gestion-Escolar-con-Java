@@ -1,6 +1,7 @@
 package com.unev.sige.data;
 
 import com.unev.sige.model.ReglasPeriodo;
+import com.unev.sige.model.ZonaVisual;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -98,7 +99,7 @@ public class AuditoriaDAO {
     public List<Registro> listar(Filtro filtro, int limite, int desplazamiento) throws SQLException {
         List<Object> parametros = new ArrayList<>();
         String where = condiciones(filtro, parametros);
-        String sql = "SELECT a.id_auditoria, DATE_FORMAT(a.fecha, '%Y-%m-%d %H:%i:%s') AS fecha_texto, a.id_usuario, "
+        String sql = "SELECT a.id_auditoria, DATE_FORMAT(" + ZonaVisual.sql("a.fecha") + ", '%Y-%m-%d %H:%i:%s') AS fecha_texto, a.id_usuario, "
                 + "CONCAT(u.nombre, ' ', u.apellido) AS usuario, a.rol, a.accion, a.entidad, a.id_entidad, "
                 + "a.detalle, a.motivo, a.resultado "
                 + "FROM auditoria a LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario" + where
@@ -144,11 +145,11 @@ public class AuditoriaDAO {
                 parametros.add(f.resultado().trim());
             }
             if (f.desde() != null) {
-                partes.add("a.fecha >= ?");
+                partes.add(ZonaVisual.sql("a.fecha") + " >= ?");
                 parametros.add(f.desde() + " 00:00:00");
             }
             if (f.hasta() != null) {
-                partes.add("a.fecha < DATE_ADD(?, INTERVAL 1 DAY)");
+                partes.add(ZonaVisual.sql("a.fecha") + " < DATE_ADD(?, INTERVAL 1 DAY)");
                 parametros.add(f.hasta().toString());
             }
         }
