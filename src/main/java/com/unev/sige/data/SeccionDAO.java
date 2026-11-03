@@ -33,18 +33,50 @@ public class SeccionDAO {
     public List<Seccion> listarTodas() throws SQLException { return consultar(SQL_BASE+SQL_ORDEN,null); }
     public List<Seccion> listarPorProfesor(int idProfesor) throws SQLException { return consultar(SQL_BASE+" WHERE s.id_profesor=?"+SQL_ORDEN,idProfesor); }
 
-    public void insertar(Seccion s) throws SQLException {
+    /** Crea una seccion a nombre de un administrador; la creacion y la asignacion de docente quedan auditadas. */
+    public void insertar(Seccion s, int idAdmin) throws SQLException, PermisoDenegadoException {
         String sql="INSERT INTO secciones (aula,horario,cupo_maximo,id_asignatura,id_profesor,id_grado) VALUES (?,?,?,?,?,?)";
-        try(Connection c=ConexionBD.obtener();PreparedStatement ps=c.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)){
-            asignarCampos(ps,s);asignarGrado(ps,6,s);ps.executeUpdate();
-            try(ResultSet keys=ps.getGeneratedKeys()){if(keys.next())s.setId(keys.getInt(1));}
+        try(Connection c=ConexionBD.obtener()){
+            c.setAutoCommit(false);
+            try{
+                Autorizacion.exigirAdministrador(c,idAdmin);
+                try(PreparedStatement ps=c.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)){
+                    asignarCampos(ps,s);asignarGrado(ps,6,s);ps.executeUpdate();
+                    try(ResultSet keys=ps.getGeneratedKeys()){if(keys.next())s.setId(keys.getInt(1));}
+                }
+                AuditoriaDAO.registrar(c,idAdmin,"SECCION_CREADA","seccion",String.valueOf(s.getId()),
+                        "Sección "+s.getId()+" de "+s.getAsignatura().getCodigo()+" creada; docente: "+docente(s.getProfesor())+".",null,"OK");
+                c.commit();
+            }catch(SQLException|PermisoDenegadoException|RuntimeException e){c.rollback();throw e;}
         }
     }
 
-    public void actualizar(Seccion s) throws SQLException {
+    /** Actualiza una seccion; si cambia el docente, el cambio (anterior y nuevo) queda auditado. */
+    public void actualizar(Seccion s, int idAdmin) throws SQLException, PermisoDenegadoException {
         String sql="UPDATE secciones SET aula=?,horario=?,cupo_maximo=?,id_asignatura=?,id_profesor=?,id_grado=? WHERE id_seccion=?";
-        try(Connection c=ConexionBD.obtener();PreparedStatement ps=c.prepareStatement(sql)){
-            asignarCampos(ps,s);asignarGrado(ps,6,s);ps.setInt(7,s.getId());ps.executeUpdate();
+        try(Connection c=ConexionBD.obtener()){
+            c.setAutoCommit(false);
+            try{
+                Autorizacion.exigirAdministrador(c,idAdmin);
+                Integer anterior=null;
+                try(PreparedStatement ps=c.prepareStatement("SELECT id_profesor FROM secciones WHERE id_seccion=? FOR UPDATE")){
+                    ps.setInt(1,s.getId());
+                    try(ResultSet rs=ps.executeQuery()){
+                        if(!rs.next())throw new PermisoDenegadoException("La sección ya no existe.");
+                        int valor=rs.getInt(1);anterior=rs.wasNull()?null:valor;
+                    }
+                }
+                try(PreparedStatement ps=c.prepareStatement(sql)){
+                    asignarCampos(ps,s);asignarGrado(ps,6,s);ps.setInt(7,s.getId());ps.executeUpdate();
+                }
+                Integer nuevo=s.getProfesor()==null?null:s.getProfesor().getId();
+                if(!java.util.Objects.equals(anterior,nuevo)){
+                    AuditoriaDAO.registrar(c,idAdmin,"DOCENTE_ASIGNADO","seccion",String.valueOf(s.getId()),
+                            "Sección "+s.getId()+" ("+s.getAsignatura().getCodigo()+"): docente "
+                                    +(anterior==null?"sin asignar":"id "+anterior)+" -> "+docente(s.getProfesor())+".",null,"OK");
+                }
+                c.commit();
+            }catch(SQLException|PermisoDenegadoException|RuntimeException e){c.rollback();throw e;}
         }
     }
 
@@ -53,9 +85,25 @@ public class SeccionDAO {
             ps.setInt(1,idSeccion);try(ResultSet rs=ps.executeQuery()){return rs.next()?rs.getInt(1):0;}
         }
     }
-    public void eliminar(int idSeccion) throws SQLException {
-        try(Connection c=ConexionBD.obtener();PreparedStatement ps=c.prepareStatement("DELETE FROM secciones WHERE id_seccion=?")){ps.setInt(1,idSeccion);ps.executeUpdate();}
+    /** Elimina una seccion (y, en cascada, sus inscripciones y notas): solo un administrador y queda auditado. */
+    public void eliminar(int idSeccion, int idAdmin) throws SQLException, PermisoDenegadoException {
+        try(Connection c=ConexionBD.obtener()){
+            c.setAutoCommit(false);
+            try{
+                Autorizacion.exigirAdministrador(c,idAdmin);
+                int inscritos=0;
+                try(PreparedStatement ps=c.prepareStatement("SELECT COUNT(*) FROM detalle_inscripciones WHERE id_seccion=?")){
+                    ps.setInt(1,idSeccion);try(ResultSet rs=ps.executeQuery()){if(rs.next())inscritos=rs.getInt(1);}
+                }
+                try(PreparedStatement ps=c.prepareStatement("DELETE FROM secciones WHERE id_seccion=?")){ps.setInt(1,idSeccion);ps.executeUpdate();}
+                AuditoriaDAO.registrar(c,idAdmin,"SECCION_ELIMINADA","seccion",String.valueOf(idSeccion),
+                        "Sección "+idSeccion+" eliminada ("+inscritos+" inscripción(es) afectada(s)).",null,"OK");
+                c.commit();
+            }catch(SQLException|PermisoDenegadoException|RuntimeException e){c.rollback();throw e;}
+        }
     }
+
+    private static String docente(Profesor p){return p==null?"sin asignar":p.getNombreCompleto()+" (id "+p.getId()+")";}
 
     private List<Seccion> consultar(String sql,Integer parametro)throws SQLException{
         List<Seccion> lista=new ArrayList<>();

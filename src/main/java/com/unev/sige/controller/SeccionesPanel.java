@@ -1,6 +1,8 @@
 package com.unev.sige.controller;
 
+import com.unev.sige.app.SesionActual;
 import com.unev.sige.data.AsignaturaDAO;
+import com.unev.sige.data.PermisoDenegadoException;
 import com.unev.sige.data.CurriculoDAO;
 import com.unev.sige.data.SeccionDAO;
 import com.unev.sige.data.UsuarioDAO;
@@ -158,12 +160,14 @@ public class SeccionesPanel extends VBox {
             }
             if (resultado.isPresent()) {
                 if (base == null) {
-                    seccionDAO.insertar(resultado.get());
+                    seccionDAO.insertar(resultado.get(), SesionActual.getUsuario().getId());
                 } else {
-                    seccionDAO.actualizar(resultado.get());
+                    seccionDAO.actualizar(resultado.get(), SesionActual.getUsuario().getId());
                 }
                 recargar();
             }
+        } catch (PermisoDenegadoException e) {
+            Dialogos.error(e.getMessage());
         } catch (SQLException e) {
             e.printStackTrace();
             Dialogos.error("No se pudo completar la operación. Revisa la conexión con MySQL.");
@@ -187,8 +191,10 @@ public class SeccionesPanel extends VBox {
                     + seleccionada.getAsignatura().getNombre() + "?")) {
                 return;
             }
-            seccionDAO.eliminar(seleccionada.getId());
+            seccionDAO.eliminar(seleccionada.getId(), SesionActual.getUsuario().getId());
             recargar();
+        } catch (PermisoDenegadoException e) {
+            Dialogos.error(e.getMessage());
         } catch (SQLException e) {
             e.printStackTrace();
             Dialogos.error("No se pudo eliminar la sección. Revisa la conexión con MySQL.");

@@ -66,3 +66,4 @@ footer{color:#566577}
 .filtros .filtros-resumen{margin:.6rem 0 0;font-size:.875rem}
 .filtros form{align-items:end}
 .filtros input[type=search]{min-width:12rem}
+.pager{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin:14px 0 4px;font-size:.88rem;color:var(--muted)}.audit-table{min-width:1000px}.audit-detail{max-width:420px;overflow-wrap:anywhere}.grade-edit input[name=motivo]{width:100%;min-width:170px;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;margin-bottom:6px}.grade-input input[readonly]{background:#f1f4f7;color:#5b6b7b}

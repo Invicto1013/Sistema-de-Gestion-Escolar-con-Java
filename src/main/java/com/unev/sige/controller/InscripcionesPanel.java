@@ -1,7 +1,10 @@
 package com.unev.sige.controller;
 
 import com.unev.sige.data.InscripcionDAO;
+import com.unev.sige.app.SesionActual;
 import com.unev.sige.data.InscripcionInvalidaException;
+import com.unev.sige.data.PeriodoDAO;
+import com.unev.sige.model.Periodo;
 import com.unev.sige.data.SeccionDAO;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.model.Estudiante;
@@ -68,6 +71,7 @@ public class InscripcionesPanel extends VBox {
     private final TableView<FilaMateria> tabla = FilaMateria.crearTabla();
     private final Label lblEstado = new Label();
 
+    private final PeriodoDAO periodoDAO = new PeriodoDAO();
     private String ultimoPeriodo = LocalDate.now().getYear() + "-1";
 
     public InscripcionesPanel() {
@@ -153,10 +157,14 @@ public class InscripcionesPanel extends VBox {
                 return;
             }
 
+            if (periodoDAO.abiertos().isEmpty()) {
+                Dialogos.error("No hay períodos lectivos abiertos. Crea uno en \"Períodos\" antes de matricular.");
+                return;
+            }
             Optional<DatosInscripcion> datos = pedirDatos(elegido, disponibles);
             if (datos.isPresent()) {
                 inscripcionDAO.inscribir(elegido.estudiante().getId(), datos.get().seccion().getId(),
-                        datos.get().periodo());
+                        datos.get().periodo(), SesionActual.getUsuario().getId());
                 ultimoPeriodo = datos.get().periodo();
             }
         } catch (InscripcionInvalidaException e) {
@@ -183,7 +191,9 @@ public class InscripcionesPanel extends VBox {
         }
 
         try {
-            inscripcionDAO.retirar(fila.detalle().getId());
+            inscripcionDAO.retirar(fila.detalle().getId(), SesionActual.getUsuario().getId());
+        } catch (InscripcionInvalidaException e) {
+            Dialogos.error(e.getMessage());
         } catch (SQLException e) {
             e.printStackTrace();
             Dialogos.error("No se pudo retirar la materia. Revisa la conexión con MySQL.");
@@ -206,8 +216,17 @@ public class InscripcionesPanel extends VBox {
         cmbSeccion.setPromptText("Selecciona una sección");
         cmbSeccion.setPrefWidth(560);
 
-        TextField txtPeriodo = new TextField(ultimoPeriodo);
-        txtPeriodo.setPromptText("Ej. " + LocalDate.now().getYear() + "-1");
+        ComboBox<String> txtPeriodo = new ComboBox<>();
+        try {
+            for (Periodo p : periodoDAO.abiertos()) {
+                txtPeriodo.getItems().add(p.nombre());
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        txtPeriodo.setValue(txtPeriodo.getItems().contains(ultimoPeriodo) ? ultimoPeriodo
+                : (txtPeriodo.getItems().isEmpty() ? null : txtPeriodo.getItems().get(0)));
+        txtPeriodo.setPromptText("Período abierto");
 
         Label lblError = new Label();
         lblError.getStyleClass().add("error-message");
@@ -224,12 +243,12 @@ public class InscripcionesPanel extends VBox {
 
         Button botonAceptar = (Button) dialogo.getDialogPane().lookupButton(ButtonType.OK);
         botonAceptar.addEventFilter(ActionEvent.ACTION, evento -> {
-            String periodo = txtPeriodo.getText() == null ? "" : txtPeriodo.getText().trim();
+            String periodo = txtPeriodo.getValue() == null ? "" : txtPeriodo.getValue();
             String error = null;
             if (cmbSeccion.getValue() == null) {
                 error = "Selecciona una sección.";
             } else if (periodo.isEmpty()) {
-                error = "El periodo lectivo es obligatorio.";
+                error = "Selecciona un período lectivo abierto.";
             } else if (periodo.length() > MAX_PERIODO) {
                 error = "El periodo admite máximo " + MAX_PERIODO + " caracteres.";
             }
@@ -242,7 +261,7 @@ public class InscripcionesPanel extends VBox {
         Dialogos.aplicarEstilos(dialogo);
         Optional<ButtonType> respuesta = dialogo.showAndWait();
         if (respuesta.isPresent() && respuesta.get() == ButtonType.OK) {
-            return Optional.of(new DatosInscripcion(cmbSeccion.getValue().seccion(), txtPeriodo.getText().trim()));
+            return Optional.of(new DatosInscripcion(cmbSeccion.getValue().seccion(), txtPeriodo.getValue()));
         }
         return Optional.empty();
     }

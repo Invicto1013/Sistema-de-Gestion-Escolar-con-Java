@@ -5,6 +5,7 @@ import com.google.zxing.WriterException;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.unev.sige.data.Autenticacion2FADAO;
 import com.unev.sige.data.AsistenciaDAO;
+import com.unev.sige.data.AuditoriaDAO;
 import com.unev.sige.data.AulaDAO;
 import com.unev.sige.data.AsignaturaDAO;
 import com.unev.sige.data.BoletaDAO;
@@ -15,6 +16,7 @@ import com.unev.sige.data.CurriculoDAO;
 import com.unev.sige.data.DashboardDAO;
 import com.unev.sige.data.InscripcionDAO;
 import com.unev.sige.data.InscripcionInvalidaException;
+import com.unev.sige.data.PeriodoDAO;
 import com.unev.sige.data.PermisoDenegadoException;
 import com.unev.sige.data.ReporteDAO;
 import com.unev.sige.data.SesionDAO;
@@ -29,6 +31,7 @@ import com.unev.sige.model.Asignatura;
 import com.unev.sige.model.FilaAsistencia;
 import com.unev.sige.model.Estudiante;
 import com.unev.sige.model.Padre;
+import com.unev.sige.model.Periodo;
 import com.unev.sige.model.Profesor;
 import com.unev.sige.model.LineaBoleta;
 import com.unev.sige.model.ResumenAsistencia;
@@ -157,6 +160,9 @@ public final class WebApp {
                     case "/mis-hijos" -> page(x,s,parentChildrenPage(s));
                     case "/historial-sesiones" -> page(x,s,sessionHistoryPage(s,x.getRequestURI().getRawQuery()));
                     case "/historial-sesiones.csv" -> downloadSessionHistoryCsv(x,s,x.getRequestURI().getRawQuery());
+                    case "/periodos" -> page(x,s,periodsPage(s,x.getRequestURI().getRawQuery(),null));
+                    case "/auditoria" -> page(x,s,auditPage(s,x.getRequestURI().getRawQuery()));
+                    case "/auditoria.csv" -> downloadAuditCsv(x,s,x.getRequestURI().getRawQuery());
                     case "/2fa" -> page(x, s, mfaPage(s, null));
                     case "/password" -> page(x, s, passwordPage(s, null));
                     default -> page(x, s, errorPage("Página no encontrada."));
@@ -180,6 +186,10 @@ public final class WebApp {
                 case "/change-password" -> changePassword(x, s, form);
                 case "/inscribir" -> enroll(x, s, form);
                 case "/guardar-calificacion" -> saveGrade(x, s, form);
+                case "/corregir-calificacion" -> correctGrade(x, s, form);
+                case "/crear-periodo" -> createPeriod(x, s, form);
+                case "/cerrar-periodo" -> closePeriod(x, s, form);
+                case "/reabrir-periodo" -> reopenPeriod(x, s, form);
                 case "/guardar-asistencia" -> saveAttendance(x, s, form);
                 case "/aula-publicar" -> publishAula(x,s,form,files);
                 case "/aula-entregar" -> submitAula(x,s,form,files);
@@ -666,6 +676,10 @@ public final class WebApp {
                     &&Filtros.coincide(fq,z.getAsignatura().getCodigo(),z.getAsignatura().getNombre(),z.getProfesor()==null?"":z.getProfesor().getNombreCompleto(),z.getAula(),z.getHorario());
             String enrollBar=Filtros.barra("/inscripciones",Map.of(),Filtros.campoTexto("q","Buscar",fq,"Asignatura, profesor, aula u horario")+Filtros.campoLista("grado","Grado",fg,gradeFilter)+Filtros.campoLista("area","Área curricular",fa,areaFilter)+Filtros.campoLista("profesor","Profesor",fp,teacherFilter),!fq.isEmpty()||!fg.isEmpty()||!fa.isEmpty()||!fp.isEmpty(),(int)openSections.stream().filter(passes).count(),totalAvailable);
             StringBuilder rows=new StringBuilder();int available=0;
+            List<Periodo> openPeriods=new PeriodoDAO().abiertos();
+            StringBuilder periodOptions=new StringBuilder("<option value='' disabled selected>Elige…</option>");
+            for(Periodo p:openPeriods)periodOptions.append("<option value='").append(esc(p.nombre())).append("'>").append(esc(p.nombre())).append("</option>");
+            if(openPeriods.isEmpty())message=message==null?"Por ahora no hay períodos abiertos para inscribirse. Consulta con administración.":message;
             for(Seccion section:sections){
                 if(section.getInscritos()>=section.getCupoMaximo()||!passes.test(section))continue;
                 available++;
@@ -677,10 +691,10 @@ public final class WebApp {
                         .append(esc(teacher==null?"Sin asignar":teacher.getNombreCompleto())).append("</td><td>")
                         .append(esc(section.getHorario())).append("</td><td>").append(esc(section.getAula())).append("</td><td>")
                         .append(section.getInscritos()).append(" / ").append(section.getCupoMaximo()).append("</td><td>")
-                        .append("<form class='enroll-form' method='post' action='/inscribir'>").append(hiddenCsrf(s))
-                        .append("<input type='hidden' name='id_seccion' value='").append(section.getId()).append("'>")
-                        .append("<label>Período lectivo<input name='periodo' maxlength='20' placeholder='Ej. 2026-2' required></label>")
-                        .append("<button class='primary' type='submit'>Inscribirme</button></form></td></tr>");
+                        .append(openPeriods.isEmpty()?"<span class='muted'>Sin períodos abiertos</span>":"<form class='enroll-form' method='post' action='/inscribir'>"+hiddenCsrf(s)
+                                +"<input type='hidden' name='id_seccion' value='"+section.getId()+"'>"
+                                +"<label>Período lectivo<select name='periodo' required>"+periodOptions+"</select></label>"
+                                +"<button class='primary' type='submit'>Inscribirme</button></form>").append("</td></tr>");
             }
             if(rows.isEmpty())rows.append("<tr><td colspan='9' class='empty'>"+(totalAvailable==0?"No hay secciones con cupo disponible en este momento.":"Ninguna sección coincide con los filtros.")+"</td></tr>");
             String notice=message==null?"":"<div class='success' role='status'>"+esc(message)+"</div>";
@@ -701,6 +715,7 @@ public final class WebApp {
             Seccion active=sections.stream().filter(sec->selected!=null&&sec.getId()==selected).findFirst().orElse(null);
             String notice=message==null&&query!=null&&query.contains("guardado=1")
                     ?"La calificación se guardó correctamente.":message;
+            if(notice==null&&query!=null&&query.contains("corregido=1"))notice="La corrección excepcional se guardó y quedó registrada en la auditoría.";
             StringBuilder options=new StringBuilder("<option value=''>Selecciona una sección...</option>");
             for(Seccion sec:sections)options.append("<option value='").append(sec.getId()).append("'")
                     .append(active!=null&&active.getId()==sec.getId()?" selected":"").append(">")
@@ -713,6 +728,7 @@ public final class WebApp {
             if(selected!=null&&active==null)body.append(alert("La sección elegida no está asignada a tu cuenta."));
             if(active!=null){
                 List<NotaEstudiante> allStudents=new CalificacionDAO().listarPorSeccion(active.getId());
+                Map<String,Periodo> periodByName=new java.util.HashMap<>();for(Periodo p:new PeriodoDAO().listar())periodByName.put(p.nombre(),p);
                 final String fq=Filtros.texto(queryValue(query,"q"),100);
                 Map<String,String> stateFilter=new java.util.TreeMap<>();for(NotaEstudiante n:allStudents)if(n.estadoMateria()!=null)stateFilter.put(n.estadoMateria(),n.estadoMateria());
                 final String fe=Filtros.opcion(queryValue(query,"estado"),stateFilter.keySet());
@@ -721,29 +737,43 @@ public final class WebApp {
                 body.append("<section class='card table-card'><h2>").append(esc(active.getAsignatura().getCodigo()+" · "+active.getAsignatura().getNombre()+" · "+(active.getGrado()==null?"Grado pendiente":active.getGrado().nombre())))
                         .append("</h2><p class='muted'>").append(esc(active.getHorario()+" · Aula "+active.getAula()+" · "+allStudents.size()+" estudiante(s)"))
                         .append("</p><div class='table-wrap'><table class='grade-table teacher-grades'><thead><tr><th>Estudiante</th><th>Matrícula</th><th>Período</th><th>Parcial 1</th><th>Parcial 2</th><th>Examen</th><th>Final calculado</th><th>Estado</th><th>Guardar</th></tr></thead><tbody>");
+                boolean anyLocked=false;
                 if(students.isEmpty())body.append("<tr><td colspan='9' class='empty'>"+(allStudents.isEmpty()?"Esta sección todavía no tiene estudiantes inscritos.":"Ningún estudiante coincide con los filtros.")+"</td></tr>");
                 for(NotaEstudiante student:students){
                     Calificacion grade=student.calificacion();
                     String formId="grade-"+student.idDetalleInscripcion();
+                    Periodo studentPeriod=periodByName.get(student.periodo());boolean locked=studentPeriod!=null&&studentPeriod.cerrado();
+                    if(locked)anyLocked=true;
+                    boolean readOnly=locked&&!admin;
                     body.append("<tr><td>").append(esc(student.estudiante().getNombreCompleto())).append("</td><td>").append(esc(student.estudiante().getMatricula()))
-                            .append("</td><td>").append(esc(student.periodo())).append("</td><td>").append(gradeInput("p1",grade.getNotaParcial1(),formId))
-                            .append("</td><td>").append(gradeInput("p2",grade.getNotaParcial2(),formId)).append("</td><td>")
-                            .append(gradeInput("examen",grade.getNotaExamenFinal(),formId)).append("</td><td><span class='grade-result'>")
+                            .append("</td><td>").append(esc(student.periodo())).append(locked?" <span class='state-pill account-disabled'>Cerrado</span>":"").append("</td><td>").append(gradeInput("p1",grade.getNotaParcial1(),formId,readOnly))
+                            .append("</td><td>").append(gradeInput("p2",grade.getNotaParcial2(),formId,readOnly)).append("</td><td>")
+                            .append(gradeInput("examen",grade.getNotaExamenFinal(),formId,readOnly)).append("</td><td><span class='grade-result'>")
                             .append(formatGrade(grade.getNotaFinal())).append(" · ").append(esc(grade.getCalificacionLiteral()))
                             .append("</span></td><td><span class='state-pill'>").append(esc(student.estadoMateria()))
-                            .append("</span></td><td><form id='").append(formId).append("' class='grade-edit' method='post' action='/guardar-calificacion'>")
-                            .append(hiddenCsrf(s)).append("<input type='hidden' name='detalle' value='").append(student.idDetalleInscripcion())
-                            .append("'><input type='hidden' name='seccion' value='").append(active.getId())
-                            .append("'><button class='primary' type='submit'>Guardar</button></form></td></tr>");
+                            .append("</span></td><td>");
+                    if(readOnly)body.append("<span class='muted'>Bloqueado por cierre de período</span>");
+                    else{
+                        body.append("<form id='").append(formId).append("' class='grade-edit' method='post' action='").append(locked?"/corregir-calificacion":"/guardar-calificacion").append("'>")
+                                .append(hiddenCsrf(s)).append("<input type='hidden' name='detalle' value='").append(student.idDetalleInscripcion())
+                                .append("'><input type='hidden' name='seccion' value='").append(active.getId()).append("'>");
+                        if(locked)body.append("<input name='motivo' minlength='10' maxlength='300' required placeholder='Motivo de la corrección' aria-label='Motivo de la corrección'><button class='danger' type='submit'>Corregir (excepción)</button>");
+                        else body.append("<button class='primary' type='submit'>Guardar</button>");
+                        body.append("</form>");
+                    }
+                    body.append("</td></tr>");
                 }
                 body.append("</tbody></table></div></section><p class='hint'>La nota final y la calificación literal se calculan automáticamente al guardar.</p>");
+                if(anyLocked)body.append("<p class='hint'>Las notas de un período cerrado están bloqueadas."+(admin?" Como administrador puedes hacer una corrección excepcional con motivo; queda auditada y actualiza el historial del estudiante.":" Solo un administrador puede corregirlas, con motivo.")+"</p>");
             }
             return shell("Calificaciones",body.toString(),true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Calificaciones",alert("No se pudieron cargar las calificaciones. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
     }
 
-    private static String gradeInput(String name,double value,String formId){
-        return "<label class='grade-input'><input aria-label='"+name.toUpperCase(java.util.Locale.ROOT)+"' form='"+formId+"' name='"+name+"' type='number' min='0' max='100' step='0.01' value='"+String.format(java.util.Locale.ROOT,"%.2f",value)+"' required></label>";
+    private static String gradeInput(String name,double value,String formId){return gradeInput(name,value,formId,false);}
+
+    private static String gradeInput(String name,double value,String formId,boolean readOnly){
+        return "<label class='grade-input'><input aria-label='"+name.toUpperCase(java.util.Locale.ROOT)+"' form='"+formId+"' name='"+name+"' type='number' min='0' max='100' step='0.01' value='"+String.format(java.util.Locale.ROOT,"%.2f",value)+"'"+(readOnly?" readonly":"")+" required></label>";
     }
 
     private static void saveGrade(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
@@ -1236,9 +1266,10 @@ public final class WebApp {
             if(error==null&&old!=null&&old.getInscritos()>0&&old.getGrado()!=null&&old.getGrado().id()!=gradeId)error="No se puede cambiar el grado de una sección que ya tiene estudiantes inscritos.";
             if(error!=null){Seccion rejected=new Seccion(id,room,schedule,capacity,subject,teacher);rejected.setGrado(grade);page(x,s,sectionsAdminPage(s,null,error,rejected));return;}
             Seccion section=new Seccion(id,room,schedule,capacity,subject,teacher);section.setGrado(grade);
-            if(id==0)dao.insertar(section);else dao.actualizar(section);
+            if(id==0)dao.insertar(section,s.user.getId());else dao.actualizar(section,s.user.getId());
             redirect(x,"/secciones?guardado=1");
-        }catch(SQLException e){page(x,s,sectionsAdminPage(s,null,"No se pudo guardar la sección. Verifica la conexión con MySQL.",null));}
+        }catch(PermisoDenegadoException e){page(x,s,sectionsAdminPage(s,null,e.getMessage(),null));}
+        catch(SQLException e){page(x,s,sectionsAdminPage(s,null,"No se pudo guardar la sección. Verifica la conexión con MySQL.",null));}
     }
 
     private static void deleteSection(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
@@ -1248,8 +1279,9 @@ public final class WebApp {
         try{
             SeccionDAO dao=new SeccionDAO();int count=dao.contarInscritos(id);
             if(count>0){page(x,s,sectionsAdminPage(s,null,"No se puede eliminar la sección: tiene "+count+" estudiante(s) inscrito(s).",null));return;}
-            dao.eliminar(id);redirect(x,"/secciones?eliminado=1");
-        }catch(SQLException e){page(x,s,sectionsAdminPage(s,null,"No se pudo eliminar la sección.",null));}
+            dao.eliminar(id,s.user.getId());redirect(x,"/secciones?eliminado=1");
+        }catch(PermisoDenegadoException e){page(x,s,sectionsAdminPage(s,null,e.getMessage(),null));}
+        catch(SQLException e){page(x,s,sectionsAdminPage(s,null,"No se pudo eliminar la sección.",null));}
     }
 
     private static String solicitudesPage(WebSession s,String query,String message){
@@ -1568,6 +1600,158 @@ public final class WebApp {
         }catch(SQLException e){return shell("Mis hijos",alert("No se pudo cargar la lista. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
     }
 
+    // ----- Períodos lectivos y auditoría (Fase D) -----
+
+    private static String periodsPage(WebSession s,String query,String message){
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Períodos lectivos",errorPage("Solo un administrador puede gestionar los períodos lectivos."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
+        try{
+            PeriodoDAO dao=new PeriodoDAO();
+            String flag=queryValue(query,"ok"),ok=null;
+            if("creado".equals(flag))ok="El período se creó y está abierto para inscripciones y notas.";
+            else if("cerrado".equals(flag))ok="El período se cerró: sus notas e inscripciones quedaron bloqueadas y el historial académico se guardó.";
+            else if("reabierto".equals(flag))ok="El período se reabrió. El motivo quedó registrado en la auditoría.";
+            List<Periodo> periods=dao.listar();
+            Integer closing=parseQueryInteger(query,"cerrar");
+            StringBuilder body=new StringBuilder("<div class='page-heading'><div><div class='eyebrow'>GESTIÓN ACADÉMICA</div><h1>Períodos lectivos</h1><p>Un período abierto admite inscripciones y notas. Al cerrarlo se guarda el historial de cada estudiante y los cambios quedan bloqueados.</p></div><a class='text-link' href='/auditoria'>Ver auditoría</a></div>");
+            if(ok!=null)body.append("<div class='success' role='status'>").append(esc(ok)).append("</div>");
+            if(message!=null)body.append(alert(message));
+            Periodo toClose=closing==null?null:periods.stream().filter(z->z.id()==closing&&!z.cerrado()).findFirst().orElse(null);
+            if(toClose!=null){
+                PeriodoDAO.ResumenCierre preview=dao.vistaPrevia(toClose.id());
+                body.append("<section class='card'><h2>Cerrar el período ").append(esc(toClose.nombre())).append("</h2><p>Resultado actual: ").append(esc(preview.texto())).append(".</p>")
+                        .append(preview.incompletos()>0?"<p class='muted'>Los estudiantes con materias sin examen final quedarán como INCOMPLETO. Después del cierre solo un administrador podrá corregir notas, con motivo.</p>":"")
+                        .append("<form method='post' action='/cerrar-periodo' class='inline-form'>").append(hiddenCsrf(s)).append("<input type='hidden' name='id' value='").append(toClose.id())
+                        .append("'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmo el cierre</label><button class='danger' type='submit'>Cerrar período</button><a class='text-link' href='/periodos'>Cancelar</a></form></section>");
+            }
+            body.append("<section class='card subject-editor'><h2>Nuevo período</h2><form method='post' action='/crear-periodo'>").append(hiddenCsrf(s))
+                    .append("<div class='subject-fields'><label>Nombre<input name='nombre' maxlength='20' required pattern='[0-9]{4}-[0-9A-Za-z]{1,8}' placeholder='Ej. 2026-2'></label>")
+                    .append("<label>Inicio<input type='date' name='inicio'></label><label>Fin<input type='date' name='fin'></label></div>")
+                    .append("<div class='subject-actions'><button class='primary' type='submit'>Crear período</button></div></form></section>");
+            StringBuilder rows=new StringBuilder();
+            for(Periodo p:periods){
+                String dates=p.inicio()==null&&p.fin()==null?"—":(p.inicio()==null?"?":p.inicio().toString())+" a "+(p.fin()==null?"?":p.fin().toString());
+                rows.append("<tr><td><b>").append(esc(p.nombre())).append("</b></td><td>").append(esc(dates)).append("</td><td><span class='state-pill ")
+                        .append(p.cerrado()?"account-disabled":"account-active").append("'>").append(p.cerrado()?"Cerrado":"Abierto").append("</span></td><td>");
+                if(p.cerrado())rows.append(esc(p.cerradoPor()==null?"—":p.cerradoPor())).append("<br><small>").append(esc(p.fechaCierre()==null?"":p.fechaCierre())).append("</small>");
+                else rows.append("—");
+                rows.append("</td><td>");
+                if(!p.cerrado())rows.append("<a class='primary link-button' href='/periodos?cerrar=").append(p.id()).append("'>Cerrar período</a>");
+                else rows.append("<form method='post' action='/reabrir-periodo' class='inline-form'>").append(hiddenCsrf(s)).append("<input type='hidden' name='id' value='").append(p.id())
+                        .append("'><input name='motivo' minlength='10' maxlength='300' required placeholder='Motivo de la reapertura' aria-label='Motivo de la reapertura'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar</label><button class='danger' type='submit'>Reabrir</button></form>");
+                rows.append("</td></tr>");
+            }
+            if(rows.isEmpty())rows.append("<tr><td colspan='5' class='empty'>Todavía no hay períodos. Crea el primero para habilitar inscripciones y notas.</td></tr>");
+            body.append("<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Período</th><th>Fechas</th><th>Estado</th><th>Cierre</th><th>Acción</th></tr></thead><tbody>").append(rows).append("</tbody></table></div></section>");
+            return shell("Períodos lectivos",body.toString(),true,s.user.getNombreCompleto());
+        }catch(PermisoDenegadoException e){return shell("Períodos lectivos",alert(e.getMessage()),true,s.user.getNombreCompleto());}
+        catch(SQLException e){return shell("Períodos lectivos",alert("No se pudieron cargar los períodos. Ejecuta sql/fase_periodos_auditoria.sql en sige_db y verifica la conexión."),true,s.user.getNombreCompleto());}
+    }
+
+    private static void createPeriod(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN){page(x,s,errorPage("Solo un administrador puede crear períodos."));return;}
+        try{
+            new PeriodoDAO().crear(values.getOrDefault("nombre",""),parseDate(values.get("inicio"),null),parseDate(values.get("fin"),null),s.user.getId());
+            redirect(x,"/periodos?ok=creado");
+        }catch(PermisoDenegadoException|IllegalArgumentException e){page(x,s,periodsPage(s,null,e.getMessage()));}
+        catch(SQLException e){page(x,s,periodsPage(s,null,"No se pudo crear el período. Verifica la conexión con MySQL."));}
+    }
+
+    private static void closePeriod(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN){page(x,s,errorPage("Solo un administrador puede cerrar períodos."));return;}
+        if(!"si".equals(values.get("confirmar"))){page(x,s,periodsPage(s,null,"Confirma el cierre antes de continuar."));return;}
+        int id;try{id=Integer.parseInt(values.getOrDefault("id",""));}catch(NumberFormatException e){page(x,s,periodsPage(s,null,"El período seleccionado no es válido."));return;}
+        try{
+            new PeriodoDAO().cerrar(id,s.user.getId());
+            redirect(x,"/periodos?ok=cerrado");
+        }catch(PermisoDenegadoException e){page(x,s,periodsPage(s,null,e.getMessage()));}
+        catch(SQLException e){page(x,s,periodsPage(s,null,"No se pudo cerrar el período. Verifica la conexión con MySQL."));}
+    }
+
+    private static void reopenPeriod(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN){page(x,s,errorPage("Solo un administrador puede reabrir períodos."));return;}
+        if(!"si".equals(values.get("confirmar"))){page(x,s,periodsPage(s,null,"Confirma la reapertura antes de continuar."));return;}
+        int id;try{id=Integer.parseInt(values.getOrDefault("id",""));}catch(NumberFormatException e){page(x,s,periodsPage(s,null,"El período seleccionado no es válido."));return;}
+        try{
+            new PeriodoDAO().reabrir(id,s.user.getId(),values.get("motivo"));
+            redirect(x,"/periodos?ok=reabierto");
+        }catch(PermisoDenegadoException|IllegalArgumentException e){page(x,s,periodsPage(s,null,e.getMessage()));}
+        catch(SQLException e){page(x,s,periodsPage(s,null,"No se pudo reabrir el período. Verifica la conexión con MySQL."));}
+    }
+
+    private static AuditoriaDAO.Filtro auditFilter(String query,List<String> actions){
+        String q=Filtros.texto(queryValue(query,"q"),100);
+        String action=Filtros.opcion(queryValue(query,"accion"),actions),result=Filtros.opcion(queryValue(query,"resultado"),List.of("OK","DENEGADO"));
+        return new AuditoriaDAO.Filtro(q,action,result,parseDate(queryValue(query,"desde"),null),parseDate(queryValue(query,"hasta"),null));
+    }
+
+    private static String auditQuery(AuditoriaDAO.Filtro f){
+        StringBuilder qs=new StringBuilder();
+        String[][] pairs={{"q",f.texto()},{"accion",f.accion()},{"resultado",f.resultado()},{"desde",f.desde()==null?null:f.desde().toString()},{"hasta",f.hasta()==null?null:f.hasta().toString()}};
+        for(String[] pair:pairs)if(pair[1]!=null&&!pair[1].isBlank())qs.append(qs.length()==0?"":"&").append(pair[0]).append('=').append(java.net.URLEncoder.encode(pair[1],StandardCharsets.UTF_8));
+        return qs.toString();
+    }
+
+    private static String auditPage(WebSession s,String query){
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Auditoría",errorPage("Solo un administrador puede consultar la auditoría."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
+        try{
+            AuditoriaDAO dao=new AuditoriaDAO();List<String> actions=dao.acciones();
+            AuditoriaDAO.Filtro filter=auditFilter(query,actions);
+            if(filter.desde()!=null&&filter.hasta()!=null&&filter.desde().isAfter(filter.hasta()))return shell("Auditoría",errorPage("La fecha inicial no puede ser posterior a la fecha final."),true,s.user.getNombreCompleto());
+            int total=dao.contar(filter),overall=dao.contar(AuditoriaDAO.Filtro.vacio()),size=50,pages=Math.max(1,(total+size-1)/size);
+            int current=Math.min(Math.max(1,Filtros.entero(queryValue(query,"pagina"))),pages);
+            List<AuditoriaDAO.Registro> records=dao.listar(filter,size,(current-1)*size);
+            Map<String,String> actionOptions=new java.util.LinkedHashMap<>();for(String a:actions)actionOptions.put(a,a);
+            Map<String,String> resultOptions=new java.util.LinkedHashMap<>();resultOptions.put("OK","Correcto");resultOptions.put("DENEGADO","Denegado");
+            String fields=Filtros.campoTexto("q","Buscar","".equals(filter.texto())?"":filter.texto(),"Detalle, motivo, usuario o id")+Filtros.campoLista("accion","Acción",filter.accion()==null?"":filter.accion(),actionOptions)
+                    +Filtros.campoLista("resultado","Resultado",filter.resultado()==null?"":filter.resultado(),resultOptions)
+                    +"<label>Desde<input type='date' name='desde' value='"+(filter.desde()==null?"":filter.desde())+"'></label><label>Hasta<input type='date' name='hasta' value='"+(filter.hasta()==null?"":filter.hasta())+"'></label>";
+            boolean active=!auditQuery(filter).isEmpty();String qs=auditQuery(filter);
+            StringBuilder rows=new StringBuilder();
+            for(AuditoriaDAO.Registro r:records){
+                rows.append("<tr><td>").append(esc(r.fecha())).append("</td><td><b>").append(esc(r.usuario()==null?"Sistema":r.usuario())).append("</b>").append(r.rol()==null?"":"<br><small>"+esc(r.rol())+"</small>")
+                        .append("</td><td>").append(esc(r.accion())).append("</td><td class='audit-detail'>").append(esc(r.detalle())).append("</td><td class='audit-detail'>").append(esc(r.motivo()==null?"—":r.motivo()))
+                        .append("</td><td><span class='state-pill ").append("OK".equals(r.resultado())?"account-active":"account-disabled").append("'>").append("OK".equals(r.resultado())?"Correcto":"Denegado").append("</span></td></tr>");
+            }
+            if(rows.isEmpty())rows.append("<tr><td colspan='6' class='empty'>"+(overall==0?"Todavía no hay operaciones auditadas.":"Ninguna operación coincide con los filtros.")+"</td></tr>");
+            String base="/auditoria?"+qs+(qs.isEmpty()?"":"&amp;")+"pagina=";
+            String pager="<nav class='pager' aria-label='Paginación'>"+(current>1?"<a class='secondary-link' href='"+base+(current-1)+"'>Anterior</a>":"")+"<span>Página "+current+" de "+pages+"</span>"+(current<pages?"<a class='secondary-link' href='"+base+(current+1)+"'>Siguiente</a>":"")+"</nav>";
+            String body="<div class='page-heading'><div><div class='eyebrow'>SEGURIDAD</div><h1>Auditoría de operaciones</h1><p>Notas, cierres de período, matrícula, secciones, cuentas y roles: quién, qué, cuándo y por qué. Es un registro de solo lectura.</p></div><a class='text-link' href='/auditoria'>Actualizar</a></div>"
+                    +Filtros.barra("/auditoria",Map.of(),fields,active,total,overall)
+                    +"<section class='card section-picker'><a class='primary link-button' href='/auditoria.csv"+(qs.isEmpty()?"":"?"+qs)+"'>Exportar resultados CSV</a></section>"
+                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table audit-table'><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th><th>Motivo</th><th>Resultado</th></tr></thead><tbody>"+rows+"</tbody></table></div></section>"+pager;
+            return shell("Auditoría",body,true,s.user.getNombreCompleto());
+        }catch(SQLException e){return shell("Auditoría",alert("No se pudo cargar la auditoría. Ejecuta sql/fase_periodos_auditoria.sql en sige_db y verifica la conexión."),true,s.user.getNombreCompleto());}
+    }
+
+    private static void downloadAuditCsv(HttpExchange x,WebSession s,String query)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN){send(x,403,"text/plain; charset=utf-8","Solo un administrador puede exportar la auditoría.");return;}
+        try{
+            AuditoriaDAO dao=new AuditoriaDAO();AuditoriaDAO.Filtro filter=auditFilter(query,dao.acciones());
+            if(filter.desde()!=null&&filter.hasta()!=null&&filter.desde().isAfter(filter.hasta())){send(x,400,"text/plain; charset=utf-8","La fecha inicial no puede ser posterior a la fecha final.");return;}
+            StringBuilder csv=new StringBuilder("﻿ID,Fecha,Usuario,Rol,Acción,Entidad,ID entidad,Detalle,Motivo,Resultado\r\n");
+            for(AuditoriaDAO.Registro r:dao.listar(filter,5000,0))csv.append(r.id()).append(',').append(csv(r.fecha())).append(',').append(csv(r.usuario())).append(',').append(csv(r.rol())).append(',').append(csv(r.accion())).append(',')
+                    .append(csv(r.entidad())).append(',').append(csv(r.idEntidad())).append(',').append(csv(r.detalle())).append(',').append(csv(r.motivo())).append(',').append(csv(r.resultado())).append("\r\n");
+            x.getResponseHeaders().set("Content-Disposition","attachment; filename=\"auditoria-sige.csv\"");send(x,200,"text/csv; charset=utf-8",csv.toString());
+        }catch(SQLException e){send(x,500,"text/plain; charset=utf-8","No se pudo exportar la auditoría. Verifica la conexión con MySQL.");}
+    }
+
+    private static void correctGrade(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN){
+            new AuditoriaDAO().registrarDenegado(s.user==null?null:s.user.getId(),"CORRECCION_NO_AUTORIZADA","calificacion",values.getOrDefault("detalle",""),"Intento de corrección excepcional sin rol de administrador.");
+            page(x,s,errorPage("Solo un administrador puede hacer correcciones excepcionales de notas."));return;
+        }
+        int detailId,sectionId;double p1,p2,exam;
+        try{
+            detailId=Integer.parseInt(values.getOrDefault("detalle",""));sectionId=Integer.parseInt(values.getOrDefault("seccion",""));
+            p1=parseGrade(values.get("p1"));p2=parseGrade(values.get("p2"));exam=parseGrade(values.get("examen"));
+        }catch(IllegalArgumentException e){page(x,s,gradesPage(s,"seccion="+values.getOrDefault("seccion",""),"Las notas deben ser números entre 0 y 100."));return;}
+        try{
+            new CalificacionDAO().corregirNotaCerrada(new Calificacion(0,detailId,p1,p2,exam,0,""),s.user.getId(),values.get("motivo"));
+            redirect(x,"/calificaciones?seccion="+sectionId+"&corregido=1");
+        }catch(PermisoDenegadoException e){page(x,s,gradesPage(s,"seccion="+sectionId,e.getMessage()));}
+        catch(SQLException e){page(x,s,gradesPage(s,"seccion="+sectionId,"No se pudo guardar la corrección. Verifica la conexión con MySQL."));}
+    }
+
     private static String sessionHistoryPage(WebSession s,String query){
         if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Historial de sesiones",errorPage("Solo un administrador puede consultar el historial de sesiones."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
         try{
@@ -1631,7 +1815,7 @@ public final class WebApp {
         int sectionId;String period=values.getOrDefault("periodo","").trim();
         try{sectionId=Integer.parseInt(values.getOrDefault("id_seccion",""));}
         catch(NumberFormatException e){page(x,s,enrollmentPage(s,null,"La sección seleccionada no es válida."));return;}
-        if(sectionId<1||period.isBlank()||period.length()>20){page(x,s,enrollmentPage(s,null,"Indica un período válido (máximo 20 caracteres)."));return;}
+        if(sectionId<1||period.isBlank()||period.length()>20){page(x,s,enrollmentPage(s,null,"Elige un período abierto de la lista."));return;}
         try{
             new InscripcionDAO().inscribir(s.user.getId(),sectionId,period);
             redirect(x,"/inscripciones?resultado=ok");
@@ -1682,7 +1866,7 @@ public final class WebApp {
         String stop = Boolean.TRUE.equals(LOCAL_REQUEST.get())&&Boolean.TRUE.equals(ADMIN_REQUEST.get())
                 ? "<form method='post' action='/shutdown' class='stop-form'><input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='danger' type='submit'>Detener servidor</button></form>" : "";
         String role=ROLE_REQUEST.get();
-        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/historial-sesiones'>Historial</a>":"";
+        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/periodos'>Períodos</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a><a href='/historial-sesiones'>Historial</a>":"";
         String nav = logged ? "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation' aria-label='Navegación principal'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a></nav><div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+stop+"</div></header>"
                 : "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span></header>";
@@ -1762,7 +1946,7 @@ public final class WebApp {
         send(x,200,"text/css; charset=utf-8",css);
     }
     private static String manifest(){return "{\"id\":\"/\",\"name\":\"SIGE - Sistema de Gestión Educativa\",\"short_name\":\"SIGE\",\"description\":\"Portal académico SIGE\",\"start_url\":\"/\",\"scope\":\"/\",\"display\":\"standalone\",\"background_color\":\"#f3f6fa\",\"theme_color\":\"#17324d\",\"icons\":[{\"src\":\"/icon.svg\",\"sizes\":\"any\",\"type\":\"image/svg+xml\",\"purpose\":\"any maskable\"}]}";}
-    private static String serviceWorker(){return "const CACHE='sige-ui-v6';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
+    private static String serviceWorker(){return "const CACHE='sige-ui-v7';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
     private static String icon(){return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' role='img' aria-label='SIGE'> <rect width='512' height='512' rx='112' fill='#17324d'/> <path d='M256 196C204 166 146 164 100 184v176c46-18 104-16 156 14z' fill='#ffffff'/> <path d='M256 196c52-30 110-32 156-12v176c-46-18-104-16-156 14z' fill='#d6ece9'/> <path d='M256 196v178' stroke='#17324d' stroke-width='9' stroke-linecap='round'/> <g stroke='#0f766e' stroke-width='12' stroke-linecap='round' fill='none'> <path d='M140 238c34-10 68-6 88 6'/><path d='M140 282c34-10 68-6 88 6'/> <path d='M372 238c-34-10-68-6-88 6'/><path d='M372 282c-34-10-68-6-88 6'/> </g> <path d='M256 74l14 38 38 14-38 14-14 38-14-38-38-14 38-14z' fill='#ef6530'/> </svg>";}
     private static void send(HttpExchange x,int status,String type,String body)throws IOException{
         byte[] data=body.getBytes(StandardCharsets.UTF_8); x.getResponseHeaders().set("Content-Type",type); if("HEAD".equalsIgnoreCase(x.getRequestMethod())){x.sendResponseHeaders(status,-1);return;}x.sendResponseHeaders(status,data.length);x.getResponseBody().write(data);

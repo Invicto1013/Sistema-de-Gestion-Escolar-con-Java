@@ -3,6 +3,7 @@ package com.unev.sige.data;
 import com.unev.sige.model.Asignatura;
 import com.unev.sige.model.Calificacion;
 import com.unev.sige.model.DetalleInscripcion;
+import com.unev.sige.model.EstadoPeriodo;
 import com.unev.sige.model.Inscripcion;
 import com.unev.sige.model.Profesor;
 import com.unev.sige.model.Seccion;
@@ -52,21 +53,28 @@ public class InscripcionDAO {
             ORDER BY i.periodo_lectivo DESC, i.id_inscripcion, a.codigo_asignatura
             """;
 
+    /** El propio estudiante se inscribe (el estudiante es quien actua y queda en la auditoria). */
+    public int inscribir(int idEstudiante, int idSeccion, String periodo)
+            throws SQLException, InscripcionInvalidaException {
+        return inscribir(idEstudiante, idSeccion, periodo, idEstudiante);
+    }
+
     /**
-     * Inscribe al estudiante en una seccion para un periodo lectivo.
+     * Inscribe al estudiante en una seccion para un periodo lectivo, a nombre de quien actua (idActor).
      * Todo ocurre en una transaccion (si algo falla no se guarda nada):
-     * comprueba el cupo, impide repetir la asignatura en el mismo periodo, reutiliza o crea la
-     * inscripcion del periodo, agrega la materia y deja lista su fila de calificaciones.
+     * exige que el periodo exista y este ABIERTO, comprueba el cupo, impide repetir la asignatura en el
+     * mismo periodo, reutiliza o crea la inscripcion del periodo, agrega la materia, deja lista su fila
+     * de calificaciones y anota la matricula en la auditoria.
      *
      * @return el id del detalle de inscripcion creado
      * @throws InscripcionInvalidaException si se incumple una regla (mensaje listo para mostrar)
      */
-    public int inscribir(int idEstudiante, int idSeccion, String periodo)
+    public int inscribir(int idEstudiante, int idSeccion, String periodo, int idActor)
             throws SQLException, InscripcionInvalidaException {
         try (Connection conn = ConexionBD.obtener()) {
             conn.setAutoCommit(false);
             try {
-                int idDetalle = inscribirEnTransaccion(conn, idEstudiante, idSeccion, periodo);
+                int idDetalle = inscribirEnTransaccion(conn, idEstudiante, idSeccion, periodo, idActor);
                 conn.commit();
                 return idDetalle;
             } catch (SQLException | InscripcionInvalidaException | RuntimeException e) {
@@ -78,13 +86,46 @@ public class InscripcionDAO {
 
     /**
      * Retira una materia: borra el detalle de inscripcion y, en cascada, su calificacion.
+     * No se permite en un periodo cerrado, y el retiro queda en la auditoria.
      */
-    public void retirar(int idDetalleInscripcion) throws SQLException {
-        String sql = "DELETE FROM detalle_inscripciones WHERE id_detalle_inscripcion = ?";
-        try (Connection conn = ConexionBD.obtener();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, idDetalleInscripcion);
-            ps.executeUpdate();
+    public void retirar(int idDetalleInscripcion, int idActor) throws SQLException, InscripcionInvalidaException {
+        try (Connection conn = ConexionBD.obtener()) {
+            conn.setAutoCommit(false);
+            try {
+                String periodo;
+                int idEstudiante;
+                int idSeccion;
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT i.periodo_lectivo, i.id_estudiante, d.id_seccion FROM detalle_inscripciones d "
+                                + "JOIN inscripciones i ON i.id_inscripcion = d.id_inscripcion "
+                                + "WHERE d.id_detalle_inscripcion = ?")) {
+                    ps.setInt(1, idDetalleInscripcion);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            throw new InscripcionInvalidaException("La materia ya no está inscrita.");
+                        }
+                        periodo = rs.getString(1);
+                        idEstudiante = rs.getInt(2);
+                        idSeccion = rs.getInt(3);
+                    }
+                }
+                if (PeriodoDAO.estadoCompartido(conn, periodo).orElse(EstadoPeriodo.ABIERTO) == EstadoPeriodo.CERRADO) {
+                    throw new InscripcionInvalidaException("El período " + periodo
+                            + " está cerrado: no se pueden retirar materias.");
+                }
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "DELETE FROM detalle_inscripciones WHERE id_detalle_inscripcion = ?")) {
+                    ps.setInt(1, idDetalleInscripcion);
+                    ps.executeUpdate();
+                }
+                AuditoriaDAO.registrar(conn, idActor, "MATRICULA_RETIRADA", "inscripcion",
+                        String.valueOf(idDetalleInscripcion), "Estudiante " + idEstudiante + " retirado de la sección "
+                                + idSeccion + " (período " + periodo + ").", null, "OK");
+                conn.commit();
+            } catch (SQLException | InscripcionInvalidaException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            }
         }
     }
 
@@ -131,8 +172,17 @@ public class InscripcionDAO {
 
     // ----- Metodos privados -----
 
-    private int inscribirEnTransaccion(Connection conn, int idEstudiante, int idSeccion, String periodo)
+    private int inscribirEnTransaccion(Connection conn, int idEstudiante, int idSeccion, String periodo, int idActor)
             throws SQLException, InscripcionInvalidaException {
+        // 0) El periodo debe existir y estar abierto (con bloqueo compartido: no se cierra a mitad de la matricula).
+        java.util.Optional<EstadoPeriodo> estado = PeriodoDAO.estadoCompartido(conn, periodo);
+        if (estado.isEmpty()) {
+            throw new InscripcionInvalidaException("El período " + periodo + " no existe. Elige un período abierto.");
+        }
+        if (estado.get() == EstadoPeriodo.CERRADO) {
+            throw new InscripcionInvalidaException("El período " + periodo + " está cerrado: no admite inscripciones.");
+        }
+
         // 1) Bloquea la seccion para que dos inscripciones simultaneas no superen el cupo.
         int cupo;
         int idAsignatura;
@@ -206,6 +256,11 @@ public class InscripcionDAO {
             ps.setInt(1, idDetalle);
             ps.executeUpdate();
         }
+
+        // 7) Auditoria de la matricula (misma transaccion).
+        AuditoriaDAO.registrar(conn, idActor, "MATRICULA", "inscripcion", String.valueOf(idDetalle),
+                "Estudiante " + idEstudiante + " inscrito en la sección " + idSeccion + " (período " + periodo + ").",
+                null, "OK");
 
         return idDetalle;
     }

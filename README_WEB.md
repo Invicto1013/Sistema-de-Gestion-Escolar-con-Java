@@ -98,3 +98,12 @@ La notificación SMTP permanece sin activar hasta que SIGE esté estable. Cuando
 El profesor y el estudiante tienen **Aula y tareas** en el menú y en sus perfiles. El profesor publica material de clase o tareas dentro de sus secciones; puede adjuntar archivos en cualquier formato. Cada estudiante inscrito ve esas publicaciones y tiene el botón **Subir entrega** para adjuntar su trabajo. El profesor puede descargar los archivos enviados por los estudiantes de sus secciones. La última entrega sustituye a la anterior.
 
 Antes de usar esta página, ejecuta `sql/aula_virtual.sql` en `sige_db`. Los archivos se guardan en `data/uploads` fuera del área pública; configura `SIGE_UPLOAD_DIR` para usar un directorio privado persistente en el servidor. El límite actual es 20 MB por archivo. Todos los formatos se tratan como descargas, sin ejecución ni vista previa en el navegador. Configura almacenamiento persistente y copias de seguridad antes de usarlo en producción.
+
+
+## Períodos lectivos, auditoría e historial (Fase D)
+
+Antes de usar estas funciones ejecuta una vez `sql/fase_periodos_auditoria.sql` en `sige_db` (es seguro repetirlo). Las rutas `/periodos` y `/auditoria` son solo para el administrador.
+
+- **Períodos**: crear (nombre tipo `2026-1`), cerrar y reabrir con motivo. Al cerrar se guarda el historial académico de cada estudiante (aprobado, reprobado o incompleto) y se bloquean las notas y las matrículas del período.
+- **Bloqueo de notas**: en un período cerrado el profesor solo puede consultar. El administrador puede hacer una corrección excepcional indicando un motivo de 10 a 300 caracteres; queda auditada con el valor anterior y el nuevo.
+- **Auditoría**: registro de solo añadir (quién, qué, cuándo y por qué) de notas, cierres, matrículas, secciones, roles y cuentas, incluidos los intentos denegados. Filtros por texto, acción, resultado y fechas, y descarga en `/auditoria.csv`.

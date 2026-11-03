@@ -31,7 +31,7 @@ java -jar target\sige-1.0.0.jar
 
 ## Base de datos
 
-`sql/sige_completo.sql` crea la estructura completa (21 tablas, con currículo por grados y aula virtual), los roles, un usuario de prueba por rol y datos de ejemplo. Las credenciales de prueba están al inicio del script. Para actualizar una base que ya existe, aplica en orden `sql/fase_curriculo_grados.sql` y `sql/aula_virtual.sql`.
+`sql/sige_completo.sql` crea la estructura completa (26 tablas, con currículo por grados, aula virtual, períodos lectivos, auditoría e historial académico), los roles, un usuario de prueba por rol y datos de ejemplo. Las credenciales de prueba están al inicio del script. Para actualizar una base que ya existe, aplica en orden `sql/fase_curriculo_grados.sql`, `sql/aula_virtual.sql` y `sql/fase_periodos_auditoria.sql`.
 
 ## Ejecutar web local
 

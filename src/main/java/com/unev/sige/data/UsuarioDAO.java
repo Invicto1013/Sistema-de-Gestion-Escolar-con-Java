@@ -243,6 +243,9 @@ public class UsuarioDAO {
                     ps.setInt(1, idUsuario);
                     ps.executeUpdate();
                 }
+                AuditoriaDAO.registrar(conn, idAdmin, aprobar ? "SOLICITUD_APROBADA" : "SOLICITUD_RECHAZADA", "usuario",
+                        String.valueOf(idUsuario), "Solicitud de cuenta de " + correo + (aprobar ? " aprobada." : " rechazada."),
+                        null, "OK");
                 conn.commit();
                 return correo;
             } catch (SQLException | PermisoDenegadoException | RuntimeException ex) {
@@ -440,6 +443,8 @@ public class UsuarioDAO {
                     ps.setInt(2, idUsuario);
                     ps.executeUpdate();
                 }
+                AuditoriaDAO.registrar(conn, idAdmin, activo ? "CUENTA_ACTIVADA" : "CUENTA_DESACTIVADA", "usuario",
+                        String.valueOf(idUsuario), "Cuenta " + idUsuario + (activo ? " activada." : " desactivada."), null, "OK");
                 conn.commit();
             } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
                 conn.rollback();
@@ -480,6 +485,8 @@ public class UsuarioDAO {
                     ps.setInt(2, idUsuario);
                     if (ps.executeUpdate() != 1) throw new PermisoDenegadoException("La cuenta seleccionada ya no existe.");
                 }
+                AuditoriaDAO.registrar(conn, idAdmin, "CONTRASENA_RESTABLECIDA", "usuario", String.valueOf(idUsuario),
+                        "Contraseña temporal asignada a la cuenta " + idUsuario + " (debe cambiarla al entrar).", null, "OK");
                 conn.commit();
             } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
                 conn.rollback();
@@ -563,6 +570,9 @@ public class UsuarioDAO {
                 if (perfil instanceof Estudiante e) insertarEstudiante(conn, idUsuario, e);
                 else if (perfil instanceof Profesor p) insertarProfesor(conn, idUsuario, p);
                 else if (perfil instanceof Padre p) insertarPadre(conn, idUsuario, p);
+                AuditoriaDAO.registrar(conn, idAdmin, "ROL_CAMBIADO", "usuario", String.valueOf(idUsuario),
+                        "Rol de " + nombre + " " + apellido + " (" + correo + "): " + rolAnterior + " -> " + nuevoRol + ".",
+                        null, "OK");
                 conn.commit();
             } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
                 conn.rollback();

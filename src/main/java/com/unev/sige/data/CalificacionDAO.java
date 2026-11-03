@@ -2,8 +2,10 @@ package com.unev.sige.data;
 
 import com.unev.sige.model.Calificacion;
 import com.unev.sige.model.CalificacionHijo;
+import com.unev.sige.model.EstadoPeriodo;
 import com.unev.sige.model.Estudiante;
 import com.unev.sige.model.NotaEstudiante;
+import com.unev.sige.model.ReglasPeriodo;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -106,37 +108,61 @@ public class CalificacionDAO {
         return lista;
     }
 
+    private enum Modo { PROFESOR, ADMIN, CORRECCION }
+
     /**
      * Guarda las notas de una materia inscrita, a nombre de un profesor.
-     * Solo se permite si la seccion de esa materia es del profesor indicado.
+     * Solo se permite si la seccion de esa materia es del profesor indicado y el periodo esta ABIERTO.
      * La nota final y la letra se recalculan aqui con EscalaCalificaciones (se ignoran las que traiga
      * el objeto). En la misma transaccion se actualiza el estado de la materia
-     * ("Aprobada" o "Reprobada" cuando ya hay examen final, "Inscrita" mientras no) y el
-     * promedio academico del estudiante (promedio de sus materias ya evaluadas).
+     * ("Aprobada" o "Reprobada" cuando ya hay examen final, "Inscrita" mientras no), el
+     * promedio academico del estudiante (promedio de sus materias ya evaluadas) y la auditoria.
      *
      * @throws PermisoDenegadoException si la materia no pertenece a una seccion de ese profesor
+     * @throws PeriodoCerradoException si el periodo de esa inscripcion ya esta cerrado
      */
     public void guardar(Calificacion calificacion, int idProfesor) throws SQLException, PermisoDenegadoException {
-        guardar(calificacion, idProfesor, false);
+        guardar(calificacion, idProfesor, Modo.PROFESOR, null);
     }
 
-    /** Guarda una corrección administrativa tras verificar el rol ADMIN del usuario. */
+    /** Guarda notas como administrador (periodo abierto) tras verificar su rol y que la cuenta este activa. */
     public void guardarComoAdministrador(Calificacion calificacion, int idAdmin)
             throws SQLException, PermisoDenegadoException {
-        guardar(calificacion, idAdmin, true);
+        guardar(calificacion, idAdmin, Modo.ADMIN, null);
     }
 
-    private void guardar(Calificacion calificacion, int idActor, boolean administrador)
+    /**
+     * Correccion excepcional de notas de un periodo CERRADO: solo un administrador, con un motivo obligatorio.
+     * La auditoria guarda la nota anterior, la nueva y el motivo; el historial academico del estudiante se actualiza.
+     */
+    public void corregirNotaCerrada(Calificacion calificacion, int idAdmin, String motivo)
+            throws SQLException, PermisoDenegadoException {
+        String razon;
+        try {
+            razon = ReglasPeriodo.validarMotivo(motivo);
+        } catch (IllegalArgumentException e) {
+            throw new PermisoDenegadoException(e.getMessage());
+        }
+        guardar(calificacion, idAdmin, Modo.CORRECCION, razon);
+    }
+
+    private void guardar(Calificacion calificacion, int idActor, Modo modo, String motivo)
             throws SQLException, PermisoDenegadoException {
         calificacion.recalcular();
 
         try (Connection conn = ConexionBD.obtener()) {
             conn.setAutoCommit(false);
             try {
-                guardarEnTransaccion(conn, calificacion, idActor, administrador);
+                guardarEnTransaccion(conn, calificacion, idActor, modo, motivo);
                 conn.commit();
             } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
                 conn.rollback();
+                if (e instanceof PermisoDenegadoException) {
+                    // El rechazo tambien deja rastro (en su propia conexion, ya sin la transaccion revertida).
+                    new AuditoriaDAO().registrarDenegado(idActor,
+                            modo == Modo.CORRECCION ? "NOTA_CORRECCION_DENEGADA" : "NOTA_DENEGADA", "calificacion",
+                            String.valueOf(calificacion.getIdDetalleInscripcion()), e.getMessage());
+                }
                 throw e;
             }
         }
@@ -144,38 +170,36 @@ public class CalificacionDAO {
 
     // ----- Metodos privados -----
 
-    private void guardarEnTransaccion(Connection conn, Calificacion c, int idActor, boolean administrador)
+    private void guardarEnTransaccion(Connection conn, Calificacion c, int idActor, Modo modo, String motivo)
             throws SQLException, PermisoDenegadoException {
         int idDetalle = c.getIdDetalleInscripcion();
 
-        // 1) Verifica que el actor tenga permiso para corregir estas notas.
-        String sqlPermiso = administrador ? "SELECT 1 FROM usuarios WHERE id_usuario = ? AND rol = 'ADMIN'"
-                : """
-                SELECT 1
-                FROM detalle_inscripciones d
-                JOIN secciones s ON s.id_seccion = d.id_seccion
-                WHERE d.id_detalle_inscripcion = ? AND s.id_profesor = ?
-                """;
-        try (PreparedStatement ps = conn.prepareStatement(sqlPermiso)) {
-            if (administrador) {
-                ps.setInt(1, idActor);
-            } else {
+        // 1) Verifica que el actor tenga permiso para guardar estas notas.
+        if (modo == Modo.PROFESOR) {
+            String sqlPermiso = """
+                    SELECT 1
+                    FROM detalle_inscripciones d
+                    JOIN secciones s ON s.id_seccion = d.id_seccion
+                    WHERE d.id_detalle_inscripcion = ? AND s.id_profesor = ?
+                    """;
+            try (PreparedStatement ps = conn.prepareStatement(sqlPermiso)) {
                 ps.setInt(1, idDetalle);
                 ps.setInt(2, idActor);
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    throw new PermisoDenegadoException(administrador
-                            ? "Solo un administrador puede corregir calificaciones."
-                            : "Solo puedes calificar estudiantes de tus propias secciones.");
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        throw new PermisoDenegadoException("Solo puedes calificar estudiantes de tus propias secciones.");
+                    }
                 }
             }
+        } else {
+            Autorizacion.exigirAdministrador(conn, idActor);
         }
 
-        // 2) Estudiante dueño de la inscripcion (para actualizar su promedio).
+        // 2) Estudiante y periodo de la inscripcion (para el promedio, el bloqueo y la auditoria).
         int idEstudiante;
+        String periodo;
         String sqlEstudiante = """
-                SELECT i.id_estudiante
+                SELECT i.id_estudiante, i.periodo_lectivo
                 FROM detalle_inscripciones d
                 JOIN inscripciones i ON i.id_inscripcion = d.id_inscripcion
                 WHERE d.id_detalle_inscripcion = ?
@@ -187,6 +211,34 @@ public class CalificacionDAO {
                     throw new PermisoDenegadoException("La inscripción ya no existe.");
                 }
                 idEstudiante = rs.getInt(1);
+                periodo = rs.getString(2);
+            }
+        }
+
+        // 2b) Periodo cerrado: las notas estan bloqueadas salvo la correccion excepcional del administrador.
+        EstadoPeriodo estadoPeriodo = PeriodoDAO.estadoCompartido(conn, periodo).orElse(EstadoPeriodo.ABIERTO);
+        if (modo == Modo.CORRECCION) {
+            if (estadoPeriodo != EstadoPeriodo.CERRADO) {
+                throw new PermisoDenegadoException("El período " + periodo
+                        + " está abierto: registra la nota de forma normal, sin corrección excepcional.");
+            }
+        } else if (estadoPeriodo == EstadoPeriodo.CERRADO) {
+            throw new PeriodoCerradoException("El período " + periodo + " está cerrado y sus notas están bloqueadas. "
+                    + "Solo un administrador puede hacer una corrección excepcional, con motivo.");
+        }
+
+        // 2c) Notas actuales (para la auditoria); la fila queda bloqueada hasta el commit.
+        Calificacion antes = null;
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT nota_parcial1, nota_parcial2, nota_examen_final, nota_final FROM calificaciones "
+                        + "WHERE id_detalle_inscripcion = ? FOR UPDATE")) {
+            ps.setInt(1, idDetalle);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    antes = new Calificacion(0, idDetalle, Calificacion.limitar(rs.getDouble(1)),
+                            Calificacion.limitar(rs.getDouble(2)), Calificacion.limitar(rs.getDouble(3)),
+                            Calificacion.limitar(rs.getDouble(4)), "");
+                }
             }
         }
 
@@ -244,6 +296,17 @@ public class CalificacionDAO {
             ps.setInt(1, idEstudiante);
             ps.setInt(2, idEstudiante);
             ps.executeUpdate();
+        }
+
+        // 6) Auditoria (misma transaccion): quien, que cambio y, en una correccion, por que.
+        if (modo == Modo.CORRECCION || ReglasPeriodo.hayCambios(antes, c)) {
+            AuditoriaDAO.registrar(conn, idActor, modo == Modo.CORRECCION ? "NOTA_CORREGIDA" : "NOTA_GUARDADA",
+                    "calificacion", String.valueOf(idDetalle),
+                    "Período " + periodo + ", estudiante " + idEstudiante + ": " + ReglasPeriodo.describirCambio(antes, c),
+                    motivo, "OK");
+        }
+        if (modo == Modo.CORRECCION) {
+            PeriodoDAO.actualizarHistorial(conn, periodo, idEstudiante);
         }
     }
 }
