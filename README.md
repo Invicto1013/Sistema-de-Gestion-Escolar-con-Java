@@ -58,3 +58,11 @@ La evidencia y análisis de DevOps se encuentran en `DEVOPS_PRUEBAS.md`. El info
 ## Aula virtual
 
 Consulta [AULA_VIRTUAL.md](AULA_VIRTUAL.md) para instalar las tablas del aula, configurar el almacenamiento de archivos y usar las publicaciones y entregas de profesores y estudiantes.
+
+
+## Documentación
+
+- [Manual de usuario](docs/MANUAL_USUARIO.md)
+- [Diagrama entidad-relación](docs/DIAGRAMA_ER.md)
+- [Casos de prueba de la Fase D](docs/PRUEBAS_FASE_D.md)
+- [Antes y después](docs/ANTES_DESPUES.md)

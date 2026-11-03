@@ -60,6 +60,11 @@ public class SeccionesPanel extends VBox {
     private final AsignaturaDAO asignaturaDAO = new AsignaturaDAO();
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
     private final TableView<Seccion> tabla = new TableView<>();
+    private final TablaPaginada<Seccion> vista = new TablaPaginada<>(tabla, x -> x.getId() + " "
+            + x.getAsignatura().getCodigo() + " " + x.getAsignatura().getNombre() + " "
+            + (x.getGrado() == null ? "" : x.getGrado().nombre()) + " "
+            + (x.getProfesor() == null ? "" : x.getProfesor().getNombreCompleto()) + " "
+            + x.getAula() + " " + x.getHorario());
     private final Label lblEstado = new Label();
 
     public SeccionesPanel() {
@@ -80,8 +85,9 @@ public class SeccionesPanel extends VBox {
 
         HBox barra = new HBox(8, btnNueva, btnEditar, btnEliminar);
 
-        VBox.setVgrow(tabla, Priority.ALWAYS);
-        getChildren().addAll(Dialogos.titulo("Secciones"), barra, tabla, lblEstado);
+        vista.setTituloPdf("Secciones");
+        VBox.setVgrow(vista, Priority.ALWAYS);
+        getChildren().addAll(Dialogos.titulo("Secciones"), barra, vista, lblEstado);
 
         recargar();
     }
@@ -119,8 +125,8 @@ public class SeccionesPanel extends VBox {
 
     private void recargar() {
         try {
-            tabla.getItems().setAll(seccionDAO.listarTodas());
-            Dialogos.estado(lblEstado, "Total: " + tabla.getItems().size() + " sección(es)", false);
+            vista.setDatos(seccionDAO.listarTodas());
+            Dialogos.estado(lblEstado, "Total: " + vista.totalDatos() + " sección(es)", false);
         } catch (SQLException e) {
             e.printStackTrace();
             Dialogos.estado(lblEstado, "No se pudo leer la lista. Revisa la conexión con MySQL.", true);

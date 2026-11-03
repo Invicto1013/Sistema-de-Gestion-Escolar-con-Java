@@ -14,12 +14,15 @@ import javafx.scene.layout.HBox;
 import java.sql.SQLException;
 import java.util.function.Function;
 
-/** Últimos 200 movimientos auditados (solo lectura). Los filtros y el CSV están en la versión web. */
+/** Últimos 1000 movimientos auditados (solo lectura). Los filtros y el CSV están en la versión web. */
 public final class AuditoriaPanel extends BorderPane {
 
     private final AuditoriaDAO dao = new AuditoriaDAO();
     private final TableView<Registro> tabla = new TableView<>();
     private final Label estado = new Label();
+    private final TablaPaginada<Registro> vista = new TablaPaginada<>(tabla, r -> r.fecha() + " "
+            + (r.usuario() == null ? "" : r.usuario()) + " " + r.rol() + " " + r.accion() + " "
+            + r.detalle() + " " + (r.motivo() == null ? "" : r.motivo()) + " " + r.resultado());
 
     public AuditoriaPanel() {
         setPadding(new Insets(8));
@@ -35,7 +38,8 @@ public final class AuditoriaPanel extends BorderPane {
         HBox barra = new HBox(12, actualizar, estado);
         barra.setPadding(new Insets(0, 0, 10, 0));
         setTop(barra);
-        setCenter(tabla);
+        vista.setTituloPdf("Auditoría");
+        setCenter(vista);
         cargar();
     }
 
@@ -47,11 +51,11 @@ public final class AuditoriaPanel extends BorderPane {
 
     private void cargar() {
         try {
-            tabla.getItems().setAll(dao.listar(AuditoriaDAO.Filtro.vacio(), 200, 0));
-            Dialogos.estado(estado, "Mostrando los últimos " + tabla.getItems().size() + " movimientos.", false);
+            vista.setDatos(dao.listar(AuditoriaDAO.Filtro.vacio(), 1000, 0));
+            Dialogos.estado(estado, "Se cargaron los últimos " + vista.totalDatos() + " movimientos (máximo 1000). Para más, usa la auditoría web.", false);
         } catch (SQLException e) {
             e.printStackTrace();
-            tabla.getItems().clear();
+            vista.setDatos(java.util.List.of());
             Dialogos.estado(estado, "No se pudo cargar la auditoría. Revisa la conexión.", true);
         }
     }

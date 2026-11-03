@@ -1,0 +1,274 @@
+erDiagram
+    areas_curriculares ||--o{ asignatura_grado_area : "id_area"
+    areas_curriculares ||--o{ curriculo_grado_area : "id_area"
+    asignaturas ||--o{ asignatura_grado_area : "id_asignatura"
+    asignaturas ||--o{ secciones : "id_asignatura"
+    aula_entregas ||--o{ aula_calificaciones : "id_entrega"
+    aula_materiales ||--o{ aula_adjuntos : "id_material"
+    aula_materiales ||--o{ aula_comentarios : "id_material"
+    aula_materiales ||--o{ aula_entregas : "id_material"
+    curriculo_grados ||--o{ asignatura_grado_area : "id_grado"
+    curriculo_grados ||--o{ curriculo_grado_area : "id_grado"
+    detalle_inscripciones ||--o{ asistencias : "id_detalle_inscripcion"
+    detalle_inscripciones ||--o{ calificaciones : "id_detalle_inscripcion"
+    estudiantes ||--o{ estudiante_padre : "id_estudiante"
+    estudiantes ||--o{ historial_academico : "id_estudiante"
+    estudiantes ||--o{ inscripciones : "id_estudiante"
+    estudiantes ||--o{ records_academicos : "id_estudiante"
+    estudiantes ||--o{ reportes_academicos : "id_estudiante"
+    inscripciones ||--o{ detalle_inscripciones : "id_inscripcion"
+    padres ||--o{ estudiante_padre : "id_padre"
+    periodos_lectivos ||--o{ historial_academico : "id_periodo"
+    profesores ||--o{ secciones : "id_profesor"
+    secciones ||--o{ aula_anuncios : "id_seccion"
+    secciones ||--o{ aula_materiales : "id_seccion"
+    secciones ||--o{ detalle_inscripciones : "id_seccion"
+    usuarios ||--o{ auditoria : "id_usuario"
+    usuarios ||--o{ aula_anuncios : "id_autor"
+    usuarios ||--o{ aula_calificaciones : "id_profesor"
+    usuarios ||--o{ aula_comentarios : "id_usuario"
+    usuarios ||--o{ aula_entregas : "id_estudiante"
+    usuarios ||--o{ aula_materiales : "id_profesor"
+    usuarios ||--o{ controlador_sesiones : "id_usuario"
+    usuarios ||--o{ estudiantes : "id_estudiante"
+    usuarios ||--o{ padres : "id_usuario"
+    usuarios ||--o{ periodos_lectivos : "cerrado_por"
+    usuarios ||--o{ profesores : "id_profesor"
+    usuarios ||--o{ sesiones_web : "id_pendiente"
+    usuarios ||--o{ sesiones_web : "id_usuario"
+    areas_curriculares {
+        int id PK
+        varchar codigo
+        varchar nombre
+    }
+    asignatura_grado_area {
+        int id_asignatura PK
+        int id_grado PK
+        int id_area FK
+        decimal horas_semanales
+    }
+    asignaturas {
+        int id_asignatura PK
+        varchar codigo_asignatura
+        varchar nombre
+        int creditos
+        text descripcion
+    }
+    asistencias {
+        int id_asistencia PK
+        int id_detalle_inscripcion FK
+        date fecha
+        tinyint presente
+        varchar observacion
+    }
+    auditoria {
+        bigint id_auditoria PK
+        datetime fecha
+        int id_usuario FK
+        varchar rol
+        varchar accion
+        varchar entidad
+        varchar id_entidad
+        varchar detalle
+        varchar motivo
+        varchar resultado
+    }
+    aula_adjuntos {
+        int id_adjunto PK
+        int id_material FK
+        char archivo_key
+        varchar archivo_nombre
+        varchar archivo_tipo
+        bigint archivo_bytes
+    }
+    aula_anuncios {
+        int id_anuncio PK
+        int id_seccion FK
+        int id_autor FK
+        varchar texto
+        timestamp fecha
+    }
+    aula_archivos {
+        char archivo_key PK
+        longblob contenido
+        timestamp fecha
+    }
+    aula_calificaciones {
+        int id_entrega PK
+        decimal nota
+        text comentario
+        int id_profesor FK
+        timestamp fecha
+    }
+    aula_comentarios {
+        int id_comentario PK
+        int id_material FK
+        int id_usuario FK
+        varchar texto
+        timestamp fecha
+    }
+    aula_entregas {
+        int id_entrega PK
+        int id_material FK
+        int id_estudiante FK
+        char archivo_key
+        varchar archivo_nombre
+        varchar archivo_tipo
+        bigint archivo_bytes
+        timestamp fecha_entrega
+    }
+    aula_materiales {
+        int id_material PK
+        int id_seccion FK
+        int id_profesor FK
+        enum tipo
+        varchar titulo
+        text descripcion
+        date fecha_limite
+        timestamp fecha_publicacion
+        char archivo_key
+        varchar archivo_nombre
+        varchar archivo_tipo
+        bigint archivo_bytes
+    }
+    bitacora_accesos {
+        bigint id_acceso PK
+        int id_usuario
+        varchar correo_ingresado
+        timestamp fecha_hora
+        varchar resultado
+        varchar detalle
+    }
+    calificaciones {
+        int id_calificacion PK
+        double nota_parcial1
+        double nota_parcial2
+        double nota_examen_final
+        double nota_final
+        varchar calificacion_literal
+        int id_detalle_inscripcion FK
+    }
+    controlador_sesiones {
+        int id_sesion PK
+        int id_usuario FK
+        datetime fecha_inicio
+        datetime fecha_cierre
+        tinyint estado_activo
+        varchar direccion_ip
+    }
+    curriculo_grado_area {
+        int id_grado PK
+        int id_area PK
+        decimal horas_semanales
+        varchar observacion
+    }
+    curriculo_grados {
+        int id PK
+        varchar codigo
+        varchar nivel
+        varchar ciclo
+        varchar nombre
+        int orden
+    }
+    detalle_inscripciones {
+        int id_detalle_inscripcion PK
+        varchar estado_materia
+        int id_inscripcion FK
+        int id_seccion FK
+    }
+    estudiante_padre {
+        int id_estudiante PK
+        int id_padre PK
+        varchar parentesco
+    }
+    estudiantes {
+        int id_estudiante PK
+        varchar matricula
+        varchar grado
+        double promedio_academico
+    }
+    historial_academico {
+        int id_historial PK
+        int id_estudiante FK
+        int id_periodo FK
+        int materias_total
+        int materias_aprobadas
+        int materias_reprobadas
+        decimal promedio
+        varchar resultado
+        datetime fecha_registro
+    }
+    inscripciones {
+        int id_inscripcion PK
+        date fecha_inscripcion
+        varchar periodo_lectivo
+        varchar estado
+        int id_estudiante FK
+    }
+    padres {
+        int id_padre PK
+        int id_usuario FK
+        varchar telefono_contacto
+        varchar ocupacion
+    }
+    periodos_lectivos {
+        int id_periodo PK
+        varchar nombre
+        date fecha_inicio
+        date fecha_fin
+        varchar estado
+        int cerrado_por FK
+        datetime fecha_cierre
+    }
+    profesores {
+        int id_profesor PK
+        varchar codigo_profesor
+        varchar especialidad
+    }
+    records_academicos {
+        int id_record PK
+        int asignaturas_aprobadas
+        double indice_acumulado
+        int id_estudiante FK
+    }
+    reportes_academicos {
+        int id_reporte PK
+        int id_estudiante FK
+        varchar tipo_reporte
+        date fecha_generacion
+        text contenido_detalle
+    }
+    secciones {
+        int id_seccion PK
+        varchar aula
+        varchar horario
+        int cupo_maximo
+        int id_asignatura FK
+        int id_profesor FK
+    }
+    sesiones_web {
+        char token_hash PK
+        varchar csrf
+        int id_usuario FK
+        int id_pendiente FK
+        tinyint mfa_activo
+        int id_login
+        datetime ultimo_acceso
+    }
+    usuarios {
+        int id_usuario PK
+        varchar nombre
+        varchar apellido
+        varchar correo
+        varchar contrasena
+        varchar rol
+        tinyint debe_cambiar_contrasena
+        tinyint activo
+        tinyint dos_factor_activo
+        varchar dos_factor_secreto
+        smallint dos_factor_intentos
+        datetime dos_factor_bloqueado_hasta
+        int login_intentos
+        datetime login_bloqueado_hasta
+        tinyint pendiente_aprobacion
+    }

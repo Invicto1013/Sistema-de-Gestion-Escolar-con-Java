@@ -29,6 +29,8 @@ public final class PeriodosPanel extends BorderPane {
     private final PeriodoDAO dao = new PeriodoDAO();
     private final TableView<Periodo> tabla = new TableView<>();
     private final Label estado = new Label();
+    private final TablaPaginada<Periodo> vista = new TablaPaginada<>(tabla, p -> p.nombre() + " " + p.estado().name()
+            + " " + (p.cerradoPor() == null ? "" : p.cerradoPor()));
 
     public PeriodosPanel(int idAdmin) {
         this.idAdmin = idAdmin;
@@ -49,7 +51,8 @@ public final class PeriodosPanel extends BorderPane {
         HBox barra = new HBox(10, nuevo, cerrar, reabrir, estado);
         barra.setPadding(new Insets(0, 0, 10, 0));
         setTop(barra);
-        setCenter(tabla);
+        vista.setTituloPdf("Períodos lectivos");
+        setCenter(vista);
         recargar();
     }
 
@@ -61,8 +64,8 @@ public final class PeriodosPanel extends BorderPane {
 
     private void recargar() {
         try {
-            tabla.getItems().setAll(dao.listar());
-            Dialogos.estado(estado, "Períodos: " + tabla.getItems().size(), false);
+            vista.setDatos(dao.listar());
+            Dialogos.estado(estado, "Períodos: " + vista.totalDatos(), false);
         } catch (SQLException e) {
             e.printStackTrace();
             Dialogos.estado(estado, "No se pudieron cargar los períodos. Revisa la conexión y ejecuta sql/fase_periodos_auditoria.sql.", true);

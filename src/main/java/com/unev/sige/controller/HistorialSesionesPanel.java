@@ -21,6 +21,8 @@ public final class HistorialSesionesPanel extends BorderPane {
     private final int idAdministrador;
     private final SesionDAO dao = new SesionDAO();
     private final TableView<SesionRegistrada> tabla = new TableView<>();
+    private final TablaPaginada<SesionRegistrada> vista = new TablaPaginada<>(tabla, x -> x.usuario() + " "
+            + x.correo() + " " + x.inicio() + " " + x.cierre() + " " + x.direccionIP() + " " + x.estado());
     private final Label estado = new Label("Se muestran hasta 500 sesiones recientes.");
 
     public HistorialSesionesPanel(int idAdministrador) {
@@ -33,7 +35,8 @@ public final class HistorialSesionesPanel extends BorderPane {
         HBox barra = new HBox(12, actualizar, estado);
         barra.setPadding(new Insets(0, 0, 10, 0));
         setTop(barra);
-        setCenter(tabla);
+        vista.setTituloPdf("Historial de sesiones");
+        setCenter(vista);
         cargar();
     }
 
@@ -58,11 +61,11 @@ public final class HistorialSesionesPanel extends BorderPane {
 
     private void cargar() {
         try {
-            tabla.getItems().setAll(dao.listarRecientes(idAdministrador));
-            estado.setText("Sesiones encontradas: " + tabla.getItems().size()
+            vista.setDatos(dao.listarRecientes(idAdministrador));
+            estado.setText("Sesiones encontradas: " + vista.totalDatos()
                     + " (máximo 500 recientes).");
         } catch (SQLException e) {
-            tabla.getItems().clear();
+            vista.setDatos(java.util.List.of());
             estado.setText("No se pudo cargar el historial. Revisa la conexión y los permisos.");
         }
     }
