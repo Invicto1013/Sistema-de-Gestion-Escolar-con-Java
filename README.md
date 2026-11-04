@@ -66,3 +66,5 @@ Consulta [AULA_VIRTUAL.md](AULA_VIRTUAL.md) para instalar las tablas del aula, c
 - [Diagrama entidad-relación](docs/DIAGRAMA_ER.md)
 - [Casos de prueba de la Fase D](docs/PRUEBAS_FASE_D.md)
 - [Antes y después](docs/ANTES_DESPUES.md)
+- [Revisión de seguridad](docs/SEGURIDAD.md)
+- [Seguridad: revisión de los 20 puntos](docs/SEGURIDAD.md)

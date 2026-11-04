@@ -7,11 +7,10 @@ SET NAMES utf8mb4;
 -- Uso: crea una base vacia (por ejemplo sige_db), seleccionala e importa este archivo
 -- (MySQL Workbench > Server > Data Import, o phpMyAdmin > Importar).
 --
--- Usuarios de prueba (contrasenas de DEMOSTRACION; cambialas en uso real):
---   admin@sige.edu.do        Admin2026        ADMIN
---   jrodriguez@sige.edu.do   Profesor2026     PROFESOR
---   peguero@sige.edu.do      Estudiante2026   ESTUDIANTE
---   mariana@sige.edu.do      Padre2026        PADRE
+-- Usuarios de prueba (uno por rol, para demostracion):
+--   admin@sige.edu.do (ADMIN), jrodriguez@sige.edu.do (PROFESOR), peguero@sige.edu.do (ESTUDIANTE), mariana@sige.edu.do (PADRE)
+-- Sus contrasenas iniciales NO se publican aqui: se entregan por separado a quien evalua el proyecto.
+-- IMPORTANTE: en cualquier instalacion real, cambia o desactiva estas cuentas antes de abrir el sistema (Usuarios > Restablecer contrasena).
 -- El 2FA queda sin activar: se configura (QR + TOTP) en el primer inicio de sesion de cada usuario.
 -- Las contrasenas se guardan con BCrypt; no hay secretos 2FA ni claves reales en este script.
 
