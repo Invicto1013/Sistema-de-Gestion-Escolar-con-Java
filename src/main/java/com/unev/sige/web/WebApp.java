@@ -2071,8 +2071,8 @@ public final class WebApp {
         long now=Instant.now().getEpochSecond();if(now-s.saved<60)return;s.saved=now;
         try{SESIONES_WEB.tocar(s.id);}catch(SQLException ignored){}
     }
-    private static void setCookie(HttpExchange x,String id){String secure="true".equalsIgnoreCase(env("SIGE_WEB_SECURE_COOKIE","false"))?"; Secure":"";x.getResponseHeaders().add("Set-Cookie",COOKIE+"="+id+"; Path=/; HttpOnly; SameSite=Strict; Max-Age="+MAX_IDLE_SECONDS+secure);}
-    private static void clearCookie(HttpExchange x){x.getResponseHeaders().add("Set-Cookie",COOKIE+"=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");}
+    private static void setCookie(HttpExchange x,String id){String secure="true".equalsIgnoreCase(env("SIGE_WEB_SECURE_COOKIE","false"))?"; Secure":"";x.getResponseHeaders().add("Set-Cookie",COOKIE+"="+id+"; Path=/; HttpOnly; SameSite=Lax; Max-Age="+MAX_IDLE_SECONDS+secure);}
+    private static void clearCookie(HttpExchange x){x.getResponseHeaders().add("Set-Cookie",COOKIE+"=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");}
     private static String randomToken(){byte[] bytes=new byte[32];RANDOM.nextBytes(bytes);return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);}
     private static boolean constantEquals(String a,String b){return a!=null&&b!=null&&java.security.MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8),b.getBytes(StandardCharsets.UTF_8));}
     private static String requireEncryptionKey()throws Configuracion2FAException{String key=ConexionBD.claveCifrado2FA();if(key==null||key.isBlank())throw new Configuracion2FAException("Falta configurar 2fa.encryption-key en el servidor.");return key;}

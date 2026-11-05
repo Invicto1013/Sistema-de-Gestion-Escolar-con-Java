@@ -13,7 +13,7 @@ Revisión del código y de las pruebas automáticas, hecha el 4 de noviembre de 
 | 7 | Cero validación de inputs | Cumple | `LimitesCampos` en la web, reglas de negocio en `ReglasPeriodo`, validación de motivo, nombre y fechas |
 | 8 | HTML del usuario sin filtrar | Cumple | Escape de HTML en toda salida (`esc`) y CSP `default-src 'self'` |
 | 9 | Contraseñas en texto plano | Cumple | BCrypt |
-| 10 | Tokens en localStorage | Cumple | Sesión en cookie `HttpOnly; SameSite=Strict`; `Secure` con `SIGE_WEB_SECURE_COOKIE=true` |
+| 10 | Tokens en localStorage | Cumple | Sesión en cookie `HttpOnly; SameSite=Lax` (Lax permite que al volver desde el Aula la sesión siga abierta; los POST llevan token CSRF); `Secure` con `SIGE_WEB_SECURE_COOKIE=true` |
 | 11 | Panel de admin sin login | Cumple | Todas las rutas de administración comprueban `Rol.ADMIN` en el servidor; los intentos denegados se auditan |
 | 12 | CORS abierto | Cumple | No se emiten cabeceras CORS; `Cross-Origin-Resource-Policy: same-origin` |
 | 13 | Email sin verificar | Parcial | El registro pasa por aprobación del administrador (`pendiente_aprobacion`), pero no se envía un enlace de verificación al correo |
