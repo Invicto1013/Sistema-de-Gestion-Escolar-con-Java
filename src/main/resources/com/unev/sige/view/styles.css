@@ -62,3 +62,4 @@
 .modo-telefono .table-view { -fx-font-size:11px; }
 .modo-tableta .side-menu { -fx-padding:10px 8px; }
 .modo-tableta .dashboard-card { -fx-padding:11px; }
+.sidebar-icon { -fx-font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif; -fx-font-size:15px; -fx-min-width:22px; -fx-alignment:CENTER; }

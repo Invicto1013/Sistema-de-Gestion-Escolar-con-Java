@@ -39,6 +39,7 @@ java -jar target\sige-1.0.0.jar
 - **Escritorio:** botón «Visión» en el encabezado del panel; recuerda la elección entre sesiones.
 - **Web:** enlaces «Visión» en el pie de página; la elección se guarda en una cookie (`sige_vision`) sin datos personales y no usa JavaScript.
 - **Botones dinámicos:** el escritorio los anima con JavaFX (crecen al pasar el cursor y se hunden al pulsar) y la web con transiciones CSS; se desactivan con «reducir movimiento» del sistema. No requiere bibliotecas nuevas.
+- **Iconos:** cada apartado del menú lleva un icono decorativo (oculto para lectores de pantalla) y la aplicación y el ejecutable usan el logo de SIGE (`recursos/sige.ico`, aplicado por `empaquetar.bat`).
 
 ## Ejecutar web local
 

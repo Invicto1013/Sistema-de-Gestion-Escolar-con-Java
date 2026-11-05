@@ -27,13 +27,13 @@ echo == 3/3 Creando ejecutable con jpackage ==
 if exist target\dist rmdir /s /q target\dist
 jpackage --type app-image --name SIGE --app-version %VERSION% --vendor "UNEV" ^
   --input target\entrega --main-jar sige.jar --main-class com.unev.sige.app.Launcher ^
-  --java-options "-Xmx512m" --dest target\dist
+  --icon recursos\sige.ico --java-options "-Xmx512m" --dest target\dist
 if errorlevel 1 ( echo [ERROR] Fallo jpackage app-image & exit /b 1 )
 
 if /i "%1"=="exe" (
   jpackage --type exe --name SIGE --app-version %VERSION% --vendor "UNEV" ^
     --input target\entrega --main-jar sige.jar --main-class com.unev.sige.app.Launcher ^
-    --java-options "-Xmx512m" --win-menu --win-shortcut --win-dir-chooser --dest target\dist
+    --icon recursos\sige.ico --java-options "-Xmx512m" --win-menu --win-shortcut --win-dir-chooser --dest target\dist
   if errorlevel 1 ( echo [ERROR] Fallo el instalador. Instala WiX Toolset y reintenta & exit /b 1 )
 )
 

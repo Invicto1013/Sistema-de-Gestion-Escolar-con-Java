@@ -102,3 +102,6 @@ html[data-vision=contraste] .success::before{content:"✔ "}html[data-vision=con
 html[data-vision=contraste] .state-pill{background:#fff;color:#000;border:2px solid #000}
 html[data-vision=contraste] :focus-visible{outline:4px solid #ff8c00}
 html[data-vision=contraste] footer{color:#000}
+
+/* ---- Iconos del menú ---- */
+.ico{display:inline-block;width:1.25em;text-align:center;margin-right:.15em;font-style:normal}

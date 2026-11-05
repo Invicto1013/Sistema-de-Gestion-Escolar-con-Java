@@ -24,6 +24,7 @@ public class App extends Application {
         Scene scene = new Scene(root, 480, 380);
         Navegacion.aplicarEstilos(scene);
 
+        stage.getIcons().add(new javafx.scene.image.Image(getClass().getResourceAsStream("/com/unev/sige/view/icono.png")));
         stage.setTitle("SIGE - Inicio de sesion");
         stage.setScene(scene);
         stage.show();

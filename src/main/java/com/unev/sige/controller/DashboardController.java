@@ -238,6 +238,8 @@ public class DashboardController {
         Button boton = new Button(texto);
         boton.setMaxWidth(Double.MAX_VALUE);
         boton.getStyleClass().add("sidebar-option");
+        boton.setGraphic(com.unev.sige.app.Iconos.etiqueta(texto.replace(" (pronto)", "")));
+        boton.setGraphicTextGap(10);
         return boton;
     }
 

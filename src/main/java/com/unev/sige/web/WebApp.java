@@ -1942,6 +1942,7 @@ public final class WebApp {
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+stop+"</div></header>"
                 : "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span></header>";
         nav = Accesibilidad.marcarPaginaActual(nav, PATH_REQUEST.get());
+        nav = IconosWeb.agregar(nav);
         body = Accesibilidad.mejorar(body);
         return "<!doctype html><html lang='es'"+VisionWeb.atributo(VISION_REQUEST.get())+"><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                 +"<meta name='theme-color' content='#17324d'><meta name='apple-mobile-web-app-capable' content='yes'><title>"+esc(title)+" · SIGE</title>"

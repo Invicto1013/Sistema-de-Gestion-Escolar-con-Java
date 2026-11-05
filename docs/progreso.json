@@ -121,6 +121,12 @@
    "nombre": "Botones dinámicos y modos de visión (daltonismo, alto contraste) en escritorio, SIGE web y Aula (falta verificar en producción)",
    "peso": 2,
    "avance": 80
+  },
+  {
+   "area": "Mejoras",
+   "nombre": "Iconos en los menús (escritorio, SIGE web, Aula) y logo del ejecutable (falta verificar en pantalla)",
+   "peso": 1,
+   "avance": 80
   }
  ],
  "historial": [
@@ -158,6 +164,11 @@
    "fecha": "2026-11-05",
    "cambio": "Botones dinámicos y modos de visión para daltonismo",
    "porcentaje": 87.9
+  },
+  {
+   "fecha": "2026-11-05",
+   "cambio": "Iconos en los menús y logo del ejecutable",
+   "porcentaje": 87.8
   }
  ]
 }
