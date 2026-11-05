@@ -109,3 +109,5 @@ Antes de usar estas funciones ejecuta una vez `sql/fase_periodos_auditoria.sql` 
 - **Auditoría**: registro de solo añadir (quién, qué, cuándo y por qué) de notas, cierres, matrículas, secciones, roles y cuentas, incluidos los intentos denegados. Filtros por texto, acción, resultado y fechas, y descarga en `/auditoria.csv`.
 
 Las fechas de la auditoría y del cierre de períodos se muestran en hora de República Dominicana (-04:00) aunque MySQL guarde en UTC. Para otra zona define la variable `SIGE_ZONA_HORARIA` (por ejemplo `-05:00`). El CSV de auditoría usa `;` como separador, fechas `dd/MM/aaaa HH:mm:ss` y codificación UTF-8 con BOM, así que abre directamente en columnas en Excel en español.
+
+En la página de Auditoría, *Exportar a Excel (informe)* descarga un libro `.xlsx` con formato ejecutivo: hoja de registros (encabezado fijo, filtros, resultados en verde y rojo, lista para imprimir en horizontal) y hoja de resumen con indicadores y cantidad por acción. Respeta los filtros aplicados. *Exportar CSV* sigue disponible para quien necesite los datos en bruto.

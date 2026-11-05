@@ -163,6 +163,7 @@ public final class WebApp {
                     case "/periodos" -> page(x,s,periodsPage(s,x.getRequestURI().getRawQuery(),null));
                     case "/auditoria" -> page(x,s,auditPage(s,x.getRequestURI().getRawQuery()));
                     case "/auditoria.csv" -> downloadAuditCsv(x,s,x.getRequestURI().getRawQuery());
+                    case "/auditoria.xlsx" -> downloadAuditXlsx(x,s,x.getRequestURI().getRawQuery());
                     case "/2fa" -> page(x, s, mfaPage(s, null));
                     case "/password" -> page(x, s, passwordPage(s, null));
                     default -> page(x, s, errorPage("Página no encontrada."));
@@ -170,6 +171,9 @@ public final class WebApp {
                 return;
             }
             if (!method.equals("POST")) { send(x, 405, "text/plain; charset=utf-8", "Método no permitido"); return; }
+            String ipPost = clientIp(x);
+            if (POST_POR_IP.bloqueado(ipPost)) { x.getResponseHeaders().set("Retry-After", "60"); send(x, 429, "text/plain; charset=utf-8", "Demasiadas solicitudes. Espera un minuto e inténtalo otra vez."); return; }
+            POST_POR_IP.registrarFallo(ipPost);
             Map<String,String> form; Map<String,UploadedFile> files=Map.of();
             String contentType=x.getRequestHeaders().getFirst("Content-Type");
             if(contentType!=null&&contentType.toLowerCase(java.util.Locale.ROOT).startsWith("multipart/form-data")){
@@ -265,6 +269,16 @@ public final class WebApp {
         return LimiteIntentos.ipCliente(remota, x.getRequestHeaders().getFirst("X-Forwarded-For"),
                 x.getRequestHeaders().getFirst("CF-Connecting-IP"), TRUST_PROXY);
     }
+
+    /** Conexion HTTPS: cookie segura configurada, o proxy de confianza que informa X-Forwarded-Proto=https. */
+    private static boolean esHttps(HttpExchange x) {
+        return "true".equalsIgnoreCase(env("SIGE_WEB_SECURE_COOKIE", "false"))
+                || (TRUST_PROXY && "https".equalsIgnoreCase(x.getRequestHeaders().getFirst("X-Forwarded-Proto")));
+    }
+
+    /** Tope de peticiones POST por IP y minuto (frena inundaciones y automatizaciones; el uso normal queda muy por debajo). */
+    private static final LimiteIntentos POST_POR_IP = new LimiteIntentos(
+            positivo(env("SIGE_POST_MAX_POR_MINUTO_IP", "300"), 300), 60);
 
     private static boolean ipBloqueada(HttpExchange x, WebSession s) throws IOException {
         String ip = clientIp(x);
@@ -860,7 +874,7 @@ public final class WebApp {
         java.time.LocalDate due=null;String date=f.getOrDefault("fecha_limite","").trim();try{if(!date.isBlank())due=java.time.LocalDate.parse(date);}catch(java.time.DateTimeException e){page(x,s,aulaPage(s,null,"La fecha límite no tiene un formato válido."));return;}
         UploadedFile file=files.get("archivo");String key=null,name=null,mime=null;long bytes=0;
         try{
-            if(file!=null&&file.data().length>0){key=saveUpload(file.data());name=safeFileName(file.filename());mime=file.contentType();bytes=file.data().length;}
+            if(file!=null&&file.data().length>0){String rechazo=SeguridadWeb.validarArchivo(file.filename(),file.data());if(rechazo!=null){page(x,s,aulaPage(s,null,rechazo));return;}key=saveUpload(file.data());name=safeFileName(file.filename());mime=file.contentType();bytes=file.data().length;}
             new AulaDAO().publicar(s.user.getId(),section,type,title,description,due,key,name,mime,bytes);redirect(x,"/aula?publicado=1");
         }catch(SQLException|IOException e){if(key!=null)deleteUpload(key);page(x,s,aulaPage(s,null,"No se pudo publicar. Comprueba que el esquema aula_virtual.sql esté instalado y que la sección sea tuya."));}
     }
@@ -869,6 +883,7 @@ public final class WebApp {
         if(s.user==null||s.user.getRol()!=Rol.ESTUDIANTE){page(x,s,errorPage("Solo los estudiantes pueden subir entregas."));return;}
         int material;try{material=Integer.parseInt(f.getOrDefault("material",""));}catch(NumberFormatException e){page(x,s,aulaPage(s,null,"La tarea no es válida."));return;}
         UploadedFile file=files.get("archivo");if(file==null||file.data().length==0){page(x,s,aulaPage(s,null,"Selecciona un archivo antes de subir la entrega."));return;}
+        String rechazo=SeguridadWeb.validarArchivo(file.filename(),file.data());if(rechazo!=null){page(x,s,aulaPage(s,null,rechazo));return;}
         String key=null;try{key=saveUpload(file.data());new AulaDAO().entregar(s.user.getId(),material,key,safeFileName(file.filename()),file.contentType(),file.data().length);redirect(x,"/aula?entregado=1");}
         catch(SQLException|IOException e){if(key!=null)deleteUpload(key);page(x,s,aulaPage(s,null,"No se pudo subir la entrega. Verifica que estés inscrito en la sección de esta tarea y que aula_virtual.sql esté instalado."));}
     }
@@ -1717,7 +1732,7 @@ public final class WebApp {
             String pager="<nav class='pager' aria-label='Paginación'>"+(current>1?"<a class='secondary-link' href='"+base+(current-1)+"'>Anterior</a>":"")+"<span>Página "+current+" de "+pages+"</span>"+(current<pages?"<a class='secondary-link' href='"+base+(current+1)+"'>Siguiente</a>":"")+"</nav>";
             String body="<div class='page-heading'><div><div class='eyebrow'>SEGURIDAD</div><h1>Auditoría de operaciones</h1><p>Notas, cierres de período, matrícula, secciones, cuentas y roles: quién, qué, cuándo y por qué. Es un registro de solo lectura.</p></div><a class='text-link' href='/auditoria'>Actualizar</a></div>"
                     +Filtros.barra("/auditoria",Map.of(),fields,active,total,overall)
-                    +"<section class='card section-picker'><a class='primary link-button' href='/auditoria.csv"+(qs.isEmpty()?"":"?"+qs)+"'>Exportar resultados CSV</a></section>"
+                    +"<section class='card section-picker'><a class='primary link-button' href='/auditoria.xlsx"+(qs.isEmpty()?"":"?"+qs)+"'>Exportar a Excel (informe)</a> <a class='link-button' href='/auditoria.csv"+(qs.isEmpty()?"":"?"+qs)+"'>Exportar CSV</a></section>"
                     +"<section class='card table-card'><div class='table-wrap'><table class='grade-table audit-table'><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th><th>Motivo</th><th>Resultado</th></tr></thead><tbody>"+rows+"</tbody></table></div></section>"+pager;
             return shell("Auditoría",body,true,s.user.getNombreCompleto());
         }catch(SQLException e){return shell("Auditoría",alert("No se pudo cargar la auditoría. Ejecuta sql/fase_periodos_auditoria.sql en sige_db y verifica la conexión."),true,s.user.getNombreCompleto());}
@@ -1735,6 +1750,43 @@ public final class WebApp {
                     .append(csvCampo(r.motivo())).append(';').append("DENEGADO".equals(r.resultado())?"Denegado":"Correcto").append("\r\n");
             x.getResponseHeaders().set("Content-Disposition","attachment; filename=\"auditoria-sige-"+java.time.LocalDate.now(java.time.ZoneOffset.of(com.unev.sige.model.ZonaVisual.desplazamiento()))+".csv\"");send(x,200,"text/csv; charset=utf-8",csv.toString());
         }catch(SQLException e){send(x,500,"text/plain; charset=utf-8","No se pudo exportar la auditoría. Verifica la conexión con MySQL.");}
+    }
+
+    private static void downloadAuditXlsx(HttpExchange x,WebSession s,String query)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN){send(x,403,"text/plain; charset=utf-8","Solo un administrador puede exportar la auditoría.");return;}
+        try{
+            AuditoriaDAO dao=new AuditoriaDAO();AuditoriaDAO.Filtro filter=auditFilter(query,dao.acciones());
+            if(filter.desde()!=null&&filter.hasta()!=null&&filter.desde().isAfter(filter.hasta())){send(x,400,"text/plain; charset=utf-8","La fecha inicial no puede ser posterior a la fecha final.");return;}
+            List<AuditoriaDAO.Registro> records=dao.listar(filter,5000,0);
+            List<String[]> rows=new java.util.ArrayList<>();java.util.Map<String,Integer> byAction=new java.util.TreeMap<>();java.util.Set<String> users=new java.util.HashSet<>();int denied=0;
+            for(AuditoriaDAO.Registro r:records){
+                boolean no="DENEGADO".equals(r.resultado());if(no)denied++;
+                byAction.merge(r.accion(),1,Integer::sum);users.add(r.usuario()==null?"Sistema":r.usuario());
+                rows.add(new String[]{String.valueOf(r.id()),auditDate(r.fecha()),r.usuario()==null?"Sistema":r.usuario(),r.rol()==null?"":r.rol(),r.accion(),r.entidad(),r.idEntidad()==null?"":r.idEntidad(),r.detalle(),r.motivo()==null?"":r.motivo(),no?"Denegado":"Correcto"});
+            }
+            java.time.ZoneOffset zone=java.time.ZoneOffset.of(com.unev.sige.model.ZonaVisual.desplazamiento());
+            String now=java.time.LocalDateTime.now(zone).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            String filters=auditQuery(filter).isEmpty()?"Sin filtros":"Con filtros aplicados";
+            String subtitle="Generado el "+now+" por "+s.user.getNombreCompleto()+" · "+filters+" · "+records.size()+" registro(s)"+(records.size()>=5000?" (máximo 5000)":"");
+            List<com.unev.sige.model.XlsxTabla.Indicador> kpis=new java.util.ArrayList<>();
+            kpis.add(new com.unev.sige.model.XlsxTabla.Indicador("Total de registros",String.valueOf(records.size())));
+            kpis.add(new com.unev.sige.model.XlsxTabla.Indicador("Operaciones correctas",String.valueOf(records.size()-denied)));
+            kpis.add(new com.unev.sige.model.XlsxTabla.Indicador("Intentos denegados",String.valueOf(denied)));
+            kpis.add(new com.unev.sige.model.XlsxTabla.Indicador("Usuarios distintos",String.valueOf(users.size())));
+            if(!records.isEmpty())kpis.add(new com.unev.sige.model.XlsxTabla.Indicador("Período cubierto",auditDate(records.get(records.size()-1).fecha())+"  a  "+auditDate(records.get(0).fecha())));
+            List<Object[]> summary=new java.util.ArrayList<>();byAction.entrySet().stream().sorted((p,q)->q.getValue()-p.getValue()).forEach(e->summary.add(new Object[]{e.getKey(),e.getValue()}));
+            byte[] file=com.unev.sige.model.XlsxTabla.generar("Registros","Auditoría del sistema SIGE",subtitle,
+                    List.of("ID","Fecha y hora","Usuario","Rol","Acción","Entidad","ID entidad","Detalle","Motivo","Resultado"),rows,9,
+                    "Resumen de la auditoría",kpis,"Acción",summary);
+            x.getResponseHeaders().set("Content-Disposition","attachment; filename=\"auditoria-sige-"+java.time.LocalDate.now(zone)+".xlsx\"");
+            sendBytes(x,200,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",file);
+        }catch(SQLException e){send(x,500,"text/plain; charset=utf-8","No se pudo exportar la auditoría. Verifica la conexión con MySQL.");}
+    }
+
+    private static void sendBytes(HttpExchange x,int status,String type,byte[] data)throws IOException{
+        x.getResponseHeaders().set("Content-Type",type);
+        if("HEAD".equalsIgnoreCase(x.getRequestMethod())){x.sendResponseHeaders(status,-1);return;}
+        x.sendResponseHeaders(status,data.length);x.getResponseBody().write(data);
     }
 
     /** Campo CSV para Excel en español (separador ;): se entrecomilla solo si hace falta y se neutralizan fórmulas. */
@@ -1922,7 +1974,7 @@ public final class WebApp {
     private static void page(HttpExchange x, WebSession s, String html) throws IOException {
         RENDER_CSRF.set(s.csrf);
         Headers h=x.getResponseHeaders(); h.set("Cache-Control","no-store"); h.set("X-Content-Type-Options","nosniff");
-        h.set("X-Frame-Options","DENY"); h.set("Referrer-Policy","same-origin");
+        h.set("X-Frame-Options","DENY"); h.set("Referrer-Policy","same-origin"); SeguridadWeb.aplicarCabeceras(h,esHttps(x));
         h.set("Content-Security-Policy","default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'");
         send(x,200,"text/html; charset=utf-8",html);
         RENDER_CSRF.remove();
