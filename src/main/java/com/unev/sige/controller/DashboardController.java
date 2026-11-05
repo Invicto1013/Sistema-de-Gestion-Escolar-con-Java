@@ -70,6 +70,9 @@ public class DashboardController {
     @FXML
     private Button btnVision;
 
+    @FXML
+    private Button btnTema;
+
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
     private final List<Button> opcionesActivas = new ArrayList<>();
     private final ComboBox<String> menuCompacto = new ComboBox<>();
@@ -80,6 +83,7 @@ public class DashboardController {
     @FXML
     private void initialize() {
         btnVision.setText("Visión: " + com.unev.sige.app.ModoVision.actual().etiqueta());
+        btnTema.setText("Tema: " + com.unev.sige.app.TemaApp.actual().etiqueta());
         Usuario usuario = SesionActual.getUsuario();
 
         if (usuario == null) {
@@ -114,10 +118,18 @@ public class DashboardController {
     }
 
     @FXML
+    private void onCambiarTema() {
+        com.unev.sige.app.TemaApp nuevo = com.unev.sige.app.TemaApp.actual().alternar();
+        com.unev.sige.app.TemaApp.guardar(nuevo);
+        if (btnTema.getScene() != null) com.unev.sige.app.Apariencia.aplicar(btnTema.getScene().getStylesheets());
+        btnTema.setText("Tema: " + nuevo.etiqueta());
+    }
+
+    @FXML
     private void onCambiarVision() {
         com.unev.sige.app.ModoVision nuevo = com.unev.sige.app.ModoVision.actual().siguiente();
         com.unev.sige.app.ModoVision.guardar(nuevo);
-        if (btnVision.getScene() != null) com.unev.sige.app.ModoVision.aplicar(btnVision.getScene().getStylesheets());
+        if (btnVision.getScene() != null) com.unev.sige.app.Apariencia.aplicar(btnVision.getScene().getStylesheets());
         btnVision.setText("Visión: " + nuevo.etiqueta());
     }
 
@@ -197,6 +209,7 @@ public class DashboardController {
         lblRol.setVisible(!telefono);lblRol.setManaged(!telefono);
         btnCerrarSesion.setText(ancho<460?"Salir":"Cerrar sesión");
         btnVision.setText(ancho<460?"Visión":"Visión: "+com.unev.sige.app.ModoVision.actual().etiqueta());
+        btnTema.setText(ancho<460?"Tema":"Tema: "+com.unev.sige.app.TemaApp.actual().etiqueta());
         menuLateral.setPrefWidth(ancho<1024?160:200);
         if(telefono) {
             if(layoutRoot.getTop()!=encabezadoCompacto) {

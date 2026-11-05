@@ -1,10 +1,10 @@
 # Avance del proyecto SIGE
 
-**87.8 %** `██████████████████████████░░░░`
+**87.7 %** `██████████████████████████░░░░`
 
 Actualizado el 2026-11-05. Meta: Demo del viernes 6 de noviembre de 2026.
 
-El porcentaje es la suma de peso × avance de cada elemento, dividida entre la suma de pesos (94.8 de 108 puntos). Un cambio nuevo se agrega con su peso y sube el porcentaje al terminarse y al verificarse en producción. Se recalcula con `python docs/progreso.py` desde `docs/progreso.json`.
+El porcentaje es la suma de peso × avance de cada elemento, dividida entre la suma de pesos (96.4 de 110 puntos). Un cambio nuevo se agrega con su peso y sube el porcentaje al terminarse y al verificarse en producción. Se recalcula con `python docs/progreso.py` desde `docs/progreso.json`.
 
 ## Resumen por área
 
@@ -16,7 +16,7 @@ El porcentaje es la suma de peso × avance de cada elemento, dividida entre la s
 | Fase F | 8.0 | 8 | 100 % |
 | Seguridad | 7.4 | 11 | 68 % |
 | Pendiente | 4.0 | 12 | 33 % |
-| Mejoras | 7.4 | 8 | 92 % |
+| Mejoras | 9.0 | 10 | 90 % |
 
 ## Detalle
 
@@ -43,6 +43,7 @@ El porcentaje es la suma de peso × avance de cada elemento, dividida entre la s
 | Mejoras | Sesión de SIGE se mantiene al volver desde el Aula (cookie SameSite=Lax) y verificada | 1 | 100 % |
 | Mejoras | Botones dinámicos y modos de visión (daltonismo, alto contraste) en escritorio, SIGE web y Aula (falta verificar en producción) | 2 | 80 % |
 | Mejoras | Iconos en los menús (escritorio, SIGE web, Aula) y logo del ejecutable (falta verificar en pantalla) | 1 | 80 % |
+| Mejoras | Tema claro y oscuro en escritorio, ejecutable, SIGE web y Aula (falta verificar en pantalla) | 2 | 80 % |
 
 ## Historial de avance
 
@@ -56,3 +57,4 @@ El porcentaje es la suma de peso × avance de cada elemento, dividida entre la s
 | 2026-11-05 | Ensayo completo de la demo realizado con éxito | 88.0 % |
 | 2026-11-05 | Botones dinámicos y modos de visión para daltonismo | 87.9 % |
 | 2026-11-05 | Iconos en los menús y logo del ejecutable | 87.8 % |
+| 2026-11-05 | Tema claro y oscuro | 87.7 % |

@@ -1,0 +1,23 @@
+/* Tema oscuro de SIGE (se carga después de styles.css y antes de los modos de visión). */
+.root {
+ -sige-primary:#0B1B2A; -sige-secondary:#2F6EA3; -sige-accent:#2AA89A;
+ -sige-background:#0F1720; -sige-surface:#17212C; -sige-text:#E5EBF2; -sige-muted:#A9B8C8;
+ -sige-success:#6FD3A3; -sige-warning:#F0C36D; -sige-error:#FF9A95;
+ -fx-base:#17212C; -fx-background:#0F1720; -fx-control-inner-background:#17212C;
+ -fx-focus-color:#2AA89A; -fx-faint-focus-color:#2AA89A33;
+}
+.button:hover { -fx-background-color:#3B86BD; }
+.button.secondary-button { -fx-background-color:#243546; -fx-text-fill:#CFE1F2; }
+.text-field,.password-field,.text-area,.combo-box,.date-picker { -fx-border-color:#3A4A5C; }
+.table-view { -fx-border-color:#2B3A4A; }
+.table-view .column-header-background,.table-view .column-header,.table-view .filler { -fx-background-color:#1F2D3B; -fx-border-color:#2B3A4A; }
+.table-view .column-header .label { -fx-text-fill:#A9CCEE; }
+.table-row-cell:odd { -fx-background-color:#1B2733; }
+.side-menu { -fx-background-color:#131D28; }
+.sidebar-option { -fx-text-fill:#CFE1F2; }
+.sidebar-option:hover,.sidebar-option-active { -fx-background-color:#223548; -fx-text-fill:#FFFFFF; }
+.dialog-pane .header-panel { -fx-background-color:#1F2D3B; }
+.dashboard-card,.dashboard-chart { -fx-border-color:#2B3A4A; }
+.dashboard-card-value { -fx-text-fill:#A9CCEE; }
+.report-paper .label,.report-title { -fx-text-fill:#243447; }
+.report-meta { -fx-text-fill:#526579; }

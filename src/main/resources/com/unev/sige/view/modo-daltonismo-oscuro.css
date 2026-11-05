@@ -1,0 +1,3 @@
+/* Daltonismo sobre tema oscuro: colores de estado claros para que se lean sobre fondo oscuro. */
+.root { -sige-secondary:#2F78AD; -sige-success:#8ECDF2; -sige-warning:#F0E442; -sige-error:#FFB366; }
+.table-row-cell:selected { -fx-background-color:#2F78AD; }

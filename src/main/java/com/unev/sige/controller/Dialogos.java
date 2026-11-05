@@ -37,7 +37,7 @@ final class Dialogos {
         if (!dialogo.getDialogPane().getStylesheets().contains(hoja)) {
             dialogo.getDialogPane().getStylesheets().add(hoja);
         }
-        com.unev.sige.app.ModoVision.aplicar(dialogo.getDialogPane().getStylesheets());
+        com.unev.sige.app.Apariencia.aplicar(dialogo.getDialogPane().getStylesheets());
     }
 
     static void prepararModal(javafx.scene.control.Dialog<?> dialogo, Window propietario) {
