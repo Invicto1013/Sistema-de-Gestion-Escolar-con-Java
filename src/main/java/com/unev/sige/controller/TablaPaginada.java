@@ -129,7 +129,7 @@ final class TablaPaginada<T> extends VBox {
         String subtitulo = "Generado el " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) + filtro;
         FileChooser selector = new FileChooser();
         selector.setTitle("Guardar PDF");
-        selector.setInitialFileName(tituloPdf.toLowerCase().replaceAll("[^a-z0-9]+", "-") + ".pdf");
+        selector.setInitialFileName(Paginador.normalizar(tituloPdf).replaceAll("[^a-z0-9]+", "-") + ".pdf");
         selector.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
         java.io.File destino = selector.showSaveDialog(getScene() == null ? null : getScene().getWindow());
         if (destino == null) {
