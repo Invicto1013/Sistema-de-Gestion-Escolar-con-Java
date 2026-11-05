@@ -1,136 +1,152 @@
 {
-  "actualizado": "2026-11-04",
-  "meta": "Demo del viernes 6 de noviembre de 2026",
-  "items": [
-    {
-      "area": "Base",
-      "nombre": "Núcleo del sistema: roles, inicio de sesión con 2FA, usuarios, secciones, inscripciones, notas, asistencia y boletas",
-      "peso": 17,
-      "avance": 100
-    },
-    {
-      "area": "Base",
-      "nombre": "Lista de 18 mejoras",
-      "peso": 8,
-      "avance": 100
-    },
-    {
-      "area": "Base",
-      "nombre": "DevOps y pruebas automáticas (CI, informe, respaldos)",
-      "peso": 8,
-      "avance": 100
-    },
-    {
-      "area": "Base",
-      "nombre": "Aula virtual separada, acceso único (SSO) y despliegue en Render",
-      "peso": 10,
-      "avance": 100
-    },
-    {
-      "area": "Fase D",
-      "nombre": "Períodos lectivos, cierre, bloqueo de notas, auditoría e historial académico (código)",
-      "peso": 12,
-      "avance": 100
-    },
-    {
-      "area": "Fase D",
-      "nombre": "Fase D verificada en producción (casos de prueba 1 a 8)",
-      "peso": 6,
-      "avance": 100
-    },
-    {
-      "area": "Fase E",
-      "nombre": "Tablas de escritorio: búsqueda, orden, paginación y PDF (código)",
-      "peso": 6,
-      "avance": 100
-    },
-    {
-      "area": "Fase E",
-      "nombre": "Fase E verificada en el escritorio (Auditoría probada; faltan Secciones y Asignaturas)",
-      "peso": 2,
-      "avance": 50
-    },
-    {
-      "area": "Fase F",
-      "nombre": "Documentación: diagrama ER, manual, antes y después, casos de prueba",
-      "peso": 8,
-      "avance": 100
-    },
-    {
-      "area": "Seguridad",
-      "nombre": "Revisión de los 20 puntos y correcciones (archivos, CodeQL, Dependabot, contraseñas)",
-      "peso": 7,
-      "avance": 100
-    },
-    {
-      "area": "Seguridad",
-      "nombre": "Pruebas de seguridad en producción S1 a S9 (hecha: S6)",
-      "peso": 4,
-      "avance": 11
-    },
-    {
-      "area": "Pendiente",
-      "nombre": "Verificación del correo en el registro",
-      "peso": 3,
-      "avance": 0
-    },
-    {
-      "area": "Pendiente",
-      "nombre": "Corrección excepcional de notas también en el escritorio",
-      "peso": 2,
-      "avance": 0
-    },
-    {
-      "area": "Pendiente",
-      "nombre": "Ensayo completo de la demo con el período 2026-DEMO y verificación en producción de los últimos cambios",
-      "peso": 4,
-      "avance": 0
-    },
-    {
-      "area": "Pendiente",
-      "nombre": "Evidencia con capturas integrada en docs/PRUEBAS_FASE_D.md",
-      "peso": 3,
-      "avance": 0
-    },
-    {
-      "area": "Mejoras",
-      "nombre": "Hora de República Dominicana en auditoría y cierres, y CSV para Excel",
-      "peso": 1,
-      "avance": 100
-    },
-    {
-      "area": "Mejoras",
-      "nombre": "Nombre correcto del PDF exportado (auditoria.pdf)",
-      "peso": 1,
-      "avance": 100
-    },
-    {
-      "area": "Mejoras",
-      "nombre": "Exportación ejecutiva a Excel de la auditoría (hoja de registros y hoja de resumen)",
-      "peso": 2,
-      "avance": 100
-    }
-  ],
-  "historial": [
-    {
-      "fecha": "2026-11-04",
-      "cambio": "Punto de partida del tablero (Fases D, E y F entregadas; seguridad revisada)",
-      "porcentaje": 83.4
-    },
-    {
-      "fecha": "2026-11-04",
-      "cambio": "Hora de República Dominicana y CSV para Excel",
-      "porcentaje": 83.6
-    },
-    {
-      "fecha": "2026-11-04",
-      "cambio": "Nombre correcto del PDF exportado",
-      "porcentaje": 83.8
-    },
-    {
-      "fecha": "2026-11-04",
-      "cambio": "Exportación ejecutiva a Excel de la auditoría",
-      "porcentaje": 84.1
-    }
-  ]
+ "actualizado": "2026-11-05",
+ "meta": "Demo del viernes 6 de noviembre de 2026",
+ "items": [
+  {
+   "area": "Base",
+   "nombre": "Núcleo del sistema: roles, inicio de sesión con 2FA, usuarios, secciones, inscripciones, notas, asistencia y boletas",
+   "peso": 17,
+   "avance": 100
+  },
+  {
+   "area": "Base",
+   "nombre": "Lista de 18 mejoras",
+   "peso": 8,
+   "avance": 100
+  },
+  {
+   "area": "Base",
+   "nombre": "DevOps y pruebas automáticas (CI, informe, respaldos)",
+   "peso": 8,
+   "avance": 100
+  },
+  {
+   "area": "Base",
+   "nombre": "Aula virtual separada, acceso único (SSO) y despliegue en Render",
+   "peso": 10,
+   "avance": 100
+  },
+  {
+   "area": "Fase D",
+   "nombre": "Períodos lectivos, cierre, bloqueo de notas, auditoría e historial académico (código)",
+   "peso": 12,
+   "avance": 100
+  },
+  {
+   "area": "Fase D",
+   "nombre": "Fase D verificada en producción (casos de prueba 1 a 8)",
+   "peso": 6,
+   "avance": 100
+  },
+  {
+   "area": "Fase E",
+   "nombre": "Tablas de escritorio: búsqueda, orden, paginación y PDF (código)",
+   "peso": 6,
+   "avance": 100
+  },
+  {
+   "area": "Fase E",
+   "nombre": "Fase E verificada en el escritorio (Auditoría probada; faltan Secciones y Asignaturas)",
+   "peso": 2,
+   "avance": 50
+  },
+  {
+   "area": "Fase F",
+   "nombre": "Documentación: diagrama ER, manual, antes y después, casos de prueba",
+   "peso": 8,
+   "avance": 100
+  },
+  {
+   "area": "Seguridad",
+   "nombre": "Revisión de los 20 puntos y correcciones (archivos, CodeQL, Dependabot, contraseñas)",
+   "peso": 7,
+   "avance": 100
+  },
+  {
+   "area": "Seguridad",
+   "nombre": "Pruebas de seguridad en producción S1 a S9 (hecha: S6)",
+   "peso": 4,
+   "avance": 11
+  },
+  {
+   "area": "Pendiente",
+   "nombre": "Verificación del correo en el registro",
+   "peso": 3,
+   "avance": 0
+  },
+  {
+   "area": "Pendiente",
+   "nombre": "Corrección excepcional de notas también en el escritorio",
+   "peso": 2,
+   "avance": 0
+  },
+  {
+   "area": "Pendiente",
+   "nombre": "Ensayo completo de la demo con el período 2026-DEMO (realizado con éxito)",
+   "peso": 4,
+   "avance": 100
+  },
+  {
+   "area": "Pendiente",
+   "nombre": "Evidencia con capturas integrada en docs/PRUEBAS_FASE_D.md",
+   "peso": 3,
+   "avance": 0
+  },
+  {
+   "area": "Mejoras",
+   "nombre": "Hora de República Dominicana en auditoría y cierres, y CSV para Excel",
+   "peso": 1,
+   "avance": 100
+  },
+  {
+   "area": "Mejoras",
+   "nombre": "Nombre correcto del PDF exportado (auditoria.pdf)",
+   "peso": 1,
+   "avance": 100
+  },
+  {
+   "area": "Mejoras",
+   "nombre": "Exportación ejecutiva a Excel de la auditoría (hoja de registros y hoja de resumen)",
+   "peso": 2,
+   "avance": 100
+  },
+  {
+   "area": "Mejoras",
+   "nombre": "Sesión de SIGE se mantiene al volver desde el Aula (cookie SameSite=Lax) y verificada",
+   "peso": 1,
+   "avance": 100
+  }
+ ],
+ "historial": [
+  {
+   "fecha": "2026-11-04",
+   "cambio": "Punto de partida del tablero (Fases D, E y F entregadas; seguridad revisada)",
+   "porcentaje": 83.4
+  },
+  {
+   "fecha": "2026-11-04",
+   "cambio": "Hora de República Dominicana y CSV para Excel",
+   "porcentaje": 83.6
+  },
+  {
+   "fecha": "2026-11-04",
+   "cambio": "Nombre correcto del PDF exportado",
+   "porcentaje": 83.8
+  },
+  {
+   "fecha": "2026-11-04",
+   "cambio": "Exportación ejecutiva a Excel de la auditoría",
+   "porcentaje": 84.1
+  },
+  {
+   "fecha": "2026-11-05",
+   "cambio": "Sesión se mantiene al volver desde el Aula",
+   "porcentaje": 84.2
+  },
+  {
+   "fecha": "2026-11-05",
+   "cambio": "Ensayo completo de la demo realizado con éxito",
+   "porcentaje": 88.0
+  }
+ ]
 }

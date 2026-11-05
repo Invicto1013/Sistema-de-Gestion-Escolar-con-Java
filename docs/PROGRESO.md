@@ -1,10 +1,10 @@
 # Avance del proyecto SIGE
 
-**84.1 %** `█████████████████████████░░░░░`
+**88.0 %** `██████████████████████████░░░░`
 
-Actualizado el 2026-11-04. Meta: Demo del viernes 6 de noviembre de 2026.
+Actualizado el 2026-11-05. Meta: Demo del viernes 6 de noviembre de 2026.
 
-El porcentaje es la suma de peso × avance de cada elemento, dividida entre la suma de pesos (87.4 de 104 puntos). Un cambio nuevo se agrega con su peso y sube el porcentaje al terminarse y al verificarse en producción. Se recalcula con `python docs/progreso.py` desde `docs/progreso.json`.
+El porcentaje es la suma de peso × avance de cada elemento, dividida entre la suma de pesos (92.4 de 105 puntos). Un cambio nuevo se agrega con su peso y sube el porcentaje al terminarse y al verificarse en producción. Se recalcula con `python docs/progreso.py` desde `docs/progreso.json`.
 
 ## Resumen por área
 
@@ -15,8 +15,8 @@ El porcentaje es la suma de peso × avance de cada elemento, dividida entre la s
 | Fase E | 7.0 | 8 | 88 % |
 | Fase F | 8.0 | 8 | 100 % |
 | Seguridad | 7.4 | 11 | 68 % |
-| Pendiente | 0.0 | 12 | 0 % |
-| Mejoras | 4.0 | 4 | 100 % |
+| Pendiente | 4.0 | 12 | 33 % |
+| Mejoras | 5.0 | 5 | 100 % |
 
 ## Detalle
 
@@ -35,11 +35,12 @@ El porcentaje es la suma de peso × avance de cada elemento, dividida entre la s
 | Seguridad | Pruebas de seguridad en producción S1 a S9 (hecha: S6) | 4 | 11 % |
 | Pendiente | Verificación del correo en el registro | 3 | 0 % |
 | Pendiente | Corrección excepcional de notas también en el escritorio | 2 | 0 % |
-| Pendiente | Ensayo completo de la demo con el período 2026-DEMO y verificación en producción de los últimos cambios | 4 | 0 % |
+| Pendiente | Ensayo completo de la demo con el período 2026-DEMO (realizado con éxito) | 4 | 100 % |
 | Pendiente | Evidencia con capturas integrada en docs/PRUEBAS_FASE_D.md | 3 | 0 % |
 | Mejoras | Hora de República Dominicana en auditoría y cierres, y CSV para Excel | 1 | 100 % |
 | Mejoras | Nombre correcto del PDF exportado (auditoria.pdf) | 1 | 100 % |
 | Mejoras | Exportación ejecutiva a Excel de la auditoría (hoja de registros y hoja de resumen) | 2 | 100 % |
+| Mejoras | Sesión de SIGE se mantiene al volver desde el Aula (cookie SameSite=Lax) y verificada | 1 | 100 % |
 
 ## Historial de avance
 
@@ -49,3 +50,5 @@ El porcentaje es la suma de peso × avance de cada elemento, dividida entre la s
 | 2026-11-04 | Hora de República Dominicana y CSV para Excel | 83.6 % |
 | 2026-11-04 | Nombre correcto del PDF exportado | 83.8 % |
 | 2026-11-04 | Exportación ejecutiva a Excel de la auditoría | 84.1 % |
+| 2026-11-05 | Sesión se mantiene al volver desde el Aula | 84.2 % |
+| 2026-11-05 | Ensayo completo de la demo realizado con éxito | 88.0 % |
