@@ -67,3 +67,38 @@ footer{color:#566577}
 .filtros form{align-items:end}
 .filtros input[type=search]{min-width:12rem}
 .pager{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin:14px 0 4px;font-size:.88rem;color:var(--muted)}.audit-table{min-width:1000px}.audit-detail{max-width:420px;overflow-wrap:anywhere}.grade-edit input[name=motivo]{width:100%;min-width:170px;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;margin-bottom:6px}.grade-input input[readonly]{background:#f1f4f7;color:#5b6b7b}
+
+/* ---- Botones dinámicos (se desactivan con prefers-reduced-motion, ver arriba) ---- */
+.primary,.danger,.quiet,.link-button,.secondary-link,.hero-notice{transition:transform .15s ease,box-shadow .2s ease,background-color .2s ease}
+.primary:hover,.danger:hover,.link-button:hover,.hero-notice:hover{transform:translateY(-1px);box-shadow:0 6px 14px #17324d33}
+.primary:active,.danger:active,.link-button:active{transform:translateY(0) scale(.98);box-shadow:none}
+
+/* ---- Selector de modo de visión (pie de página) ---- */
+footer .vision{display:inline-flex;flex-wrap:wrap;gap:4px 12px;margin-left:16px;font-size:.85rem}
+footer .vision a{color:inherit;text-underline-offset:3px}footer .vision a[aria-current=true]{font-weight:800}
+
+/* ---- Modo daltonismo: azul y naranja (paleta Okabe-Ito) + símbolos, sin depender del rojo/verde ---- */
+html[data-vision=daltonismo] .primary,html[data-vision=daltonismo] .card>a.link-button{background:#0072b2}
+html[data-vision=daltonismo] .primary:hover{background:#005a8c}
+html[data-vision=daltonismo] .topbar{background:#0b2f4a}
+html[data-vision=daltonismo] .success{background:#e6f1fa;border-color:#7fb2d9;color:#00436b}
+html[data-vision=daltonismo] .success::before{content:"✔ "}
+html[data-vision=daltonismo] .alert{background:#fdf0e3;border-color:#d55e00;color:#7a3300}
+html[data-vision=daltonismo] .alert::before{content:"⚠ "}
+html[data-vision=daltonismo] .danger{background:#b34700;border-color:#e69f00}
+html[data-vision=daltonismo] .danger:hover{background:#8f3900}
+html[data-vision=daltonismo] .hero-notice{background:#b34700}
+html[data-vision=daltonismo] .state-pill{border:1px solid #0072b2;background:#e6f1fa;color:#00436b}
+html[data-vision=daltonismo] :focus-visible{outline-color:#d55e00}
+
+/* ---- Modo alto contraste ---- */
+html[data-vision=contraste] body,html[data-vision=contraste] .card,html[data-vision=contraste] .metric,html[data-vision=contraste] .auth-card{background:#fff;color:#000}
+html[data-vision=contraste] a{color:#0000b8}
+html[data-vision=contraste] .topbar{background:#000;color:#fff}html[data-vision=contraste] .topbar a{color:#fff}
+html[data-vision=contraste] .primary,html[data-vision=contraste] .danger,html[data-vision=contraste] .card>a.link-button{background:#000;color:#fff;border:2px solid #000}
+html[data-vision=contraste] .primary:hover,html[data-vision=contraste] .danger:hover{background:#fff;color:#000}
+html[data-vision=contraste] .success,html[data-vision=contraste] .alert{background:#fff;color:#000;border:2px solid #000}
+html[data-vision=contraste] .success::before{content:"✔ "}html[data-vision=contraste] .alert::before{content:"⚠ "}
+html[data-vision=contraste] .state-pill{background:#fff;color:#000;border:2px solid #000}
+html[data-vision=contraste] :focus-visible{outline:4px solid #ff8c00}
+html[data-vision=contraste] footer{color:#000}

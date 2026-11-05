@@ -29,6 +29,8 @@ public final class Navegacion {
     public static void aplicarEstilos(Scene scene) {
         String hoja = Navegacion.class.getResource(RUTA_VISTAS + "styles.css").toExternalForm();
         if (!scene.getStylesheets().contains(hoja)) scene.getStylesheets().add(hoja);
+        ModoVision.aplicar(scene.getStylesheets());
+        EfectosBoton.instalar(scene);
         aplicarModo(scene, scene.getWidth());
         scene.widthProperty().addListener((obs, anterior, ancho) ->
                 Platform.runLater(() -> aplicarModo(scene, scene.getWidth())));

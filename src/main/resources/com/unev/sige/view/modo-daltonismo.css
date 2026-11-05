@@ -1,0 +1,8 @@
+/* Modo daltonismo: azul y naranja (paleta Okabe-Ito); no depende de distinguir rojo y verde. */
+.root {
+ -sige-primary:#0B3C5D; -sige-secondary:#0072B2; -sige-accent:#D55E00;
+ -sige-success:#00507A; -sige-warning:#8A5A00; -sige-error:#B34700;
+ -fx-focus-color:#D55E00; -fx-faint-focus-color:derive(#D55E00,82%);
+}
+.table-row-cell:selected { -fx-background-color:#0072B2; -fx-text-background-color:white; }
+.button:focused { -fx-border-color:#D55E00; -fx-border-width:2px; -fx-border-radius:5px; }

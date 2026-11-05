@@ -33,6 +33,13 @@ java -jar target\sige-1.0.0.jar
 
 `sql/sige_completo.sql` crea la estructura completa (26 tablas, con currículo por grados, aula virtual, períodos lectivos, auditoría e historial académico), los roles, un usuario de prueba por rol y datos de ejemplo. Las credenciales de prueba están al inicio del script. Para actualizar una base que ya existe, aplica en orden `sql/fase_curriculo_grados.sql`, `sql/aula_virtual.sql` y `sql/fase_periodos_auditoria.sql`.
 
+## Accesibilidad visual y botones dinámicos
+
+- **Modos de visión:** Normal, Daltonismo (azul y naranja, paleta Okabe-Ito, más símbolos ✔ ⚠ para no depender del color) y Alto contraste.
+- **Escritorio:** botón «Visión» en el encabezado del panel; recuerda la elección entre sesiones.
+- **Web:** enlaces «Visión» en el pie de página; la elección se guarda en una cookie (`sige_vision`) sin datos personales y no usa JavaScript.
+- **Botones dinámicos:** el escritorio los anima con JavaFX (crecen al pasar el cursor y se hunden al pulsar) y la web con transiciones CSS; se desactivan con «reducir movimiento» del sistema. No requiere bibliotecas nuevas.
+
 ## Ejecutar web local
 
 ```powershell

@@ -115,6 +115,12 @@
    "nombre": "Sesión de SIGE se mantiene al volver desde el Aula (cookie SameSite=Lax) y verificada",
    "peso": 1,
    "avance": 100
+  },
+  {
+   "area": "Mejoras",
+   "nombre": "Botones dinámicos y modos de visión (daltonismo, alto contraste) en escritorio, SIGE web y Aula (falta verificar en producción)",
+   "peso": 2,
+   "avance": 80
   }
  ],
  "historial": [
@@ -147,6 +153,11 @@
    "fecha": "2026-11-05",
    "cambio": "Ensayo completo de la demo realizado con éxito",
    "porcentaje": 88.0
+  },
+  {
+   "fecha": "2026-11-05",
+   "cambio": "Botones dinámicos y modos de visión para daltonismo",
+   "porcentaje": 87.9
   }
  ]
 }

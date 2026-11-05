@@ -67,6 +67,9 @@ public class DashboardController {
     @FXML
     private Button btnCerrarSesion;
 
+    @FXML
+    private Button btnVision;
+
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
     private final List<Button> opcionesActivas = new ArrayList<>();
     private final ComboBox<String> menuCompacto = new ComboBox<>();
@@ -76,6 +79,7 @@ public class DashboardController {
 
     @FXML
     private void initialize() {
+        btnVision.setText("Visión: " + com.unev.sige.app.ModoVision.actual().etiqueta());
         Usuario usuario = SesionActual.getUsuario();
 
         if (usuario == null) {
@@ -107,6 +111,14 @@ public class DashboardController {
                     Platform.runLater(()->adaptarLayout(scene.getWidth())));
                 Platform.runLater(()->adaptarLayout(scene.getWidth()));}
         });
+    }
+
+    @FXML
+    private void onCambiarVision() {
+        com.unev.sige.app.ModoVision nuevo = com.unev.sige.app.ModoVision.actual().siguiente();
+        com.unev.sige.app.ModoVision.guardar(nuevo);
+        if (btnVision.getScene() != null) com.unev.sige.app.ModoVision.aplicar(btnVision.getScene().getStylesheets());
+        btnVision.setText("Visión: " + nuevo.etiqueta());
     }
 
     @FXML
@@ -184,6 +196,7 @@ public class DashboardController {
         boolean telefono=ancho<900;
         lblRol.setVisible(!telefono);lblRol.setManaged(!telefono);
         btnCerrarSesion.setText(ancho<460?"Salir":"Cerrar sesión");
+        btnVision.setText(ancho<460?"Visión":"Visión: "+com.unev.sige.app.ModoVision.actual().etiqueta());
         menuLateral.setPrefWidth(ancho<1024?160:200);
         if(telefono) {
             if(layoutRoot.getTop()!=encabezadoCompacto) {

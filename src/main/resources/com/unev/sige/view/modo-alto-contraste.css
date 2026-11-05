@@ -1,0 +1,18 @@
+/* Modo alto contraste: blanco y negro con foco amarillo/naranja bien visible. */
+.root {
+ -sige-primary:#000000; -sige-secondary:#000000; -sige-accent:#B35A00;
+ -sige-background:#FFFFFF; -sige-surface:#FFFFFF; -sige-text:#000000; -sige-muted:#000000;
+ -sige-success:#000000; -sige-warning:#000000; -sige-error:#000000;
+ -fx-focus-color:#B35A00; -fx-faint-focus-color:derive(#B35A00,82%);
+}
+.button { -fx-border-color:#000000; -fx-border-width:2px; -fx-border-radius:5px; }
+.button:hover { -fx-background-color:#333333; }
+.button.secondary-button { -fx-background-color:#FFFFFF; -fx-text-fill:#000000; }
+.text-field,.password-field,.text-area,.combo-box,.date-picker { -fx-border-color:#000000; -fx-border-width:2px; }
+.table-view { -fx-border-color:#000000; }
+.table-view .column-header-background,.table-view .column-header,.table-view .filler { -fx-background-color:#FFFFFF; -fx-border-color:#000000; }
+.table-row-cell:odd { -fx-background-color:#EEEEEE; }
+.table-row-cell:selected { -fx-background-color:#000000; -fx-text-background-color:#FFFFFF; }
+.side-menu,.dialog-pane .header-panel { -fx-background-color:#FFFFFF; }
+.sidebar-option:hover,.sidebar-option-active { -fx-background-color:#E0E0E0; }
+.user-role { -fx-text-fill:#FFFFFF; }

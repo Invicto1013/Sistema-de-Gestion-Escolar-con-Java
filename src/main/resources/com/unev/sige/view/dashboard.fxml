@@ -25,6 +25,7 @@
                 <Label fx:id="lblRol" styleClass="user-role" />
             </VBox>
 
+            <Button fx:id="btnVision" onAction="#onCambiarVision" text="Visión: Normal" />
             <Button fx:id="btnCerrarSesion" onAction="#onCerrarSesion" text="Cerrar sesión" />
         </HBox>
     </top>
