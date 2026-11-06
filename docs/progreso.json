@@ -139,6 +139,12 @@
    "nombre": "Barra superior con icono de ojo y brillo, reporte de asistencia alineado y botón Detener servidor en el menú plegable (falta verificar en producción)",
    "peso": 1,
    "avance": 80
+  },
+  {
+   "area": "Documentación",
+   "nombre": "Créditos, licencias y verificación de originalidad",
+   "peso": 1,
+   "avance": 100
   }
  ],
  "historial": [
@@ -191,6 +197,11 @@
    "fecha": "2026-11-05",
    "cambio": "Barra superior (ojo y brillo), reporte de asistencia, menú plegable",
    "porcentaje": 87.6
+  },
+  {
+   "fecha": "2026-11-06",
+   "cambio": "Créditos, licencias y verificación de originalidad",
+   "porcentaje": 87.7
   }
  ]
 }

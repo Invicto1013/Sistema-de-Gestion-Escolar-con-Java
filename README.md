@@ -69,6 +69,10 @@ La evidencia y análisis de DevOps se encuentran en `DEVOPS_PRUEBAS.md`. El info
 Consulta [AULA_VIRTUAL.md](AULA_VIRTUAL.md) para instalar las tablas del aula, configurar el almacenamiento de archivos y usar las publicaciones y entregas de profesores y estudiantes.
 
 
+## Créditos y originalidad
+
+Licencias de las dependencias, recursos propios, uso de IA y la verificación de similitud con otros proyectos están en [`docs/CREDITOS_Y_ORIGINALIDAD.md`](docs/CREDITOS_Y_ORIGINALIDAD.md).
+
 ## Documentación
 
 - [Manual de usuario](docs/MANUAL_USUARIO.md)
