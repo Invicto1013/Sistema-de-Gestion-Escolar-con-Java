@@ -23,4 +23,9 @@ class VisionWebTest {
         String h = VisionWeb.selector("daltonismo", "/x");
         assertTrue(h.contains("modo=daltonismo") && h.contains("aria-current='true'") && h.contains("volver=%2Fx"));
     }
+    @Test void menuAgrupaLosModosBajoUnOjo() {
+        String h = VisionWeb.menu("daltonismo", "/x");
+        assertTrue(h.startsWith("<details class='vision-menu'>") && h.contains("<svg") && h.contains("modo=contraste"));
+        assertTrue(h.contains("aria-current='true'") && h.contains("volver=%2Fx"));
+    }
 }

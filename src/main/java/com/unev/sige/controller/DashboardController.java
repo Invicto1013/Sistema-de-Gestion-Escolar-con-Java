@@ -82,8 +82,7 @@ public class DashboardController {
 
     @FXML
     private void initialize() {
-        btnVision.setText("Visión: " + com.unev.sige.app.ModoVision.actual().etiqueta());
-        btnTema.setText("Tema: " + com.unev.sige.app.TemaApp.actual().etiqueta());
+        actualizarIconosApariencia();
         Usuario usuario = SesionActual.getUsuario();
 
         if (usuario == null) {
@@ -122,15 +121,32 @@ public class DashboardController {
         com.unev.sige.app.TemaApp nuevo = com.unev.sige.app.TemaApp.actual().alternar();
         com.unev.sige.app.TemaApp.guardar(nuevo);
         if (btnTema.getScene() != null) com.unev.sige.app.Apariencia.aplicar(btnTema.getScene().getStylesheets());
-        btnTema.setText("Tema: " + nuevo.etiqueta());
+        actualizarIconosApariencia();
     }
 
     @FXML
     private void onCambiarVision() {
-        com.unev.sige.app.ModoVision nuevo = com.unev.sige.app.ModoVision.actual().siguiente();
-        com.unev.sige.app.ModoVision.guardar(nuevo);
-        if (btnVision.getScene() != null) com.unev.sige.app.Apariencia.aplicar(btnVision.getScene().getStylesheets());
-        btnVision.setText("Visión: " + nuevo.etiqueta());
+        javafx.scene.control.ContextMenu menu = new javafx.scene.control.ContextMenu();
+        for (com.unev.sige.app.ModoVision modo : com.unev.sige.app.ModoVision.values()) {
+            boolean activo = modo == com.unev.sige.app.ModoVision.actual();
+            javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem((activo ? "✓ " : "    ") + modo.etiqueta());
+            item.setOnAction(e -> {
+                com.unev.sige.app.ModoVision.guardar(modo);
+                if (btnVision.getScene() != null) com.unev.sige.app.Apariencia.aplicar(btnVision.getScene().getStylesheets());
+                actualizarIconosApariencia();
+            });
+            menu.getItems().add(item);
+        }
+        menu.show(btnVision, javafx.geometry.Side.BOTTOM, 0, 0);
+    }
+
+    /** Iconos de la barra superior: ojo (modos de visión) y luna/sol (cambia entre tema claro y oscuro). */
+    private void actualizarIconosApariencia() {
+        btnVision.setText("👁");
+        btnVision.setTooltip(new javafx.scene.control.Tooltip("Modo de visión: " + com.unev.sige.app.ModoVision.actual().etiqueta()));
+        boolean oscuro = com.unev.sige.app.TemaApp.actual() == com.unev.sige.app.TemaApp.OSCURO;
+        btnTema.setText(oscuro ? "☀" : "🌙");
+        btnTema.setTooltip(new javafx.scene.control.Tooltip(oscuro ? "Cambiar a tema claro" : "Cambiar a tema oscuro"));
     }
 
     @FXML
@@ -208,8 +224,6 @@ public class DashboardController {
         boolean telefono=ancho<900;
         lblRol.setVisible(!telefono);lblRol.setManaged(!telefono);
         btnCerrarSesion.setText(ancho<460?"Salir":"Cerrar sesión");
-        btnVision.setText(ancho<460?"Visión":"Visión: "+com.unev.sige.app.ModoVision.actual().etiqueta());
-        btnTema.setText(ancho<460?"Tema":"Tema: "+com.unev.sige.app.TemaApp.actual().etiqueta());
         menuLateral.setPrefWidth(ancho<1024?160:200);
         if(telefono) {
             if(layoutRoot.getTop()!=encabezadoCompacto) {

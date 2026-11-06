@@ -36,11 +36,11 @@ java -jar target\sige-1.0.0.jar
 ## Accesibilidad visual y botones dinámicos
 
 - **Modos de visión:** Normal, Daltonismo (azul y naranja, paleta Okabe-Ito, más símbolos ✔ ⚠ para no depender del color) y Alto contraste.
-- **Escritorio:** botón «Visión» en el encabezado del panel; recuerda la elección entre sesiones.
-- **Web:** enlaces «Visión» en el pie de página; la elección se guarda en una cookie (`sige_vision`) sin datos personales y no usa JavaScript.
+- **Escritorio:** icono de ojo en el encabezado del panel (menú con los modos de visión); recuerda la elección entre sesiones.
+- **Web:** icono de ojo en la barra superior (menú con los modos de visión); la elección se guarda en una cookie (`sige_vision`) sin datos personales y no usa JavaScript.
 - **Botones dinámicos:** el escritorio los anima con JavaFX (crecen al pasar el cursor y se hunden al pulsar) y la web con transiciones CSS; se desactivan con «reducir movimiento» del sistema. No requiere bibliotecas nuevas.
 - **Iconos:** cada apartado del menú lleva un icono decorativo (oculto para lectores de pantalla) y la aplicación y el ejecutable usan el logo de SIGE (`recursos/sige.ico`, aplicado por `empaquetar.bat`).
-- **Tema claro y oscuro:** el escritorio tiene el botón «Tema» (Claro/Oscuro) junto a «Visión»; la web ofrece Claro, Oscuro o Automático (sigue el tema del sistema) en el pie de página (`sige_tema`; en Aula `aula_tema`, por defecto Automático). El ejecutable usa el mismo código, así que también lo incluye. El modo de visión (daltonismo, alto contraste) siempre prevalece sobre el tema.
+- **Tema claro y oscuro:** un icono de brillo (luna/sol) en la barra superior cambia entre tema claro y oscuro, en el escritorio y en la web; la web admite además el modo Automático (sigue el tema del sistema) (`sige_tema`; en Aula `aula_tema`, por defecto Automático). El ejecutable usa el mismo código, así que también lo incluye. El modo de visión (daltonismo, alto contraste) siempre prevalece sobre el tema.
 
 ## Ejecutar web local
 

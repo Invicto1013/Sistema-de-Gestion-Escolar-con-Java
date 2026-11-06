@@ -133,6 +133,12 @@
    "nombre": "Tema claro y oscuro en escritorio, ejecutable, SIGE web y Aula (falta verificar en pantalla)",
    "peso": 2,
    "avance": 80
+  },
+  {
+   "area": "Mejoras",
+   "nombre": "Barra superior con icono de ojo y brillo, reporte de asistencia alineado y botón Detener servidor en el menú plegable (falta verificar en producción)",
+   "peso": 1,
+   "avance": 80
   }
  ],
  "historial": [
@@ -180,6 +186,11 @@
    "fecha": "2026-11-05",
    "cambio": "Tema claro y oscuro",
    "porcentaje": 87.7
+  },
+  {
+   "fecha": "2026-11-05",
+   "cambio": "Barra superior (ojo y brillo), reporte de asistencia, menú plegable",
+   "porcentaje": 87.6
   }
  ]
 }

@@ -68,6 +68,12 @@ footer{color:#566577}
 .filtros input[type=search]{min-width:12rem}
 .pager{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin:14px 0 4px;font-size:.88rem;color:var(--muted)}.audit-table{min-width:1000px}.audit-detail{max-width:420px;overflow-wrap:anywhere}.grade-edit input[name=motivo]{width:100%;min-width:170px;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;margin-bottom:6px}.grade-input input[readonly]{background:#f1f4f7;color:#5b6b7b}
 
+/* ---- Reporte de asistencia y filtros: cuadrícula uniforme ---- */
+.section-picker form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px 12px;align-items:end}
+.section-picker label{min-width:0;font-size:.9rem}
+.section-picker select,.section-picker input[type=date],.section-picker input[type=search]{box-sizing:border-box;width:100%;min-height:46px;padding:11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#1f2937;font:inherit;font-weight:500}
+.section-picker .primary{min-height:46px;white-space:nowrap;justify-self:start}
+
 /* ---- Botones dinámicos (se desactivan con prefers-reduced-motion, ver arriba) ---- */
 .primary,.danger,.quiet,.link-button,.secondary-link,.hero-notice{transition:transform .15s ease,box-shadow .2s ease,background-color .2s ease}
 .primary:hover,.danger:hover,.link-button:hover,.hero-notice:hover{transform:translateY(-1px);box-shadow:0 6px 14px #17324d33}
@@ -105,6 +111,25 @@ html[data-vision=contraste] footer{color:#000}
 
 /* ---- Iconos del menú ---- */
 .ico{display:inline-block;width:1.25em;text-align:center;margin-right:.15em;font-style:normal}
+
+/* ---- Barra superior: ojo (modos de visión) y brillo (claro/oscuro) ---- */
+.ajustes{display:flex;align-items:center;gap:8px}
+.tema-toggle{display:contents}
+.ajustes .tema-toggle a,.vision-menu>summary{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #ffffff70;border-radius:8px;color:#fff;background:transparent;cursor:pointer;list-style:none;text-decoration:none}
+.vision-menu>summary::-webkit-details-marker{display:none}
+.ajustes .tema-toggle a:hover,.vision-menu>summary:hover,.vision-menu[open]>summary{background:#ffffff26}
+.vision-menu{position:relative}
+.vision-panel{position:absolute;right:0;top:calc(100% + 8px);min-width:200px;display:grid;gap:2px;padding:6px;background:#17324d;border:1px solid #ffffff40;border-radius:10px;box-shadow:0 12px 28px #0006;z-index:40}
+.vision-panel strong{padding:6px 10px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#9fc1de}
+.vision-panel a{padding:9px 10px;border-radius:7px;color:#e4edf5;text-decoration:none;font-size:.9rem}
+.vision-panel a:hover{background:#ffffff1f}
+.vision-panel a[aria-current=true]{background:#ffffff14;font-weight:800}.vision-panel a[aria-current=true]::before{content:"✓ "}
+.ajustes .tema-toggle .to-claro{display:none}
+html[data-tema=oscuro] .ajustes .tema-toggle .to-claro{display:inline-flex}html[data-tema=oscuro] .ajustes .tema-toggle .to-oscuro{display:none}
+@media (prefers-color-scheme:dark){html[data-tema=auto] .ajustes .tema-toggle .to-claro{display:inline-flex}html[data-tema=auto] .ajustes .tema-toggle .to-oscuro{display:none}}
+.top-nav .stop-form{margin:6px 0 0;padding-top:8px;border-top:1px solid #ffffff30}.top-nav .stop-form .danger{width:100%}
+html[data-vision=contraste] .vision-panel{background:#000;border-color:#fff}
+@media(max-width:560px){.ajustes{margin-left:auto}.ajustes+.account{margin-left:0}}
 
 /* ---- Tema oscuro (generado a partir de los colores del tema claro) ---- */
 html[data-tema=oscuro]:not([data-vision=contraste]){color-scheme:dark;--navy:#a8c7e6;--line:#2b3a4a;--muted:#9fb0c3}
@@ -158,6 +183,7 @@ html[data-tema=oscuro]:not([data-vision=contraste]) .skip-link{background:#12171
 html[data-tema=oscuro]:not([data-vision=contraste]) .topbar :focus-visible,html[data-tema=oscuro]:not([data-vision=contraste]) .auth-brand :focus-visible{outline-color:#936c10}
 html[data-tema=oscuro]:not([data-vision=contraste]) footer{color:#aeb7c1}
 html[data-tema=oscuro]:not([data-vision=contraste]) .grade-input input[readonly]{background:#161c23;color:#acb5be}
+html[data-tema=oscuro]:not([data-vision=contraste]) .section-picker select,html[data-tema=oscuro]:not([data-vision=contraste]) .section-picker input[type=date],html[data-tema=oscuro]:not([data-vision=contraste]) .section-picker input[type=search]{background:#12171c;color:#ccd4de}
 html[data-tema=oscuro]:not([data-vision=contraste]) .card>a.link-button,html[data-tema=oscuro]:not([data-vision=contraste]) .primary.link-button{color:#fff}
 /* Automático: sigue el tema del sistema */
 @media (prefers-color-scheme:dark){
@@ -212,6 +238,7 @@ html[data-tema=auto]:not([data-vision=contraste]) .skip-link{background:#12171c;
 html[data-tema=auto]:not([data-vision=contraste]) .topbar :focus-visible,html[data-tema=auto]:not([data-vision=contraste]) .auth-brand :focus-visible{outline-color:#936c10}
 html[data-tema=auto]:not([data-vision=contraste]) footer{color:#aeb7c1}
 html[data-tema=auto]:not([data-vision=contraste]) .grade-input input[readonly]{background:#161c23;color:#acb5be}
+html[data-tema=auto]:not([data-vision=contraste]) .section-picker select,html[data-tema=auto]:not([data-vision=contraste]) .section-picker input[type=date],html[data-tema=auto]:not([data-vision=contraste]) .section-picker input[type=search]{background:#12171c;color:#ccd4de}
 html[data-tema=auto]:not([data-vision=contraste]) .card>a.link-button,html[data-tema=auto]:not([data-vision=contraste]) .primary.link-button{color:#fff}
 }
 
