@@ -1,0 +1,4 @@
+/* Estación: primavera (se carga sola al acercarse la estación; se puede desactivar con SIGE_ESTACION=ninguna). */
+.root { -sige-accent:#F472B6; }
+.app-header { -fx-border-color:transparent transparent #F472B6 transparent; -fx-border-width:0 0 3px 0; }
+.sidebar-option-active { -fx-border-color:transparent transparent transparent #F472B6; -fx-border-width:0 0 0 4px; }

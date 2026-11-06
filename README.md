@@ -41,6 +41,7 @@ java -jar target\sige-1.0.0.jar
 - **Botones dinámicos:** el escritorio los anima con JavaFX (crecen al pasar el cursor y se hunden al pulsar) y la web con transiciones CSS; se desactivan con «reducir movimiento» del sistema. No requiere bibliotecas nuevas.
 - **Iconos:** cada apartado del menú lleva un icono decorativo (oculto para lectores de pantalla) y la aplicación y el ejecutable usan el logo de SIGE (`recursos/sige.ico`, aplicado por `empaquetar.bat`).
 - **Tema claro y oscuro:** un icono de brillo (luna/sol) en la barra superior cambia entre tema claro y oscuro, en el escritorio y en la web; la web admite además el modo Automático (sigue el tema del sistema) (`sige_tema`; en Aula `aula_tema`, por defecto Automático). El ejecutable usa el mismo código, así que también lo incluye. El modo de visión (daltonismo, alto contraste) siempre prevalece sobre el tema.
+- **Estaciones del año:** los fondos, colores de acento y animaciones (flores, sol, hojas, nieve) cambian solos 7 días antes del inicio de cada estación (hemisferio norte: 13-mar, 14-jun, 15-sep y 14-dic). En la web se puede elegir la temporada o desactivar los efectos desde el menú del ojo; en el escritorio, con la variable `SIGE_ESTACION` (`primavera`, `verano`, `otono`, `invierno` o `ninguna`). Los efectos se desactivan con «reducir movimiento» del sistema y en el modo de alto contraste.
 
 ## Ejecutar web local
 

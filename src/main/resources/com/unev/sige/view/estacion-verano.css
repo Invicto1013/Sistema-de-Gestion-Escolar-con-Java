@@ -1,0 +1,4 @@
+/* Estación: verano (se carga sola al acercarse la estación; se puede desactivar con SIGE_ESTACION=ninguna). */
+.root { -sige-accent:#FBBF24; }
+.app-header { -fx-border-color:transparent transparent #FBBF24 transparent; -fx-border-width:0 0 3px 0; }
+.sidebar-option-active { -fx-border-color:transparent transparent transparent #FBBF24; -fx-border-width:0 0 0 4px; }

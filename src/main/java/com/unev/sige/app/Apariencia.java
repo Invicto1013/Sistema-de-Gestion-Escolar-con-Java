@@ -11,6 +11,7 @@ public final class Apariencia {
 
     public static void aplicar(ObservableList<String> hojas) {
         TemaApp.aplicar(hojas);
+        EstacionApp.aplicar(hojas);
         ModoVision.aplicar(hojas);
         String extra = Apariencia.class.getResource(DALTONISMO_OSCURO).toExternalForm();
         hojas.remove(extra);

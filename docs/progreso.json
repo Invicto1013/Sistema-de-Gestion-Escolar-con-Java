@@ -145,6 +145,12 @@
    "nombre": "Créditos, licencias y verificación de originalidad",
    "peso": 1,
    "avance": 100
+  },
+  {
+   "area": "Mejoras",
+   "nombre": "Estaciones del año automáticas (fondos y animaciones) en web, Aula y escritorio (falta verificar en producción)",
+   "peso": 1,
+   "avance": 80
   }
  ],
  "historial": [
@@ -202,6 +208,11 @@
    "fecha": "2026-11-06",
    "cambio": "Créditos, licencias y verificación de originalidad",
    "porcentaje": 87.7
+  },
+  {
+   "fecha": "2026-11-06",
+   "cambio": "Estaciones del año automáticas",
+   "porcentaje": 87.6
   }
  ]
 }
