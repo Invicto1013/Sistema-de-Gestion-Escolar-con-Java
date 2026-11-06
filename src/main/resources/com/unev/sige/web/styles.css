@@ -43,6 +43,7 @@
 @media(max-width:760px){.auth-split{grid-template-columns:1fr;margin:3vh auto}.auth-brand{gap:0;padding:22px}.auth-brand-body,.auth-brand-foot{display:none}.auth-brand-top img{width:42px;height:42px}}
 
 .auth-hero{display:block;width:100%;max-width:340px;height:auto;margin:0 auto 18px}
+.auth-hero{-webkit-mask-image:radial-gradient(ellipse at center,#000 68%,transparent 100%);mask-image:radial-gradient(ellipse at center,#000 68%,transparent 100%)}
 .auth-features b{font-weight:650}
 .hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:190px;margin-bottom:22px;padding:26px clamp(22px,4vw,44px);border-radius:16px;color:#fff;overflow:hidden;background:radial-gradient(circle at 8% 0,#2a9a8c55 0,transparent 40%),linear-gradient(120deg,#17324d 0%,#12425a 55%,#0f766e 130%);box-shadow:0 10px 30px #17324d26}
 .hero-text{position:relative;z-index:1;max-width:520px}.hero .eyebrow{color:#7fe0d4}.hero h1{margin:6px 0 8px;font-size:clamp(1.5rem,3vw,2.1rem);color:#fff}.hero p{margin:0;color:#d5e6ef;line-height:1.5}

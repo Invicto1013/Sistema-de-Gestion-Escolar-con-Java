@@ -134,6 +134,7 @@ public final class WebApp {
             if (path.equals("/manifest.webmanifest") && method.equals("GET")) { send(x,200,"application/manifest+json; charset=utf-8",manifest()); return; }
             if (path.equals("/sw.js") && method.equals("GET")) { send(x,200,"application/javascript; charset=utf-8",serviceWorker()); return; }
             if ((path.equals("/logo.svg") || path.equals("/login-art.svg") || path.equals("/login-hero.svg") || path.equals("/dashboard-hero.svg")) && method.equals("GET")) { svgResource(x, path); return; }
+            if (path.equals("/login-hero.gif") && method.equals("GET")) { gifResource(x, path); return; }
             if (path.equals("/icon.svg") && method.equals("GET")) { send(x,200,"image/svg+xml; charset=utf-8",icon()); return; }
             if (path.equals("/health") && (method.equals("GET") || method.equals("HEAD"))) { health(x); return; }
             WebSession s = sessionFor(x);
@@ -299,7 +300,7 @@ public final class WebApp {
 
     private static final String AUTH_BRAND = "<aside class='auth-brand'>"
         + "<div class='auth-brand-top'><img src='/logo.svg' alt='' width='52' height='52'><div><strong>SIGE</strong><span>Sistema de Gestión Educativa</span></div></div>"
-        + "<div class='auth-brand-body'><img class='auth-hero' src='/login-hero.svg' alt='Boleta de calificaciones con gráficos y birrete' width='440' height='300'><h2>Tu información académica, en un solo lugar</h2>"
+        + "<div class='auth-brand-body'><img class='auth-hero' src='/login-hero.gif' alt='Animación de una boleta de calificaciones con gráficos y un birrete' width='520' height='354'><h2>Tu información académica, en un solo lugar</h2>"
         + "<ul class='auth-features'>"
         + "<li><b>Calificaciones y boletas</b></li>"
         + "<li><b>Asistencia y aula virtual</b></li>"
@@ -2003,6 +2004,15 @@ public final class WebApp {
                     .replace("<svg ", "<svg class='hero-art' ");
         } catch (IOException e) {
             return "";
+        }
+    }
+
+    /** Animación GIF de la portada del login (recurso empaquetado, sin datos del usuario). */
+    private static void gifResource(HttpExchange x, String path) throws IOException {
+        try (var in = WebApp.class.getResourceAsStream("/com/unev/sige/web" + path)) {
+            if (in == null) { send(x, 404, "text/plain", "No encontrado"); return; }
+            x.getResponseHeaders().set("Cache-Control", "public, max-age=86400");
+            sendBytes(x, 200, "image/gif", in.readAllBytes());
         }
     }
 
