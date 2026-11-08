@@ -1916,7 +1916,7 @@ public final class WebApp {
             String adminForm = "";
             if (s.user.getRol() == Rol.ADMIN) {
                 adminForm = "<section class='card' style='margin-bottom:1.5rem;'><h2>Publicar nuevo comunicado escolar</h2>"
-                        + "<form method='post' action='/guardar-anuncio'>" + hiddenCsrf(s)
+                        + "<form class='form-ext' method='post' action='/guardar-anuncio'>" + hiddenCsrf(s)
                         + "<label>Título de la circular<input name='titulo' required maxlength='150' placeholder='Ej. Reunión general de padres y tutores'></label>"
                         + "<div style='display:flex;gap:12px;margin:8px 0;'>"
                         + "<label style='flex:1;'>Destinatarios<select name='destinatarios'><option value='TODOS'>Toda la comunidad escolar</option><option value='PROFESORES'>Solo Profesores</option><option value='ESTUDIANTES'>Solo Estudiantes</option><option value='PADRES'>Solo Padres y Tutores</option></select></label>"
@@ -2019,13 +2019,13 @@ public final class WebApp {
                 }
 
                 adminSection = "<section class='card' style='margin-bottom:1.5rem;'>"
-                        + "<form method='get' action='/horarios' style='margin-bottom:1rem;display:flex;gap:10px;align-items:flex-end;'>"
+                        + "<form class='form-ext fila' method='get' action='/horarios'>"
                         + "<label style='flex:1;'>Ver horario de la sección:<select name='seccion'><option value=''>Selecciona una sección...</option>"
                         + secOpts + "</select></label><button type='submit' class='primary'>Cargar</button></form>";
 
                 if (secId != null && secId > 0) {
                     adminSection += "<hr style='border:none;border-top:1px solid #e2e8f0;margin:1rem 0;'><h3>Asignar bloque de horario a esta sección</h3>"
-                            + "<form method='post' action='/guardar-horario'>" + hiddenCsrf(s)
+                            + "<form class='form-ext' method='post' action='/guardar-horario'>" + hiddenCsrf(s)
                             + "<input type='hidden' name='seccion' value='" + secId + "'>"
                             + "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;'>"
                             + "<label>Día<select name='dia'><option value='LUNES'>Lunes</option><option value='MARTES'>Martes</option><option value='MIERCOLES'>Miércoles</option><option value='JUEVES'>Jueves</option><option value='VIERNES'>Viernes</option><option value='SABADO'>Sábado</option></select></label>"
@@ -2139,7 +2139,7 @@ public final class WebApp {
                 }
 
                 newForm = "<section class='card' style='margin-bottom:1.5rem;'><h2>Registrar mérito, tardanza o incidencia</h2>"
-                        + "<form method='post' action='/guardar-conducta'>" + hiddenCsrf(s)
+                        + "<form class='form-ext' method='post' action='/guardar-conducta'>" + hiddenCsrf(s)
                         + "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:10px;'>"
                         + "<label>Estudiante<select name='estudiante' required><option value=''>Selecciona estudiante...</option>" + estOpts + "</select></label>"
                         + "<label>Tipo de registro<select name='tipo'><option value='MERITO'>⭐ Mérito / Felicitación</option><option value='CONDUCTA'>⚠️ Falta disciplinaria</option><option value='TARDANZA'>⏰ Tardanza injustificada</option><option value='TAREA'>📝 Tarea no entregada</option><option value='NOTA_INFORMATIVA'>ℹ️ Nota de seguimiento</option></select></label>"

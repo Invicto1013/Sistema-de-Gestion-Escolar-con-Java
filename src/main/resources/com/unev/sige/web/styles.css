@@ -210,6 +210,15 @@ html[data-mov=siempre] .estacion-fx{display:block}
 }
 @media print{.hero::after{display:none}}
 
+/* ---- Formularios de extensiones escolares ---- */
+.form-ext label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:.9rem;color:#17324d;margin-bottom:12px}
+.form-ext input:not([type=hidden]),.form-ext select,.form-ext textarea{width:100%;box-sizing:border-box;padding:.6rem .75rem;border:1px solid #c5d3df;border-radius:8px;background:#fff;color:#17324d;font:inherit;font-weight:400}
+.form-ext textarea{resize:vertical;min-height:90px}
+.form-ext input:focus,.form-ext select:focus,.form-ext textarea:focus{outline:2px solid #0f766e;outline-offset:1px}
+.form-ext.fila{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.form-ext.fila label{flex:1 1 260px;margin-bottom:0}
+.form-ext button{margin-top:4px}
+
 /* ---- Tema oscuro (generado a partir de los colores del tema claro) ---- */
 html[data-tema=oscuro]:not([data-vision=contraste]){color-scheme:dark;--navy:#a8c7e6;--line:#2b3a4a;--muted:#9fb0c3}
 html[data-tema=oscuro]:not([data-vision=contraste]) .topbar,html[data-tema=oscuro]:not([data-vision=contraste]) .top-nav{background:#0b1b2a}
@@ -329,4 +338,12 @@ html[data-tema=oscuro][data-vision=daltonismo] .state-pill{background:#0f2a3d;bo
 html[data-tema=auto][data-vision=daltonismo] .success{background:#0f2a3d;border-color:#2f6d99;color:#8ecdf2}
 html[data-tema=auto][data-vision=daltonismo] .alert{background:#3d2209;border-color:#d55e00;color:#ffb366}
 html[data-tema=auto][data-vision=daltonismo] .state-pill{background:#0f2a3d;border-color:#56b4e9;color:#8ecdf2}
+}
+
+/* Formularios de extensiones en tema oscuro */
+html[data-tema=oscuro]:not([data-vision=contraste]) .form-ext label{color:#d6e3f0}
+html[data-tema=oscuro]:not([data-vision=contraste]) .form-ext input:not([type=hidden]),html[data-tema=oscuro]:not([data-vision=contraste]) .form-ext select,html[data-tema=oscuro]:not([data-vision=contraste]) .form-ext textarea{background:#101a24;border-color:#2b3a4a;color:#e5edf5}
+@media (prefers-color-scheme:dark){
+html[data-tema=auto]:not([data-vision=contraste]) .form-ext label{color:#d6e3f0}
+html[data-tema=auto]:not([data-vision=contraste]) .form-ext input:not([type=hidden]),html[data-tema=auto]:not([data-vision=contraste]) .form-ext select,html[data-tema=auto]:not([data-vision=contraste]) .form-ext textarea{background:#101a24;border-color:#2b3a4a;color:#e5edf5}
 }

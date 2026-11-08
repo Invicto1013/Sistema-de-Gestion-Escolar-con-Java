@@ -27,6 +27,8 @@
 .user-name { -fx-font-weight:bold; }
 .user-role { -fx-text-fill:#E3EDF6; }
 .side-menu { -fx-background-color:#E5EDF3; }
+.side-scroll,.side-scroll > .viewport { -fx-background:transparent; -fx-background-color:transparent; -fx-padding:0; }
+.side-scroll { -fx-border-color:transparent; }
 .sidebar-option { -fx-alignment:CENTER_LEFT; -fx-background-color:transparent; -fx-text-fill:-sige-primary; }
 .sidebar-option:hover,.sidebar-option-active { -fx-background-color:#D5E3ED; -fx-text-fill:-sige-primary; }
 .sidebar-option-active { -fx-font-weight:bold; -fx-border-color:-sige-accent; -fx-border-width:0 0 0 3px; }

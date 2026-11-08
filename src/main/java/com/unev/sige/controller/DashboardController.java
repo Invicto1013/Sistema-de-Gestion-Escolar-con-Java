@@ -24,6 +24,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -52,6 +53,8 @@ public class DashboardController {
     @FXML
     private Label lblRol;
 
+    @FXML
+    private ScrollPane menuScroll;
     @FXML
     private VBox menuLateral;
 
@@ -174,12 +177,6 @@ public class DashboardController {
         switch (usuario.getRol()) {
             case ADMIN -> {
                 agregarOpcion("Usuarios", this::mostrarUsuarios);
-                agregarOpcion("Anuncios", () -> mostrarPanelAdmin("Anuncios y circulares",
-                        () -> new AnunciosPanel(usuario)));
-                agregarOpcion("Horarios", () -> mostrarPanelAdmin("Horarios de clases",
-                        () -> new HorariosPanel(usuario)));
-                agregarOpcion("Conducta", () -> mostrarPanelAdmin("Cuaderno de conducta",
-                        () -> new ObservacionesConductaPanel(usuario)));
                 agregarOpcion("Historial de sesiones", () -> mostrarPanelAdmin("Historial de sesiones",
                         () -> new HistorialSesionesPanel(usuario.getId())));
                 agregarOpcion("Crear profesor", () -> mostrarPanelAdmin("Crear profesor",
@@ -197,6 +194,12 @@ public class DashboardController {
                         VinculacionesPanel::new));
                 agregarOpcion("Boletas", () -> mostrarPanelAdmin("Boletas",
                         () -> new BoletaPanel(Rol.ADMIN, usuario.getId())));
+                agregarOpcion("Anuncios", () -> mostrarPanelAdmin("Anuncios y circulares",
+                        () -> new AnunciosPanel(usuario)));
+                agregarOpcion("Horarios", () -> mostrarPanelAdmin("Horarios de clases",
+                        () -> new HorariosPanel(usuario)));
+                agregarOpcion("Conducta", () -> mostrarPanelAdmin("Cuaderno de conducta",
+                        () -> new ObservacionesConductaPanel(usuario)));
                 agregarOpcion("Reporte de inscripciones", () -> mostrarPanelAdmin("Reporte de inscripciones",
                         () -> new ReporteInscripcionesPanel()));
             }
@@ -254,7 +257,7 @@ public class DashboardController {
         } else {
             if(layoutRoot.getTop()==encabezadoCompacto) {
                 layoutRoot.setTop(null);encabezadoCompacto.getChildren().clear();
-                layoutRoot.setTop(appHeader);layoutRoot.setLeft(menuLateral);
+                layoutRoot.setTop(appHeader);layoutRoot.setLeft(menuScroll);
             }
         }
     }

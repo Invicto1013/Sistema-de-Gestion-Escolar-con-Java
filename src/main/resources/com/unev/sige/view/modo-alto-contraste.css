@@ -14,6 +14,7 @@
 .table-row-cell:odd { -fx-background-color:#EEEEEE; }
 .table-row-cell:selected { -fx-background-color:#000000; -fx-text-background-color:#FFFFFF; }
 .side-menu,.dialog-pane .header-panel { -fx-background-color:#FFFFFF; }
+.side-scroll,.side-scroll > .viewport { -fx-background:#FFFFFF; -fx-background-color:#FFFFFF; }
 .sidebar-option:hover,.sidebar-option-active { -fx-background-color:#E0E0E0; }
 .user-role { -fx-text-fill:#FFFFFF; }
 .dashboard-banner { -fx-background-color:#000000; }
