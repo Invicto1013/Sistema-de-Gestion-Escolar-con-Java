@@ -187,6 +187,7 @@ public final class WebApp {
                     case "/anuncios" -> page(x, s, announcementsPage(s, x.getRequestURI().getRawQuery()));
                     case "/horarios" -> page(x, s, schedulesPage(s, x.getRequestURI().getRawQuery()));
                     case "/conducta" -> page(x, s, conductPage(s, x.getRequestURI().getRawQuery()));
+                    case "/confirmar" -> page(x, s, confirmPage(s, x.getRequestURI().getRawQuery()));
                     case "/boleta-oficial" -> sendOfficialReportCard(x, s, x.getRequestURI().getRawQuery());
                     case "/carnet" -> sendStudentCard(x, s, x.getRequestURI().getRawQuery());
                     case "/2fa" -> page(x, s, mfaPage(s, null));
@@ -1860,6 +1861,28 @@ public final class WebApp {
 
     // ===== EXTENSIONES ESCOLARES (ANUNCIOS, HORARIOS, CONDUCTA, CARNET Y BOLETA OFICIAL) =====
 
+    /** Pantalla de confirmación para borrar: reemplaza el confirm() de JavaScript, que la política de seguridad bloquea. */
+    private static String confirmPage(WebSession s, String query) {
+        if (s.user == null) return shell("Confirmar", errorPage("Inicia sesión para continuar."), false, "");
+        String accion = queryValue(query, "accion");
+        Integer id = parseStudentIdParam(query, "id");
+        String[][] permitidas = {
+            {"eliminar-anuncio", "este anuncio", "/anuncios"},
+            {"eliminar-horario", "este bloque de horario", "/horarios"},
+            {"eliminar-conducta", "esta observación de conducta", "/conducta"}};
+        String[] elegida = null;
+        for (String[] p : permitidas) if (p[0].equals(accion)) elegida = p;
+        if (elegida == null || id == null || id <= 0)
+            return shell("Confirmar", errorPage("Acción no válida."), true, s.user.getNombreCompleto());
+        String body = "<section class='card'><h1>¿Eliminar " + elegida[1] + "?</h1>"
+                + "<p>Esta acción no se puede deshacer.</p>"
+                + "<form method='post' action='/" + elegida[0] + "'>" + hiddenCsrf(s)
+                + "<input type='hidden' name='id' value='" + id + "'>"
+                + "<button class='primary' type='submit'>Sí, eliminar</button> "
+                + "<a class='secondary-link' href='" + elegida[2] + "'>Cancelar</a></form></section>";
+        return shell("Confirmar", body, true, s.user.getNombreCompleto());
+    }
+
     private static String announcementsPage(WebSession s, String query) {
         if (s.user == null) return shell("Anuncios", errorPage("Inicia sesión para ver los anuncios."), false, "");
         try {
@@ -1874,9 +1897,7 @@ public final class WebApp {
                     default -> "<span class='state-pill account-active'>CIRCULAR</span>";
                 };
                 String delBtn = s.user.getRol() == Rol.ADMIN
-                        ? "<form method='post' action='/eliminar-anuncio' style='display:inline;' onsubmit='return confirm(\"¿Eliminar anuncio?\")'>"
-                        + hiddenCsrf(s) + "<input type='hidden' name='id' value='" + a.getId() + "'>"
-                        + "<button type='submit' class='quiet' style='color:#ef4444;font-size:12px;'>Eliminar</button></form>" : "";
+                        ? "<a class='quiet' style='color:#ef4444;font-size:12px;' href='/confirmar?accion=eliminar-anuncio&amp;id=" + a.getId() + "'>Eliminar</a>" : "";
 
                 items.append("<article class='card' style='margin-bottom:1rem;border-left:4px solid ")
                         .append("URGENTE".equals(a.getPrioridad()) ? "#ef4444" : "IMPORTANTE".equals(a.getPrioridad()) ? "#f59e0b" : "#0f766e")
@@ -1975,9 +1996,7 @@ public final class WebApp {
             StringBuilder rows = new StringBuilder();
             for (HorarioSeccion h : list) {
                 String delBtn = s.user.getRol() == Rol.ADMIN
-                        ? "<form method='post' action='/eliminar-horario' style='display:inline;' onsubmit='return confirm(\"¿Eliminar bloque de horario?\")'>"
-                        + hiddenCsrf(s) + "<input type='hidden' name='id' value='" + h.getId() + "'>"
-                        + "<button type='submit' class='quiet' style='color:#ef4444;'>Eliminar</button></form>" : "";
+                        ? "<a class='quiet' style='color:#ef4444;' href='/confirmar?accion=eliminar-horario&amp;id=" + h.getId() + "'>Eliminar</a>" : "";
 
                 rows.append("<tr><td><b>").append(esc(h.getDiaSemana())).append("</b></td>")
                         .append("<td>").append(esc(h.getRangoHora())).append("</td>")
@@ -2001,7 +2020,7 @@ public final class WebApp {
 
                 adminSection = "<section class='card' style='margin-bottom:1.5rem;'>"
                         + "<form method='get' action='/horarios' style='margin-bottom:1rem;display:flex;gap:10px;align-items:flex-end;'>"
-                        + "<label style='flex:1;'>Ver horario de la sección:<select name='seccion' onchange='this.form.submit()'><option value=''>Selecciona una sección...</option>"
+                        + "<label style='flex:1;'>Ver horario de la sección:<select name='seccion'><option value=''>Selecciona una sección...</option>"
                         + secOpts + "</select></label><button type='submit' class='primary'>Cargar</button></form>";
 
                 if (secId != null && secId > 0) {
@@ -2099,9 +2118,7 @@ public final class WebApp {
                 };
 
                 String delBtn = (s.user.getRol() == Rol.ADMIN || (s.user.getRol() == Rol.PROFESOR && o.getIdProfesor() == s.user.getId()))
-                        ? "<form method='post' action='/eliminar-conducta' style='display:inline;' onsubmit='return confirm(\"¿Eliminar observación?\")'>"
-                        + hiddenCsrf(s) + "<input type='hidden' name='id' value='" + o.getId() + "'>"
-                        + "<button type='submit' class='quiet' style='color:#ef4444;'>Eliminar</button></form>" : "";
+                        ? "<a class='quiet' style='color:#ef4444;' href='/confirmar?accion=eliminar-conducta&amp;id=" + o.getId() + "'>Eliminar</a>" : "";
 
                 rows.append("<tr><td>").append(o.getFecha() != null ? o.getFecha().format(dtf) : "—").append("</td>")
                         .append("<td>").append(badge).append("</td>")
