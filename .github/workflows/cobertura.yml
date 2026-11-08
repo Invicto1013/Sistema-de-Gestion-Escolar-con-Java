@@ -32,7 +32,7 @@ jobs:
           fi
       - name: Guardar el informe HTML de cobertura
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: informe-cobertura-jacoco
           path: target/site/jacoco/
