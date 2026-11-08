@@ -180,6 +180,36 @@ html[data-estacion=verano] .estacion-fx span:nth-child(3n)::before{content:"☀"
 html[data-vision=contraste] .estacion-fx,html[data-vision=contraste] .auth-brand::before{display:none}
 html[data-vision=contraste][data-estacion] body{background-image:none}
 
+/* ---- Panel principal animado ---- */
+@keyframes pn-sube{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pn-brillo{0%,55%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+@keyframes pn-respira{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+@keyframes pn-flota{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes pn-barra{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.86)}}
+@keyframes pn-anillo{from{stroke-dasharray:0 201}}
+@keyframes pn-titila{0%,100%{opacity:.3}50%{opacity:1}}
+.hero{position:relative;overflow:hidden;animation:pn-sube .6s ease both;--d:.6s;--n:1}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(110deg,transparent 35%,#ffffff1c 50%,transparent 65%);animation:pn-brillo 9s ease-in-out infinite;--d:9s}
+.hero ~ *{animation:pn-sube .55s ease both;--d:.55s;--n:1}
+.hero ~ :nth-child(2){animation-delay:.08s}.hero ~ :nth-child(3){animation-delay:.16s}.hero ~ :nth-child(4){animation-delay:.24s}.hero ~ :nth-child(5){animation-delay:.32s}.hero ~ :nth-child(n+6){animation-delay:.4s}
+.metric,.hero ~ .card{transition:transform .2s ease,box-shadow .2s ease}
+.metric:hover,.hero ~ .card:hover{transform:translateY(-3px);box-shadow:0 10px 24px #17324d29}
+.hero-art .dh-halo{transform-box:fill-box;transform-origin:center;animation:pn-respira 6s ease-in-out infinite;--d:6s}
+.hero-art .dh-halo2{animation-delay:-3s}
+.hero-art .dh-book{animation:pn-flota 4.5s ease-in-out infinite;--d:4.5s}
+.hero-art .dh-b{transform-box:fill-box;transform-origin:50% 100%;animation:pn-barra 4.5s ease-in-out infinite;--d:4.5s}
+.hero-art .dh-b2{animation-delay:-.4s}.hero-art .dh-b3{animation-delay:-.8s}.hero-art .dh-b4{animation-delay:-1.2s}.hero-art .dh-b5{animation-delay:-1.6s}.hero-art .dh-b6{animation-delay:-2s}.hero-art .dh-b7{animation-delay:-2.4s}
+.hero-art .dh-ring{animation:pn-anillo 1.6s ease-out both;--d:1.6s;--n:1}
+.hero-art .dh-spark{animation:pn-titila 2.6s ease-in-out infinite;--d:2.6s}.hero-art .dh-spark2{animation-delay:-1.3s}
+.hero-art .dh-pts{animation:pn-titila 3.4s ease-in-out infinite;--d:3.4s}
+/* Si el usuario eligió «Animaciones siempre activas», se muestran aunque el sistema pida reducirlas */
+@media (prefers-reduced-motion:reduce){
+html[data-mov=siempre] :is(.hero,.hero ~ *,.hero-art .dh-halo,.hero-art .dh-book,.hero-art .dh-b,.hero-art .dh-ring,.hero-art .dh-spark,.hero-art .dh-pts,.estacion-fx span),html[data-mov=siempre] .hero::after{animation-duration:var(--d)!important;animation-iteration-count:var(--n,infinite)!important}
+html[data-mov=siempre] .metric,html[data-mov=siempre] .hero ~ .card{transition-duration:.2s!important}
+html[data-mov=siempre] .estacion-fx{display:block}
+}
+@media print{.hero::after{display:none}}
+
 /* ---- Tema oscuro (generado a partir de los colores del tema claro) ---- */
 html[data-tema=oscuro]:not([data-vision=contraste]){color-scheme:dark;--navy:#a8c7e6;--line:#2b3a4a;--muted:#9fb0c3}
 html[data-tema=oscuro]:not([data-vision=contraste]) .topbar,html[data-tema=oscuro]:not([data-vision=contraste]) .top-nav{background:#0b1b2a}

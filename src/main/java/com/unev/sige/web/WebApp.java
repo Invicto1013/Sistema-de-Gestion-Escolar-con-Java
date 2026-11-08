@@ -89,6 +89,7 @@ public final class WebApp {
     private static final ThreadLocal<String> VISION_REQUEST = new ThreadLocal<>();
     private static final ThreadLocal<String> TEMA_REQUEST = new ThreadLocal<>();
     private static final ThreadLocal<String> ESTACION_REQUEST = new ThreadLocal<>();
+    private static final ThreadLocal<String> MOVIMIENTO_REQUEST = new ThreadLocal<>();
     private static final UsuarioDAO USERS = new UsuarioDAO();
     private static final Autenticacion2FADAO MFA = new Autenticacion2FADAO();
 
@@ -128,10 +129,12 @@ public final class WebApp {
             VISION_REQUEST.set(VisionWeb.modo(x.getRequestHeaders().getFirst("Cookie")));
             TEMA_REQUEST.set(TemaWeb.modo(x.getRequestHeaders().getFirst("Cookie")));
             ESTACION_REQUEST.set(EstacionWeb.modo(x.getRequestHeaders().getFirst("Cookie")));
+            MOVIMIENTO_REQUEST.set(MovimientoWeb.modo(x.getRequestHeaders().getFirst("Cookie")));
             String method = x.getRequestMethod();
             if (path.equals("/vision") && method.equals("GET")) { cambiarVision(x); return; }
             if (path.equals("/tema") && method.equals("GET")) { cambiarTema(x); return; }
             if (path.equals("/estacion") && method.equals("GET")) { cambiarEstacion(x); return; }
+            if (path.equals("/movimiento") && method.equals("GET")) { cambiarMovimiento(x); return; }
             if (path.equals("/styles.css") && method.equals("GET")) { css(x); return; }
             if (path.equals("/pwa.js") && method.equals("GET")) { send(x,200,"application/javascript; charset=utf-8","if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}document.addEventListener('DOMContentLoaded',()=>{const b=document.querySelector('.menu-toggle'),n=document.querySelector('#main-navigation');if(!b||!n)return;const close=()=>{n.classList.remove('is-open');b.setAttribute('aria-expanded','false');b.setAttribute('aria-label','Abrir menú');};b.addEventListener('click',()=>{const open=b.getAttribute('aria-expanded')!=='true';n.classList.toggle('is-open',open);b.setAttribute('aria-expanded',String(open));b.setAttribute('aria-label',open?'Cerrar menú':'Abrir menú');});n.addEventListener('click',e=>{if(e.target.closest('a'))close();});document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});document.addEventListener('click',e=>{if(!n.contains(e.target)&&!b.contains(e.target))close();});});"); return; }
             if (path.equals("/manifest.webmanifest") && method.equals("GET")) { send(x,200,"application/manifest+json; charset=utf-8",manifest()); return; }
@@ -234,6 +237,7 @@ public final class WebApp {
             VISION_REQUEST.remove();
             TEMA_REQUEST.remove();
             ESTACION_REQUEST.remove();
+            MOVIMIENTO_REQUEST.remove();
             x.close();
         }
     }
@@ -1945,7 +1949,7 @@ public final class WebApp {
     private static String shell(String title, String body, boolean logged, String name) {
         String stop = Boolean.TRUE.equals(LOCAL_REQUEST.get())&&Boolean.TRUE.equals(ADMIN_REQUEST.get())
                 ? "<form method='post' action='/shutdown' class='stop-form'><input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='danger' type='submit'>Detener servidor</button></form>" : "";
-        String ajustes="<div class='ajustes'>"+VisionWeb.menu(VISION_REQUEST.get(),PATH_REQUEST.get(),EstacionWeb.seccionMenu(ESTACION_REQUEST.get(),PATH_REQUEST.get()))+TemaWeb.boton(PATH_REQUEST.get())+"</div>";
+        String ajustes="<div class='ajustes'>"+VisionWeb.menu(VISION_REQUEST.get(),PATH_REQUEST.get(),EstacionWeb.seccionMenu(ESTACION_REQUEST.get(),PATH_REQUEST.get())+MovimientoWeb.seccionMenu(MOVIMIENTO_REQUEST.get(),PATH_REQUEST.get()))+TemaWeb.boton(PATH_REQUEST.get())+"</div>";
         String estacion=EstacionWeb.efectiva(ESTACION_REQUEST.get(),java.time.LocalDate.now(java.time.ZoneOffset.of(com.unev.sige.model.ZonaVisual.desplazamiento())));
         String role=ROLE_REQUEST.get();
         String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/periodos'>Períodos</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a><a href='/historial-sesiones'>Historial</a>":"";
@@ -1955,7 +1959,7 @@ public final class WebApp {
         nav = Accesibilidad.marcarPaginaActual(nav, PATH_REQUEST.get());
         nav = IconosWeb.agregar(nav);
         body = Accesibilidad.mejorar(body);
-        return "<!doctype html><html lang='es'"+VisionWeb.atributo(VISION_REQUEST.get())+TemaWeb.atributo(TEMA_REQUEST.get())+EstacionWeb.atributo(estacion)+"><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+        return "<!doctype html><html lang='es'"+VisionWeb.atributo(VISION_REQUEST.get())+TemaWeb.atributo(TEMA_REQUEST.get())+EstacionWeb.atributo(estacion)+MovimientoWeb.atributo(MOVIMIENTO_REQUEST.get())+"><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                 +"<meta name='theme-color' content='#17324d'><meta name='apple-mobile-web-app-capable' content='yes'><title>"+esc(title)+" · SIGE</title>"
                 +"<link rel='manifest' href='/manifest.webmanifest'><link rel='icon' href='/icon.svg' type='image/svg+xml'><link rel='stylesheet' href='/styles.css'></head><body>"+EstacionWeb.capa(estacion)
                 +"<a class='skip-link' href='#contenido'>Saltar al contenido</a>"
@@ -2004,7 +2008,7 @@ public final class WebApp {
             String svg = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             double len = 2 * Math.PI * 32;
             String dash = String.format(java.util.Locale.ROOT, "%.1f %.1f", len * Math.max(0, Math.min(100, pct)) / 100.0, len);
-            return svg.replace("stroke-dasharray=\"150 201\"", "stroke-dasharray=\"" + dash + "\"")
+            return svg.replace("stroke-dasharray=\"150 201\"", "stroke-dasharray=\"" + dash + "\" style=\"--len:" + String.format(java.util.Locale.ROOT, "%.1f", len * Math.max(0, Math.min(100, pct)) / 100.0) + "\"")
                     .replace(">75%<", ">" + (hasData ? pct + "%" : "–") + "<")
                     .replace("<svg ", "<svg class='hero-art' ");
         } catch (IOException e) {
@@ -2038,7 +2042,7 @@ public final class WebApp {
         send(x,200,"text/css; charset=utf-8",css);
     }
     private static String manifest(){return "{\"id\":\"/\",\"name\":\"SIGE - Sistema de Gestión Educativa\",\"short_name\":\"SIGE\",\"description\":\"Portal académico SIGE\",\"start_url\":\"/\",\"scope\":\"/\",\"display\":\"standalone\",\"background_color\":\"#f3f6fa\",\"theme_color\":\"#17324d\",\"icons\":[{\"src\":\"/icon.svg\",\"sizes\":\"any\",\"type\":\"image/svg+xml\",\"purpose\":\"any maskable\"}]}";}
-    private static String serviceWorker(){return "const CACHE='sige-ui-v11';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
+    private static String serviceWorker(){return "const CACHE='sige-ui-v12';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
     private static String icon(){return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' role='img' aria-label='SIGE'> <rect width='512' height='512' rx='112' fill='#17324d'/> <path d='M256 196C204 166 146 164 100 184v176c46-18 104-16 156 14z' fill='#ffffff'/> <path d='M256 196c52-30 110-32 156-12v176c-46-18-104-16-156 14z' fill='#d6ece9'/> <path d='M256 196v178' stroke='#17324d' stroke-width='9' stroke-linecap='round'/> <g stroke='#0f766e' stroke-width='12' stroke-linecap='round' fill='none'> <path d='M140 238c34-10 68-6 88 6'/><path d='M140 282c34-10 68-6 88 6'/> <path d='M372 238c-34-10-68-6-88 6'/><path d='M372 282c-34-10-68-6-88 6'/> </g> <path d='M256 74l14 38 38 14-38 14-14 38-14-38-38-14 38-14z' fill='#ef6530'/> </svg>";}
     private static void send(HttpExchange x,int status,String type,String body)throws IOException{
         byte[] data=body.getBytes(StandardCharsets.UTF_8); x.getResponseHeaders().set("Content-Type",type); if("HEAD".equalsIgnoreCase(x.getRequestMethod())){x.sendResponseHeaders(status,-1);return;}x.sendResponseHeaders(status,data.length);x.getResponseBody().write(data);
@@ -2060,6 +2064,15 @@ public final class WebApp {
         if(modo==null||!TemaWeb.valido(modo))modo=TemaWeb.PREDETERMINADO;
         String secure="true".equalsIgnoreCase(env("SIGE_WEB_SECURE_COOKIE","false"))?"; Secure":"";
         x.getResponseHeaders().add("Set-Cookie",TemaWeb.COOKIE+"="+modo+"; Path=/; SameSite=Lax; Max-Age=31536000"+secure);
+        redirect(x,VisionWeb.volverSeguro(queryValue(raw,"volver")));
+    }
+    /** Guarda si las animaciones decorativas siguen al sistema o se muestran siempre, y vuelve a la página de origen. */
+    private static void cambiarMovimiento(HttpExchange x)throws IOException{
+        String raw=x.getRequestURI().getRawQuery();
+        String modo=queryValue(raw,"modo");
+        if(modo==null||!MovimientoWeb.valido(modo))modo=MovimientoWeb.PREDETERMINADO;
+        String secure="true".equalsIgnoreCase(env("SIGE_WEB_SECURE_COOKIE","false"))?"; Secure":"";
+        x.getResponseHeaders().add("Set-Cookie",MovimientoWeb.COOKIE+"="+modo+"; Path=/; SameSite=Lax; Max-Age=31536000"+secure);
         redirect(x,VisionWeb.volverSeguro(queryValue(raw,"volver")));
     }
     /** Guarda la preferencia de temporada (auto, una estación o sin efectos) y vuelve a la página de origen. */

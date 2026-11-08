@@ -38,6 +38,7 @@ final class DashboardInicioPanel extends VBox {
     private int ultimaDistribucionTarjetas=-1;
     private int ultimaDistribucionGraficos=-1;
     private Boolean ultimaVistaTelefono;
+    private final java.util.List<Runnable> diferidas=new java.util.ArrayList<>();
 
     DashboardInicioPanel(Usuario usuario) {
         this.usuario=usuario;
@@ -50,7 +51,9 @@ final class DashboardInicioPanel extends VBox {
         desplazable=new ScrollPane(cuerpo);desplazable.setFitToWidth(true);desplazable.setMinWidth(0);
         desplazable.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         VBox.setVgrow(desplazable,Priority.ALWAYS);
-        getChildren().addAll(titulo,detalle,estado,desplazable);
+        BannerAnimado banner=new BannerAnimado(titulo,detalle);
+        getChildren().addAll(banner,estado,desplazable);
+        AnimacionesPanel.entrada(java.util.List.of(banner),90);
         sceneProperty().addListener((obs,anterior,scene)->{if(scene!=null){scene.widthProperty().addListener((o,a,n)->
                 Platform.runLater(()->adaptarAncho(scene.getWidth())));
             Platform.runLater(()->adaptarAncho(scene.getWidth()));}});
@@ -86,6 +89,7 @@ final class DashboardInicioPanel extends VBox {
         for(int x=0;x<nombres.length;x++) {VBox tarjeta=new VBox(7);tarjeta.getStyleClass().add("dashboard-card");
             Label nombre=new Label(nombres[x]);nombre.getStyleClass().add("dashboard-card-label");
             Label valor=new Label(valores[x]);valor.getStyleClass().add("dashboard-card-value");tarjeta.getChildren().addAll(nombre,valor);
+            AnimacionesPanel.contar(valor,Long.parseLong(valores[x]));AnimacionesPanel.realzarAlPasar(tarjeta);
             GridPane.setHgrow(tarjeta,Priority.ALWAYS);GridPane.setFillWidth(tarjeta,true);
             tarjetas.add(tarjeta,x%4,x/4);}
         Chart barras=crearBarras(datos),pie=crearPie(datos);
@@ -97,18 +101,26 @@ final class DashboardInicioPanel extends VBox {
         Label promedio=new Label(String.format(java.util.Locale.forLanguageTag("es-DO"),"Promedio de notas disponibles: %.2f",i.promedio()));
         tablaActual=tabla;
         cuerpo.getChildren().setAll(tarjetas,graficos,actividad,tabla,promedio);VBox.setVgrow(tabla,Priority.ALWAYS);
+        java.util.List<Node> aAnimar=new java.util.ArrayList<>(tarjetas.getChildren());
+        aAnimar.addAll(java.util.List.of(barras,pie,actividad,tabla,promedio));
+        AnimacionesPanel.entrada(aAnimar,70);
+        javafx.animation.PauseTransition espera=new javafx.animation.PauseTransition(javafx.util.Duration.millis(450));
+        espera.setOnFinished(ev->diferidas.forEach(Runnable::run));
+        espera.play();
         if(getScene()!=null)adaptarAncho(getScene().getWidth());
     }
 
     private Chart crearBarras(DashboardDAO.Datos datos) {
         CategoryAxis x=new CategoryAxis();x.setLabel("Asignatura");NumberAxis y=new NumberAxis();y.setLabel("Inscripciones");
         BarChart<String,Number> chart=new BarChart<>(x,y);chart.setTitle("Inscripciones por asignatura");chart.setLegendVisible(false);chart.setAnimated(false);
-        XYChart.Series<String,Number> serie=new XYChart.Series<>();for(var d:datos.porAsignatura())serie.getData().add(new XYChart.Data<>(d.etiqueta(),d.valor()));
-        chart.getData().add(serie);chart.setMinHeight(260);chart.setPrefHeight(300);chart.getStyleClass().add("dashboard-chart");return chart;
+        XYChart.Series<String,Number> serie=new XYChart.Series<>();
+        chart.getData().add(serie);
+        diferidas.add(()->{chart.setAnimated(true);for(var d:datos.porAsignatura())serie.getData().add(new XYChart.Data<>(d.etiqueta(),d.valor()));});
+        chart.setMinHeight(260);chart.setPrefHeight(300);chart.getStyleClass().add("dashboard-chart");return chart;
     }
     private Chart crearPie(DashboardDAO.Datos datos) {
         PieChart chart=new PieChart();chart.setTitle("Estado de las materias");chart.setAnimated(false);
-        for(var d:datos.porEstado())chart.getData().add(new PieChart.Data(d.etiqueta(),d.valor()));
+        diferidas.add(()->{chart.setAnimated(true);for(var d:datos.porEstado())chart.getData().add(new PieChart.Data(d.etiqueta(),d.valor()));});
         chart.setMinHeight(260);chart.setPrefHeight(300);chart.getStyleClass().add("dashboard-chart");return chart;
     }
     private TableView<DashboardDAO.Movimiento> crearTabla(DashboardDAO.Datos datos) {

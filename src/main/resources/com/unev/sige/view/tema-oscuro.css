@@ -21,3 +21,5 @@
 .dashboard-card-value { -fx-text-fill:#A9CCEE; }
 .report-paper .label,.report-title { -fx-text-fill:#243447; }
 .report-meta { -fx-text-fill:#526579; }
+.dashboard-banner { -fx-background-color:linear-gradient(to right,#0A2F3C,#114A5C); }
+.dashboard-card:hover { -fx-effect:dropshadow(gaussian,rgba(0,0,0,0.6),16,0.15,0,5); }

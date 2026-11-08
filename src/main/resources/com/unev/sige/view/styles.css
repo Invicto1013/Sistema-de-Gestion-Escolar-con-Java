@@ -63,3 +63,9 @@
 .modo-tableta .side-menu { -fx-padding:10px 8px; }
 .modo-tableta .dashboard-card { -fx-padding:11px; }
 .sidebar-icon { -fx-font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif; -fx-font-size:15px; -fx-min-width:22px; -fx-alignment:CENTER; }
+
+/* Banner animado del panel principal */
+.dashboard-banner { -fx-background-color:linear-gradient(to right,#0E4A5E,#17657A); -fx-background-radius:12px; -fx-padding:18px 26px; }
+.dashboard-banner .banner-title { -fx-text-fill:white; -fx-font-size:24px; -fx-font-weight:bold; }
+.dashboard-banner .banner-sub { -fx-text-fill:#CFE8EE; -fx-font-size:13px; }
+.dashboard-card:hover { -fx-effect:dropshadow(gaussian,rgba(10,30,50,0.28),16,0.15,0,5); }

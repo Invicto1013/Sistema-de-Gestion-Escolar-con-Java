@@ -100,6 +100,7 @@ public class DashboardController {
         lblRol.setText(etiquetaRol(usuario.getRol()));
 
         construirMenu(usuario);
+        AnimacionesPanel.entradaLateral(new java.util.ArrayList<>(menuLateral.getChildren()), 45);
         mostrarInicio(usuario);
         menuCompacto.setPromptText("Abrir menú");
         menuCompacto.setMaxWidth(Double.MAX_VALUE);
