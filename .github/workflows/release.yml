@@ -80,4 +80,5 @@ jobs:
           gh release create "$TAG" paquetes/*.zip \
             --repo "$GITHUB_REPOSITORY" \
             --title "SIGE $TAG" \
-            --generate-notes
+            --generate-notes \
+            --notes "Novedades: ver docs/NOVEDADES_${TAG}.md en el repositorio."
