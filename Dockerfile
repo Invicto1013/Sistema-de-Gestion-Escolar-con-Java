@@ -11,7 +11,7 @@ RUN mvn --batch-mode --no-transfer-progress -DskipTests package
 
 # ---------- Etapa 2: ejecutar solo con Java (sin Maven) ----------
 # Imagen final pequena: arranca en segundos y usa menos memoria que "mvn javafx:run".
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 
 RUN useradd --system --home-dir /app --shell /usr/sbin/nologin sige \
