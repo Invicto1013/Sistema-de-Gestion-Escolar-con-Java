@@ -4,6 +4,7 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.unev.sige.data.Autenticacion2FADAO;
+import com.unev.sige.data.AnuncioDAO;
 import com.unev.sige.data.AsistenciaDAO;
 import com.unev.sige.data.AuditoriaDAO;
 import com.unev.sige.data.AulaDAO;
@@ -14,8 +15,10 @@ import com.unev.sige.data.ConexionBD;
 import com.unev.sige.data.CorreoNotificaciones;
 import com.unev.sige.data.CurriculoDAO;
 import com.unev.sige.data.DashboardDAO;
+import com.unev.sige.data.HorarioDAO;
 import com.unev.sige.data.InscripcionDAO;
 import com.unev.sige.data.InscripcionInvalidaException;
+import com.unev.sige.data.ObservacionConductaDAO;
 import com.unev.sige.data.PeriodoDAO;
 import com.unev.sige.data.PermisoDenegadoException;
 import com.unev.sige.data.ReporteDAO;
@@ -24,12 +27,15 @@ import com.unev.sige.data.SesionWebDAO;
 import com.unev.sige.data.SeccionDAO;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.data.VinculacionDAO;
+import com.unev.sige.model.Anuncio;
 import com.unev.sige.model.ControladorSesion;
 import com.unev.sige.model.GradoCurricular;
 import com.unev.sige.model.Calificacion;
 import com.unev.sige.model.Asignatura;
 import com.unev.sige.model.FilaAsistencia;
 import com.unev.sige.model.Estudiante;
+import com.unev.sige.model.HorarioSeccion;
+import com.unev.sige.model.ObservacionConducta;
 import com.unev.sige.model.Padre;
 import com.unev.sige.model.Periodo;
 import com.unev.sige.model.Profesor;
@@ -43,6 +49,7 @@ import com.unev.sige.model.Rol;
 import com.unev.sige.model.PoliticaContrasena;
 import com.unev.sige.model.Usuario;
 import com.unev.sige.model.VinculoPadreEstudiante;
+import com.unev.sige.service.GeneradorDocumentos;
 import com.unev.sige.security.Configuracion2FAException;
 import com.unev.sige.security.TOTP;
 import com.sun.net.httpserver.Headers;
@@ -177,6 +184,11 @@ public final class WebApp {
                     case "/auditoria" -> page(x,s,auditPage(s,x.getRequestURI().getRawQuery()));
                     case "/auditoria.csv" -> downloadAuditCsv(x,s,x.getRequestURI().getRawQuery());
                     case "/auditoria.xlsx" -> downloadAuditXlsx(x,s,x.getRequestURI().getRawQuery());
+                    case "/anuncios" -> page(x, s, announcementsPage(s, x.getRequestURI().getRawQuery()));
+                    case "/horarios" -> page(x, s, schedulesPage(s, x.getRequestURI().getRawQuery()));
+                    case "/conducta" -> page(x, s, conductPage(s, x.getRequestURI().getRawQuery()));
+                    case "/boleta-oficial" -> sendOfficialReportCard(x, s, x.getRequestURI().getRawQuery());
+                    case "/carnet" -> sendStudentCard(x, s, x.getRequestURI().getRawQuery());
                     case "/2fa" -> page(x, s, mfaPage(s, null));
                     case "/password" -> page(x, s, passwordPage(s, null));
                     default -> page(x, s, errorPage("Página no encontrada."));
@@ -221,6 +233,12 @@ public final class WebApp {
                 case "/crear-vinculo" -> createParentLink(x,s,form);
                 case "/eliminar-vinculo" -> deleteParentLink(x,s,form);
                 case "/guardar-profesor" -> createTeacher(x,s,form);
+                case "/guardar-anuncio" -> saveAnnouncement(x, s, form);
+                case "/eliminar-anuncio" -> deleteAnnouncement(x, s, form);
+                case "/guardar-horario" -> saveScheduleBlock(x, s, form);
+                case "/eliminar-horario" -> deleteScheduleBlock(x, s, form);
+                case "/guardar-conducta" -> saveConductObservation(x, s, form);
+                case "/eliminar-conducta" -> deleteConductObservation(x, s, form);
                 case "/logout" -> logout(x, s);
                 case "/shutdown" -> shutdown(x, s);
                 default -> page(x, s, errorPage("Página no encontrada."));
@@ -621,9 +639,13 @@ public final class WebApp {
                     .append(esc(line.estado())).append("</span></td></tr>");
             if(rows.isEmpty())rows.append("<tr><td colspan='8' class='empty'>No hay calificaciones registradas para mostrar.</td></tr>");
             String picker=s.user.getRol()==Rol.PADRE?childPicker(children,"/boleta","Estudiante: "+studentName):"";
+            String actionsBar="<section class='card' style='margin-bottom:1rem;display:flex;gap:12px;align-items:center;'>"
+                    +"<a class='primary link-button' target='_blank' href='/boleta-oficial"+(query!=null&&!query.isBlank()?"?"+query:"")+"'>🖨 Ver Boleta Oficial / Guardar PDF</a>"
+                    +"<a class='secondary-link' target='_blank' href='/carnet"+(query!=null&&!query.isBlank()?"?"+query:"")+"'>💳 Carnet Estudiantil con QR</a>"
+                    +"</section>";
             String body="<div class='page-heading'><div><div class='eyebrow'>CONSULTA ACADÉMICA</div><h1>Boleta de calificaciones</h1>"
                     +"<p>"+esc(studentName)+" · notas y estado por período.</p></div><span class='role-badge'>"+evaluated+" evaluadas</span></div>"
-                    +picker+"<section class='metrics grade-summary'>"+metric("Materias",lines.size())+metric("Evaluadas",evaluated)
+                    +picker+actionsBar+"<section class='metrics grade-summary'>"+metric("Materias",lines.size())+metric("Evaluadas",evaluated)
                     +metric("Promedio",String.format(java.util.Locale.ROOT,"%.2f",average))+"</section><section class='card table-card'>"
                     +"<div class='table-wrap'><table class='grade-table'><thead><tr><th>Período</th><th>Asignatura</th><th>P1</th><th>P2</th><th>Examen</th><th>Final</th><th>Literal</th><th>Estado</th></tr></thead><tbody>"
                     +rows+"</tbody></table></div></section>";
@@ -1836,6 +1858,402 @@ public final class WebApp {
         catch(SQLException e){page(x,s,gradesPage(s,"seccion="+sectionId,"No se pudo guardar la corrección. Verifica la conexión con MySQL."));}
     }
 
+    // ===== EXTENSIONES ESCOLARES (ANUNCIOS, HORARIOS, CONDUCTA, CARNET Y BOLETA OFICIAL) =====
+
+    private static String announcementsPage(WebSession s, String query) {
+        if (s.user == null) return shell("Anuncios", errorPage("Inicia sesión para ver los anuncios."), false, "");
+        try {
+            AnuncioDAO dao = new AnuncioDAO();
+            List<Anuncio> list = s.user.getRol() == Rol.ADMIN ? dao.listarTodos() : dao.listarParaUsuario(s.user.getRol());
+            StringBuilder items = new StringBuilder();
+            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+            for (Anuncio a : list) {
+                String priorityBadge = switch (a.getPrioridad()) {
+                    case "URGENTE" -> "<span class='state-pill account-disabled'>URGENTE</span>";
+                    case "IMPORTANTE" -> "<span class='state-pill' style='background:#fef3c7;color:#b45309;'>IMPORTANTE</span>";
+                    default -> "<span class='state-pill account-active'>CIRCULAR</span>";
+                };
+                String delBtn = s.user.getRol() == Rol.ADMIN
+                        ? "<form method='post' action='/eliminar-anuncio' style='display:inline;' onsubmit='return confirm(\"¿Eliminar anuncio?\")'>"
+                        + hiddenCsrf(s) + "<input type='hidden' name='id' value='" + a.getId() + "'>"
+                        + "<button type='submit' class='quiet' style='color:#ef4444;font-size:12px;'>Eliminar</button></form>" : "";
+
+                items.append("<article class='card' style='margin-bottom:1rem;border-left:4px solid ")
+                        .append("URGENTE".equals(a.getPrioridad()) ? "#ef4444" : "IMPORTANTE".equals(a.getPrioridad()) ? "#f59e0b" : "#0f766e")
+                        .append(";'><div style='display:flex;justify-content:space-between;align-items:flex-start;'><div>")
+                        .append(priorityBadge).append("<h2 style='margin:6px 0 2px;'>").append(esc(a.getTitulo())).append("</h2>")
+                        .append("<small style='color:#64748b;'>Por <b>").append(esc(a.getAutorNombre())).append("</b> · ")
+                        .append(a.getFechaPublicacion() != null ? a.getFechaPublicacion().format(dtf) : "")
+                        .append(" · Dirigido a: ").append(esc(a.getDestinatarios())).append("</small></div>")
+                        .append(delBtn).append("</div>")
+                        .append("<div style='margin-top:12px;font-size:14px;line-height:1.6;'>")
+                        .append(esc(a.getContenido()).replace("\n", "<br>"))
+                        .append("</div></article>");
+            }
+            if (items.isEmpty()) items.append("<p class='empty'>No hay anuncios escolares vigentes en este momento.</p>");
+
+            String adminForm = "";
+            if (s.user.getRol() == Rol.ADMIN) {
+                adminForm = "<section class='card' style='margin-bottom:1.5rem;'><h2>Publicar nuevo comunicado escolar</h2>"
+                        + "<form method='post' action='/guardar-anuncio'>" + hiddenCsrf(s)
+                        + "<label>Título de la circular<input name='titulo' required maxlength='150' placeholder='Ej. Reunión general de padres y tutores'></label>"
+                        + "<div style='display:flex;gap:12px;margin:8px 0;'>"
+                        + "<label style='flex:1;'>Destinatarios<select name='destinatarios'><option value='TODOS'>Toda la comunidad escolar</option><option value='PROFESORES'>Solo Profesores</option><option value='ESTUDIANTES'>Solo Estudiantes</option><option value='PADRES'>Solo Padres y Tutores</option></select></label>"
+                        + "<label style='flex:1;'>Prioridad<select name='prioridad'><option value='NORMAL'>Normal</option><option value='IMPORTANTE'>Importante</option><option value='URGENTE'>Urgente</option></select></label>"
+                        + "</div><label>Contenido del comunicado<textarea name='contenido' rows='4' required placeholder='Escribe los detalles del comunicado institucional...'></textarea></label>"
+                        + "<button class='primary' type='submit'>Publicar Circular</button></form></section>";
+            }
+
+            String body = "<div class='page-heading'><div><div class='eyebrow'>COMUNIDAD ESCOLAR</div><h1>Tablón de anuncios y circulares</h1>"
+                    + "<p>Avisos oficiales y novedades de la institución educativa.</p></div></div>"
+                    + adminForm + "<section>" + items + "</section>";
+
+            return shell("Anuncios y Circulares", body, true, s.user.getNombreCompleto());
+        } catch (SQLException e) {
+            return shell("Anuncios", alert("No se pudieron cargar los anuncios: " + e.getMessage()), true, s.user.getNombreCompleto());
+        }
+    }
+
+    private static void saveAnnouncement(HttpExchange x, WebSession s, Map<String,String> f) throws IOException {
+        if (s.user == null || s.user.getRol() != Rol.ADMIN) {
+            send(x, 403, "text/plain; charset=utf-8", "Solo un administrador puede publicar anuncios.");
+            return;
+        }
+        String tit = f.getOrDefault("titulo", "").trim();
+        String cont = f.getOrDefault("contenido", "").trim();
+        if (tit.isEmpty() || cont.isEmpty()) {
+            redirect(x, "/anuncios?error=campos_incompletos");
+            return;
+        }
+        Anuncio a = new Anuncio();
+        a.setTitulo(tit);
+        a.setContenido(cont);
+        a.setIdAutor(s.user.getId());
+        String dest = f.getOrDefault("destinatarios", "TODOS");
+        a.setDestinatarios(java.util.Set.of("TODOS", "PROFESORES", "ESTUDIANTES", "PADRES").contains(dest) ? dest : "TODOS");
+        String prio = f.getOrDefault("prioridad", "NORMAL");
+        a.setPrioridad(java.util.Set.of("NORMAL", "IMPORTANTE", "URGENTE").contains(prio) ? prio : "NORMAL");
+        a.setActivo(true);
+        try {
+            new AnuncioDAO().crear(a);
+            redirect(x, "/anuncios?ok=1");
+        } catch (SQLException e) {
+            redirect(x, "/anuncios?error=" + java.net.URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8));
+        }
+    }
+
+    private static void deleteAnnouncement(HttpExchange x, WebSession s, Map<String,String> f) throws IOException {
+        if (s.user == null || s.user.getRol() != Rol.ADMIN) {
+            send(x, 403, "text/plain; charset=utf-8", "No autorizado");
+            return;
+        }
+        try {
+            int id = Integer.parseInt(f.getOrDefault("id", "0"));
+            new AnuncioDAO().eliminar(id);
+            redirect(x, "/anuncios?eliminado=1");
+        } catch (Exception e) {
+            redirect(x, "/anuncios");
+        }
+    }
+
+    private static String schedulesPage(WebSession s, String query) {
+        if (s.user == null) return shell("Horarios", errorPage("Inicia sesión para ver los horarios."), false, "");
+        try {
+            HorarioDAO dao = new HorarioDAO();
+            List<HorarioSeccion> list;
+            Integer secId = parseStudentIdParam(query, "seccion");
+            if (s.user.getRol() == Rol.ADMIN && secId != null && secId > 0) {
+                list = dao.listarPorSeccion(secId);
+            } else if (s.user.getRol() == Rol.PROFESOR) {
+                list = dao.listarPorProfesor(s.user.getId());
+            } else if (s.user.getRol() == Rol.ESTUDIANTE) {
+                list = dao.listarPorEstudiante(s.user.getId());
+            } else {
+                list = List.of();
+            }
+
+            StringBuilder rows = new StringBuilder();
+            for (HorarioSeccion h : list) {
+                String delBtn = s.user.getRol() == Rol.ADMIN
+                        ? "<form method='post' action='/eliminar-horario' style='display:inline;' onsubmit='return confirm(\"¿Eliminar bloque de horario?\")'>"
+                        + hiddenCsrf(s) + "<input type='hidden' name='id' value='" + h.getId() + "'>"
+                        + "<button type='submit' class='quiet' style='color:#ef4444;'>Eliminar</button></form>" : "";
+
+                rows.append("<tr><td><b>").append(esc(h.getDiaSemana())).append("</b></td>")
+                        .append("<td>").append(esc(h.getRangoHora())).append("</td>")
+                        .append("<td>").append(esc(h.getAsignaturaNombre())).append("</td>")
+                        .append("<td>").append(esc(h.getProfesorNombre() != null ? h.getProfesorNombre() : "Sin asignar")).append("</td>")
+                        .append("<td><span class='state-pill'>").append(esc(h.getAula() != null ? h.getAula() : "Aula asignada")).append("</span></td>")
+                        .append(s.user.getRol() == Rol.ADMIN ? "<td>" + delBtn + "</td>" : "")
+                        .append("</tr>");
+            }
+            if (rows.isEmpty()) rows.append("<tr><td colspan='6' class='empty'>No hay horarios de clases registrados para mostrar.</td></tr>");
+
+            String adminSection = "";
+            if (s.user.getRol() == Rol.ADMIN) {
+                List<Seccion> secs = new SeccionDAO().listarTodas();
+                StringBuilder secOpts = new StringBuilder();
+                for (Seccion sec : secs) {
+                    secOpts.append("<option value='").append(sec.getId()).append("'")
+                            .append(secId != null && secId == sec.getId() ? " selected" : "")
+                            .append(">").append(esc(sec.getAsignatura().getNombre() + " · Sección " + sec.getId())).append("</option>");
+                }
+
+                adminSection = "<section class='card' style='margin-bottom:1.5rem;'>"
+                        + "<form method='get' action='/horarios' style='margin-bottom:1rem;display:flex;gap:10px;align-items:flex-end;'>"
+                        + "<label style='flex:1;'>Ver horario de la sección:<select name='seccion' onchange='this.form.submit()'><option value=''>Selecciona una sección...</option>"
+                        + secOpts + "</select></label><button type='submit' class='primary'>Cargar</button></form>";
+
+                if (secId != null && secId > 0) {
+                    adminSection += "<hr style='border:none;border-top:1px solid #e2e8f0;margin:1rem 0;'><h3>Asignar bloque de horario a esta sección</h3>"
+                            + "<form method='post' action='/guardar-horario'>" + hiddenCsrf(s)
+                            + "<input type='hidden' name='seccion' value='" + secId + "'>"
+                            + "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;'>"
+                            + "<label>Día<select name='dia'><option value='LUNES'>Lunes</option><option value='MARTES'>Martes</option><option value='MIERCOLES'>Miércoles</option><option value='JUEVES'>Jueves</option><option value='VIERNES'>Viernes</option><option value='SABADO'>Sábado</option></select></label>"
+                            + "<label>Inicio (HH:mm)<input name='inicio' value='08:00' required pattern='[0-2][0-9]:[0-5][0-9]'></label>"
+                            + "<label>Fin (HH:mm)<input name='fin' value='09:30' required pattern='[0-2][0-9]:[0-5][0-9]'></label>"
+                            + "<label>Aula<input name='aula' value='Aula 101' required></label>"
+                            + "</div><button class='primary' type='submit' style='margin-top:10px;'>Asignar bloque</button></form>";
+                }
+                adminSection += "</section>";
+            }
+
+            String body = "<div class='page-heading'><div><div class='eyebrow'>CRONOGRAMA ACADÉMICO</div><h1>Horarios de clases</h1>"
+                    + "<p>Distribución semanal de asignaturas y aulas escolares.</p></div></div>"
+                    + adminSection
+                    + "<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Día</th><th>Horario</th><th>Asignatura</th><th>Profesor</th><th>Aula</th>"
+                    + (s.user.getRol() == Rol.ADMIN ? "<th>Acción</th>" : "") + "</tr></thead><tbody>"
+                    + rows + "</tbody></table></div></section>";
+
+            return shell("Horarios Escolares", body, true, s.user.getNombreCompleto());
+        } catch (SQLException e) {
+            return shell("Horarios", alert("Error al cargar horarios: " + e.getMessage()), true, s.user.getNombreCompleto());
+        }
+    }
+
+    private static void saveScheduleBlock(HttpExchange x, WebSession s, Map<String,String> f) throws IOException {
+        if (s.user == null || s.user.getRol() != Rol.ADMIN) { send(x, 403, "text/plain", "No autorizado"); return; }
+        try {
+            int secId = Integer.parseInt(f.getOrDefault("seccion", "0"));
+            String dia = f.getOrDefault("dia", "LUNES");
+            java.time.LocalTime ini = java.time.LocalTime.parse(f.getOrDefault("inicio", "08:00"));
+            java.time.LocalTime fin = java.time.LocalTime.parse(f.getOrDefault("fin", "09:30"));
+            String aula = f.getOrDefault("aula", "Aula 101");
+            if (!fin.isAfter(ini)) {
+                redirect(x, "/horarios?seccion=" + secId + "&error=horas_invalidas");
+                return;
+            }
+            HorarioDAO dao = new HorarioDAO();
+            if (dao.hayConflictoProfesor(secId, dia, ini, fin, 0)) {
+                redirect(x, "/horarios?seccion=" + secId + "&error=conflicto_profesor");
+                return;
+            }
+            dao.agregar(new HorarioSeccion(0, secId, dia, ini, fin, aula));
+            redirect(x, "/horarios?seccion=" + secId + "&ok=1");
+        } catch (Exception e) {
+            redirect(x, "/horarios?error=" + java.net.URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8));
+        }
+    }
+
+    private static void deleteScheduleBlock(HttpExchange x, WebSession s, Map<String,String> f) throws IOException {
+        if (s.user == null || s.user.getRol() != Rol.ADMIN) { send(x, 403, "text/plain", "No autorizado"); return; }
+        try {
+            int id = Integer.parseInt(f.getOrDefault("id", "0"));
+            new HorarioDAO().eliminar(id);
+            redirect(x, "/horarios?eliminado=1");
+        } catch (Exception e) {
+            redirect(x, "/horarios");
+        }
+    }
+
+    private static String conductPage(WebSession s, String query) {
+        if (s.user == null) return shell("Conducta", errorPage("Inicia sesión para ver la conducta."), false, "");
+        try {
+            ObservacionConductaDAO dao = new ObservacionConductaDAO();
+            List<ObservacionConducta> list;
+            if (s.user.getRol() == Rol.ADMIN) {
+                list = dao.listarTodas();
+            } else if (s.user.getRol() == Rol.PROFESOR) {
+                list = dao.listarPorProfesor(s.user.getId());
+            } else if (s.user.getRol() == Rol.ESTUDIANTE) {
+                list = dao.listarPorEstudiante(s.user.getId());
+            } else if (s.user.getRol() == Rol.PADRE) {
+                List<Estudiante> hijos = new VinculacionDAO().listarHijos(s.user.getId());
+                Integer hijoId = parseStudentId(query);
+                final Integer pedido = hijoId;
+                if (hijoId == null || hijos.stream().noneMatch(h -> h.getId() == pedido)) hijoId = hijos.isEmpty() ? null : hijos.get(0).getId();
+                list = hijoId != null ? dao.listarPorEstudiante(hijoId) : List.of();
+            } else {
+                list = List.of();
+            }
+
+            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+            StringBuilder rows = new StringBuilder();
+            for (ObservacionConducta o : list) {
+                String badge = switch (o.getTipo()) {
+                    case "MERITO" -> "<span class='state-pill account-active'>⭐ Reconocimiento</span>";
+                    case "CONDUCTA" -> "<span class='state-pill account-disabled'>⚠️ Conducta</span>";
+                    case "TARDANZA" -> "<span class='state-pill' style='background:#fef3c7;color:#b45309;'>⏰ Tardanza</span>";
+                    case "TAREA" -> "<span class='state-pill' style='background:#fee2e2;color:#b91c1c;'>📝 Tarea pendiente</span>";
+                    default -> "<span class='state-pill'>ℹ️ Observación</span>";
+                };
+
+                String delBtn = (s.user.getRol() == Rol.ADMIN || (s.user.getRol() == Rol.PROFESOR && o.getIdProfesor() == s.user.getId()))
+                        ? "<form method='post' action='/eliminar-conducta' style='display:inline;' onsubmit='return confirm(\"¿Eliminar observación?\")'>"
+                        + hiddenCsrf(s) + "<input type='hidden' name='id' value='" + o.getId() + "'>"
+                        + "<button type='submit' class='quiet' style='color:#ef4444;'>Eliminar</button></form>" : "";
+
+                rows.append("<tr><td>").append(o.getFecha() != null ? o.getFecha().format(dtf) : "—").append("</td>")
+                        .append("<td>").append(badge).append("</td>")
+                        .append("<td><b>").append(esc(o.getEstudianteNombre())).append("</b><br><small>").append(esc(o.getMatricula())).append("</small></td>")
+                        .append("<td><b>").append(esc(o.getTitulo())).append("</b><br><small>").append(esc(o.getDescripcion())).append("</small></td>")
+                        .append("<td>").append(esc(o.getProfesorNombre())).append("</td>")
+                        .append(s.user.getRol() == Rol.ADMIN || s.user.getRol() == Rol.PROFESOR ? "<td>" + delBtn + "</td>" : "")
+                        .append("</tr>");
+            }
+            if (rows.isEmpty()) rows.append("<tr><td colspan='6' class='empty'>No hay registros de conducta para mostrar.</td></tr>");
+
+            String newForm = "";
+            if (s.user.getRol() == Rol.ADMIN || s.user.getRol() == Rol.PROFESOR) {
+                List<Estudiante> estudiantes = new UsuarioDAO().listarEstudiantes();
+                StringBuilder estOpts = new StringBuilder();
+                for (Estudiante e : estudiantes) {
+                    estOpts.append("<option value='").append(e.getId()).append("'>").append(esc(e.getNombreCompleto() + " (" + e.getMatricula() + ")")).append("</option>");
+                }
+
+                newForm = "<section class='card' style='margin-bottom:1.5rem;'><h2>Registrar mérito, tardanza o incidencia</h2>"
+                        + "<form method='post' action='/guardar-conducta'>" + hiddenCsrf(s)
+                        + "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:10px;'>"
+                        + "<label>Estudiante<select name='estudiante' required><option value=''>Selecciona estudiante...</option>" + estOpts + "</select></label>"
+                        + "<label>Tipo de registro<select name='tipo'><option value='MERITO'>⭐ Mérito / Felicitación</option><option value='CONDUCTA'>⚠️ Falta disciplinaria</option><option value='TARDANZA'>⏰ Tardanza injustificada</option><option value='TAREA'>📝 Tarea no entregada</option><option value='NOTA_INFORMATIVA'>ℹ️ Nota de seguimiento</option></select></label>"
+                        + "<label>Título / Motivo breve<input name='titulo' required placeholder='Ej. Felicitación por liderazgo'></label>"
+                        + "</div><label>Descripción detallada<textarea name='descripcion' rows='3' required placeholder='Describe la situación observada...'></textarea></label>"
+                        + "<button class='primary' type='submit'>Guardar en expediente</button></form></section>";
+            }
+
+            String body = "<div class='page-heading'><div><div class='eyebrow'>SEGUIMIENTO ESTUDIANTIL</div><h1>Cuaderno de conducta y méritos</h1>"
+                    + "<p>Reconocimientos, compromisos y observaciones disciplinarias.</p></div></div>"
+                    + newForm
+                    + "<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Fecha</th><th>Tipo</th><th>Estudiante</th><th>Detalle</th><th>Registrado por</th>"
+                    + (s.user.getRol() == Rol.ADMIN || s.user.getRol() == Rol.PROFESOR ? "<th>Acción</th>" : "") + "</tr></thead><tbody>"
+                    + rows + "</tbody></table></div></section>";
+
+            return shell("Conducta y Méritos", body, true, s.user.getNombreCompleto());
+        } catch (SQLException e) {
+            return shell("Conducta", alert("Error al cargar conducta: " + e.getMessage()), true, s.user.getNombreCompleto());
+        }
+    }
+
+    private static void saveConductObservation(HttpExchange x, WebSession s, Map<String,String> f) throws IOException {
+        if (s.user == null || (s.user.getRol() != Rol.ADMIN && s.user.getRol() != Rol.PROFESOR)) {
+            send(x, 403, "text/plain", "No autorizado"); return;
+        }
+        try {
+            int estId = Integer.parseInt(f.getOrDefault("estudiante", "0"));
+            String tipo = f.getOrDefault("tipo", "MERITO");
+            if (!java.util.Set.of("MERITO", "CONDUCTA", "TARDANZA", "TAREA", "NOTA_INFORMATIVA").contains(tipo)) tipo = "NOTA_INFORMATIVA";
+            String tit = f.getOrDefault("titulo", "").trim();
+            String desc = f.getOrDefault("descripcion", "").trim();
+            if (estId <= 0 || tit.isEmpty()) {
+                redirect(x, "/conducta?error=datos_incompletos");
+                return;
+            }
+            ObservacionConducta o = new ObservacionConducta();
+            o.setIdEstudiante(estId);
+            o.setIdProfesor(s.user.getId());
+            o.setTipo(tipo);
+            o.setTitulo(tit);
+            o.setDescripcion(desc.isEmpty() ? tit : desc);
+            new ObservacionConductaDAO().registrar(o);
+            redirect(x, "/conducta?ok=1");
+        } catch (Exception e) {
+            redirect(x, "/conducta?error=" + java.net.URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8));
+        }
+    }
+
+    private static void deleteConductObservation(HttpExchange x, WebSession s, Map<String,String> f) throws IOException {
+        if (s.user == null || (s.user.getRol() != Rol.ADMIN && s.user.getRol() != Rol.PROFESOR)) {
+            send(x, 403, "text/plain", "No autorizado"); return;
+        }
+        try {
+            int id = Integer.parseInt(f.getOrDefault("id", "0"));
+            if (s.user.getRol() == Rol.ADMIN) new ObservacionConductaDAO().eliminar(id);
+            else new ObservacionConductaDAO().eliminar(id, s.user.getId());
+            redirect(x, "/conducta?eliminado=1");
+        } catch (Exception e) {
+            redirect(x, "/conducta");
+        }
+    }
+
+    private static void sendOfficialReportCard(HttpExchange x, WebSession s, String query) throws IOException {
+        if (s.user == null) { send(x, 401, "text/plain; charset=utf-8", "Inicia sesión para ver la boleta."); return; }
+        try {
+            int studentId = s.user.getId();
+            if (s.user.getRol() == Rol.PADRE) {
+                Integer chosen = parseStudentId(query);
+                List<Estudiante> hijos = new VinculacionDAO().listarHijos(s.user.getId());
+                if (chosen != null && chosen > 0) {
+                    if (hijos.stream().noneMatch(h -> h.getId() == chosen)) { send(x, 403, "text/plain; charset=utf-8", "No autorizado."); return; }
+                    studentId = chosen;
+                } else if (!hijos.isEmpty()) studentId = hijos.get(0).getId();
+            } else if (s.user.getRol() == Rol.ADMIN) {
+                Integer chosen = parseStudentId(query);
+                if (chosen != null && chosen > 0) studentId = chosen;
+            }
+            Usuario u = new UsuarioDAO().buscarPorId(studentId).orElse(null);
+            if (!(u instanceof Estudiante est)) {
+                send(x, 404, "text/plain; charset=utf-8", "Estudiante no encontrado.");
+                return;
+            }
+            List<LineaBoleta> lines = s.user.getRol() == Rol.PADRE
+                    ? new BoletaDAO().listarParaPadre(s.user.getId(), studentId)
+                    : (s.user.getRol() == Rol.ADMIN ? new BoletaDAO().listarParaAdministrador(studentId) : new BoletaDAO().listarParaEstudiante(studentId));
+
+            String html = GeneradorDocumentos.generarBoletaHtml(est, lines, null);
+            send(x, 200, "text/html; charset=utf-8", html);
+        } catch (SQLException e) {
+            send(x, 500, "text/plain; charset=utf-8", "Error al generar la boleta oficial: " + e.getMessage());
+        }
+    }
+
+    private static void sendStudentCard(HttpExchange x, WebSession s, String query) throws IOException {
+        if (s.user == null) { send(x, 401, "text/plain; charset=utf-8", "Inicia sesión para ver el carnet."); return; }
+        try {
+            int studentId = s.user.getId();
+            if (s.user.getRol() == Rol.ADMIN) {
+                Integer chosen = parseStudentId(query);
+                if (chosen != null && chosen > 0) studentId = chosen;
+            } else if (s.user.getRol() == Rol.PADRE) {
+                Integer chosen = parseStudentId(query);
+                List<Estudiante> hijos = new VinculacionDAO().listarHijos(s.user.getId());
+                if (chosen != null && chosen > 0) {
+                    if (hijos.stream().noneMatch(h -> h.getId() == chosen)) { send(x, 403, "text/plain; charset=utf-8", "No autorizado."); return; }
+                    studentId = chosen;
+                } else if (!hijos.isEmpty()) studentId = hijos.get(0).getId();
+            }
+            Usuario u = new UsuarioDAO().buscarPorId(studentId).orElse(null);
+            if (!(u instanceof Estudiante est)) {
+                send(x, 404, "text/plain; charset=utf-8", "Estudiante no encontrado.");
+                return;
+            }
+            String html = GeneradorDocumentos.generarCarnetHtml(est);
+            send(x, 200, "text/html; charset=utf-8", html);
+        } catch (SQLException e) {
+            send(x, 500, "text/plain; charset=utf-8", "Error al emitir el carnet: " + e.getMessage());
+        }
+    }
+
+    private static Integer parseStudentIdParam(String query, String paramName) {
+        if (query == null) return null;
+        for (String part : query.split("&")) {
+            String[] kv = part.split("=", 2);
+            if (kv.length == 2 && kv[0].equals(paramName)) {
+                try { return Integer.valueOf(kv[1]); } catch (NumberFormatException ignored) { return null; }
+            }
+        }
+        return null;
+    }
+
     private static String sessionHistoryPage(WebSession s,String query){
         if(s.user==null||s.user.getRol()!=Rol.ADMIN)return shell("Historial de sesiones",errorPage("Solo un administrador puede consultar el historial de sesiones."),s.user!=null,s.user==null?"":s.user.getNombreCompleto());
         try{
@@ -1952,7 +2370,7 @@ public final class WebApp {
         String ajustes="<div class='ajustes'>"+VisionWeb.menu(VISION_REQUEST.get(),PATH_REQUEST.get(),EstacionWeb.seccionMenu(ESTACION_REQUEST.get(),PATH_REQUEST.get())+MovimientoWeb.seccionMenu(MOVIMIENTO_REQUEST.get(),PATH_REQUEST.get()))+TemaWeb.boton(PATH_REQUEST.get())+"</div>";
         String estacion=EstacionWeb.efectiva(ESTACION_REQUEST.get(),java.time.LocalDate.now(java.time.ZoneOffset.of(com.unev.sige.model.ZonaVisual.desplazamiento())));
         String role=ROLE_REQUEST.get();
-        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/mis-hijos'>Mis hijos</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/periodos'>Períodos</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a><a href='/historial-sesiones'>Historial</a>":"";
+        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mi horario</a><a href='/conducta'>Conducta</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/mis-hijos'>Mis hijos</a><a href='/conducta'>Conducta</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mis horarios</a><a href='/conducta'>Conducta</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/conducta'>Conducta</a><a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/periodos'>Períodos</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a><a href='/historial-sesiones'>Historial</a>":"";
         String nav = logged ? "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation' aria-label='Navegación principal'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a>"+stop+"</nav>"+ajustes+"<div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+"</div></header>"
                 : "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span>"+ajustes+"</header>";

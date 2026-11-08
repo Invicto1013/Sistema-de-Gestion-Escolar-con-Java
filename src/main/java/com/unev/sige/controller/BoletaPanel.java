@@ -43,7 +43,9 @@ public class BoletaPanel extends VBox {
     private final Label datosPeriodo = new Label();
     private final Label resumen = new Label();
     private final Label estado = new Label();
-    private final Button imprimir = new Button("Imprimir / Guardar como PDF");
+    private final Button imprimir = new Button("Impresión rápida");
+    private final Button btnBoletaOficial = new Button("Boleta oficial HTML/PDF");
+    private final Button btnCarnet = new Button("Carnet escolar QR");
     private List<LineaBoleta> todasLasNotas = List.of();
 
     public BoletaPanel(Rol rol, int idUsuario) {
@@ -69,6 +71,9 @@ public class BoletaPanel extends VBox {
         periodo.setPromptText("Período");
         periodo.setOnAction(e -> mostrarPeriodo());
         imprimir.setOnAction(e -> imprimirBoleta());
+        btnBoletaOficial.getStyleClass().add("primary");
+        btnBoletaOficial.setOnAction(e -> exportarBoletaOficial());
+        btnCarnet.setOnAction(e -> exportarCarnet());
 
         TableColumn<LineaBoleta, String> codigo = col("Código", l -> l.codigoAsignatura());
         codigo.setMaxWidth(90);
@@ -95,7 +100,7 @@ public class BoletaPanel extends VBox {
         documento.getChildren().addAll(encabezado, titulo, datosEstudiante, datosPeriodo, tabla, resumen);
 
         HBox selectores = new HBox(10, new Label("Estudiante:"), estudiante,
-                new Label("Período:"), periodo, imprimir);
+                new Label("Período:"), periodo, btnBoletaOficial, imprimir, btnCarnet);
         selectores.setAlignment(Pos.CENTER_LEFT);
         VBox.setVgrow(documento, Priority.ALWAYS);
         getChildren().addAll(Dialogos.titulo("Boleta académica"), selectores, documento, estado);
@@ -261,5 +266,46 @@ public class BoletaPanel extends VBox {
         etiqueta.getStyleClass().add("report-table-cell");
         if (encabezado) etiqueta.getStyleClass().add("report-table-header");
         return etiqueta;
+    }
+
+    private void exportarBoletaOficial() {
+        Estudiante elegido = estudiante.getValue();
+        if (elegido == null || tabla.getItems().isEmpty()) {
+            Dialogos.error("No hay datos de calificaciones disponibles para exportar.");
+            return;
+        }
+        try {
+            String html = com.unev.sige.service.GeneradorDocumentos.generarBoletaHtml(
+                    elegido, todasLasNotas, periodo.getValue());
+            java.nio.file.Path temp = java.nio.file.Files.createTempFile("boleta-oficial-", ".html");
+            java.nio.file.Files.writeString(temp, html, java.nio.charset.StandardCharsets.UTF_8);
+            if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(temp.toUri());
+            } else {
+                Dialogos.estado(estado, "Archivo generado en: " + temp.toAbsolutePath(), false);
+            }
+        } catch (Exception e) {
+            Dialogos.error("No se pudo generar la boleta oficial: " + e.getMessage());
+        }
+    }
+
+    private void exportarCarnet() {
+        Estudiante elegido = estudiante.getValue();
+        if (elegido == null) {
+            Dialogos.error("Selecciona un estudiante para emitir su carnet.");
+            return;
+        }
+        try {
+            String html = com.unev.sige.service.GeneradorDocumentos.generarCarnetHtml(elegido);
+            java.nio.file.Path temp = java.nio.file.Files.createTempFile("carnet-estudiantil-", ".html");
+            java.nio.file.Files.writeString(temp, html, java.nio.charset.StandardCharsets.UTF_8);
+            if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(temp.toUri());
+            } else {
+                Dialogos.estado(estado, "Carnet generado en: " + temp.toAbsolutePath(), false);
+            }
+        } catch (Exception e) {
+            Dialogos.error("No se pudo generar el carnet: " + e.getMessage());
+        }
     }
 }

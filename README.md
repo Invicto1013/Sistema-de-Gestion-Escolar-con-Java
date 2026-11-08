@@ -31,7 +31,15 @@ java -jar target\sige-1.0.0.jar
 
 ## Base de datos
 
-`sql/sige_completo.sql` crea la estructura completa (26 tablas, con currículo por grados, aula virtual, períodos lectivos, auditoría e historial académico), los roles, un usuario de prueba por rol y datos de ejemplo. Las credenciales de prueba están al inicio del script. Para actualizar una base que ya existe, aplica en orden `sql/fase_curriculo_grados.sql`, `sql/aula_virtual.sql` y `sql/fase_periodos_auditoria.sql`.
+`sql/sige_completo.sql` crea la estructura completa (29 tablas, con currículo por grados, aula virtual, períodos lectivos, auditoría, historial académico, anuncios escolares, horarios de secciones y cuaderno de conducta), los roles, un usuario de prueba por rol y datos de ejemplo. Las credenciales de prueba están al inicio del script. Para actualizar una base que ya existe, aplica en orden `sql/fase_curriculo_grados.sql`, `sql/aula_virtual.sql`, `sql/fase_periodos_auditoria.sql` y `sql/fase_extensiones_escolares.sql`.
+
+## Extensiones escolares avanzadas
+
+- **Tablón de anuncios y circulares:** comunicados institucionales emitidos por dirección con nivel de prioridad (normal, importante, urgente) y segmentación por rol.
+- **Horarios escolares y aulas:** planificación semanal de bloques de clase de lunes a sábado con prevención automática de choques o cruces de horario para profesores.
+- **Cuaderno de observaciones y conducta:** registro docente de reconocimientos/méritos, tardanzas, compromisos de tareas e incidencias disciplinarias, visible por estudiantes y padres/tutores.
+- **Boleta oficial imprimible / PDF:** formato membretado con promedio ponderado, asignaturas evaluadas y firmas oficiales escolares listo para imprimir o guardar como PDF.
+- **Carnet estudiantil con código QR:** credencial escolar imprimible con datos del alumno y código QR de matrícula de alta resolución para control de acceso y biblioteca.
 
 ## Accesibilidad visual y botones dinámicos
 
