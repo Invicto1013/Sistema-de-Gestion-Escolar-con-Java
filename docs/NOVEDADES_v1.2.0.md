@@ -1,6 +1,6 @@
-# SIGE v1.1.0 — Novedades
+# SIGE v1.2.0 — Novedades
 
-Versión con mejoras de accesibilidad, apariencia y seguridad sobre la 1.0.0 (web, escritorio y Aula virtual).
+Versión con mejoras de accesibilidad, apariencia y seguridad sobre la 1.0.0 (apariencia y accesibilidad) (web, escritorio y Aula virtual).
 
 ## Accesibilidad y apariencia
 - **Menú del ojo (barra superior):** agrupa los modos de visión para daltonismo (protanopía, deuteranopía, tritanopía) y alto contraste.
