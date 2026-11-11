@@ -28,6 +28,7 @@
 
             <Button fx:id="btnVision" onAction="#onCambiarVision" text="👁" />
             <Button fx:id="btnTema" onAction="#onCambiarTema" text="🌙" />
+            <Button fx:id="btnAyuda" onAction="#onAcercaDe" text="❓" />
             <Button fx:id="btnCerrarSesion" onAction="#onCerrarSesion" text="Cerrar sesión" />
         </HBox>
     </top>

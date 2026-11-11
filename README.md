@@ -26,6 +26,10 @@ El aviso nunca incluye la contraseña y solo se envía a correos personales de G
 2. **SMTP** (para uso local): `SIGE_SMTP_HOST`, `SIGE_SMTP_PORT`, `SIGE_SMTP_USER`, `SIGE_SMTP_PASSWORD` y `SIGE_SMTP_FROM`. Con Gmail se necesita una contraseña de aplicación.
 3. **Manual, sin configurar nada:** si no hay método automático o falla, aparece el botón «Enviar aviso desde mi correo», que abre tu programa de correo con el mensaje listo (en el ejecutable, si no se puede abrir, lo copia al portapapeles).
 
+## Acerca de SIGE
+
+El icono de interrogación (❓) de la barra superior abre la información del proyecto: versión, qué incluye, roles, seguridad, tecnologías y créditos. En la web lleva a `/acerca` (disponible también antes de iniciar sesión) y en el ejecutable abre una ventana. El texto está en `AcercaDe.java`; al publicar una versión nueva, actualiza allí la constante `VERSION`.
+
 ## Requisitos
 
 - JDK 21 (JavaFX runtime se resuelve con Maven).

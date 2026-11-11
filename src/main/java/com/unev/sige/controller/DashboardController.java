@@ -75,6 +75,8 @@ public class DashboardController {
 
     @FXML
     private Button btnTema;
+    @FXML
+    private Button btnAyuda;
 
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
     private final List<Button> opcionesActivas = new ArrayList<>();
@@ -121,6 +123,11 @@ public class DashboardController {
     }
 
     @FXML
+    private void onAcercaDe() {
+        AcercaDeDialogo.mostrar();
+    }
+
+    @FXML
     private void onCambiarTema() {
         com.unev.sige.app.TemaApp nuevo = com.unev.sige.app.TemaApp.actual().alternar();
         com.unev.sige.app.TemaApp.guardar(nuevo);
@@ -151,6 +158,7 @@ public class DashboardController {
         boolean oscuro = com.unev.sige.app.TemaApp.actual() == com.unev.sige.app.TemaApp.OSCURO;
         btnTema.setText(oscuro ? "☀" : "🌙");
         btnTema.setTooltip(new javafx.scene.control.Tooltip(oscuro ? "Cambiar a tema claro" : "Cambiar a tema oscuro"));
+        btnAyuda.setTooltip(new javafx.scene.control.Tooltip("Acerca de SIGE"));
     }
 
     @FXML

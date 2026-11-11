@@ -116,9 +116,9 @@ html[data-vision=contraste] footer{color:#000}
 /* ---- Barra superior: ojo (modos de visión) y brillo (claro/oscuro) ---- */
 .ajustes{display:flex;align-items:center;gap:8px}
 .tema-toggle{display:contents}
-.ajustes .tema-toggle a,.vision-menu>summary{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #ffffff70;border-radius:8px;color:#fff;background:transparent;cursor:pointer;list-style:none;text-decoration:none}
+.ajustes .tema-toggle a,.ajustes .ayuda-link,.vision-menu>summary{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #ffffff70;border-radius:8px;color:#fff;background:transparent;cursor:pointer;list-style:none;text-decoration:none}
 .vision-menu>summary::-webkit-details-marker{display:none}
-.ajustes .tema-toggle a:hover,.vision-menu>summary:hover,.vision-menu[open]>summary{background:#ffffff26}
+.ajustes .tema-toggle a:hover,.ajustes .ayuda-link:hover,.vision-menu>summary:hover,.vision-menu[open]>summary{background:#ffffff26}
 .vision-menu{position:relative}
 .vision-panel{position:absolute;right:0;top:calc(100% + 8px);min-width:200px;display:grid;gap:2px;padding:6px;background:#17324d;border:1px solid #ffffff40;border-radius:10px;box-shadow:0 12px 28px #0006;z-index:40}
 .vision-panel strong{padding:6px 10px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#9fc1de}
@@ -218,6 +218,11 @@ html[data-mov=siempre] .estacion-fx{display:block}
 .form-ext.fila{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
 .form-ext.fila label{flex:1 1 260px;margin-bottom:0}
 .form-ext button{margin-top:4px}
+
+/* ---- Acerca de ---- */
+.acerca-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin:16px 0}
+.acerca-grid .card{margin:0}
+.acerca-grid ul{margin:8px 0 0;padding-left:20px;line-height:1.55}
 
 /* ---- Tema oscuro (generado a partir de los colores del tema claro) ---- */
 html[data-tema=oscuro]:not([data-vision=contraste]){color-scheme:dark;--navy:#a8c7e6;--line:#2b3a4a;--muted:#9fb0c3}
