@@ -1,5 +1,7 @@
 # SIGE - Sistema de Gestión Educativa
 
+Autor: **Elian Castro** · Institución: **Universidad Nacional Evangélica (UNEV)**
+
 Aplicación de gestión escolar para primaria y secundaria, desarrollada con Java 21, JavaFX, MySQL y un módulo web adaptable. La aplicación de escritorio sirve a la operación local; SIGE Web es un servidor Java HTTP que reutiliza la capa de datos de MySQL. La interfaz web no es una aplicación JavaFX ejecutada en el navegador.
 
 ## Roles de director/a y secretario/a

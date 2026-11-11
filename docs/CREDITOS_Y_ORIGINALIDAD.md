@@ -1,5 +1,7 @@
 # Créditos, licencias y originalidad
 
+**Autor:** Elian Castro · **Institución:** Universidad Nacional Evangélica (UNEV)
+
 Documento de transparencia del proyecto. Sirve para demostrar qué es propio, qué es de terceros y cómo se verificó que no hay copia.
 
 ## 1. Componentes de terceros (dependencias)

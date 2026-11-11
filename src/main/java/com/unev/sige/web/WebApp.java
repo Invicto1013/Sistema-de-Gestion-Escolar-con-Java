@@ -2496,7 +2496,7 @@ public final class WebApp {
                 +"<meta name='theme-color' content='#17324d'><meta name='apple-mobile-web-app-capable' content='yes'><title>"+esc(title)+" · SIGE</title>"
                 +"<link rel='manifest' href='/manifest.webmanifest'><link rel='icon' href='/icon.svg' type='image/svg+xml'><link rel='stylesheet' href='/styles.css'></head><body>"+EstacionWeb.capa(estacion)
                 +"<a class='skip-link' href='#contenido'>Saltar al contenido</a>"
-                +nav+"<main class='layout' id='contenido' tabindex='-1'>"+body+"</main><footer> SIGE · Sistema de Gestión Educativa</footer><script src='/pwa.js' defer></script></body></html>";
+                +nav+"<main class='layout' id='contenido' tabindex='-1'>"+body+"</main><footer> SIGE · Sistema de Gestión Educativa · Elian Castro · Universidad Nacional Evangélica (UNEV)</footer><script src='/pwa.js' defer></script></body></html>";
     }
 
     // The request thread holds the currently rendered CSRF token in this ThreadLocal.
