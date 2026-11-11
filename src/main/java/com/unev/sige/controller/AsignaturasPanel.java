@@ -33,7 +33,7 @@ import java.util.List;
 /**
  * Pantalla del administrador para gestionar las asignaturas (crear, editar y eliminar).
  */
-public class AsignaturasPanel extends VBox {
+public final class AsignaturasPanel extends VBox {
 
     private record OpcionArea(String codigo, String nombre) { @Override public String toString() { return nombre; } }
 
@@ -108,7 +108,7 @@ public class AsignaturasPanel extends VBox {
         colDescripcion.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getDescripcion() == null ? "" : c.getValue().getDescripcion()));
 
-        tabla.getColumns().addAll(colCodigo, colNombre, colArea, colGrados, colCreditos, colDescripcion);
+        tabla.getColumns().setAll(java.util.List.of(colCodigo, colNombre, colArea, colGrados, colCreditos, colDescripcion));
         tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
     }
 

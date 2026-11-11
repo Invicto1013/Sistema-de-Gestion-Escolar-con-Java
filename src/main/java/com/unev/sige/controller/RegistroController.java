@@ -158,7 +158,7 @@ public class RegistroController {
                 case ESTUDIANTE -> new Estudiante(0, nombre, apellido, correo, null, dato1, dato2, 0.0);
                 case PADRE -> new Padre(0, nombre, apellido, correo, null, 0,
                         dato1.isEmpty() ? null : dato1, dato2.isEmpty() ? null : dato2);
-                case PROFESOR, ADMIN -> throw new IllegalStateException(
+                case PROFESOR, ADMIN, DIRECTOR, SECRETARIA -> throw new IllegalStateException(
                         "Ese rol se crea desde el panel del administrador.");
             };
 

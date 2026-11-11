@@ -4,6 +4,7 @@ import com.unev.sige.data.ObservacionConductaDAO;
 import com.unev.sige.data.UsuarioDAO;
 import com.unev.sige.model.Estudiante;
 import com.unev.sige.model.ObservacionConducta;
+import com.unev.sige.model.Permisos;
 import com.unev.sige.model.Rol;
 import com.unev.sige.model.Usuario;
 import javafx.beans.property.SimpleStringProperty;
@@ -63,7 +64,7 @@ public final class ObservacionesConductaPanel extends BorderPane {
         btnDetalle.setOnAction(e -> onVerDetalle());
         barra.getChildren().add(btnDetalle);
 
-        if (usuario.getRol() == Rol.PROFESOR || usuario.getRol() == Rol.ADMIN) {
+        if (Permisos.registraConducta(usuario.getRol())) {
             Button btnNuevo = new Button("Registrar observación");
             btnNuevo.getStyleClass().add("primary");
             btnNuevo.setOnAction(e -> onNuevaObservacion());
@@ -92,7 +93,7 @@ public final class ObservacionesConductaPanel extends BorderPane {
     private void recargar() {
         try {
             List<ObservacionConducta> lista;
-            if (usuarioActual.getRol() == Rol.ADMIN) {
+            if (Permisos.veConductaCompleta(usuarioActual.getRol())) {
                 lista = dao.listarTodas();
             } else if (usuarioActual.getRol() == Rol.PROFESOR) {
                 lista = dao.listarPorProfesor(usuarioActual.getId());
@@ -216,7 +217,8 @@ public final class ObservacionesConductaPanel extends BorderPane {
         Optional<ButtonType> opt = confirm.showAndWait();
         if (opt.isPresent() && opt.get() == ButtonType.YES) {
             try {
-                dao.eliminar(o.getId());
+                if (Permisos.eliminaConductaAjena(usuarioActual.getRol())) dao.eliminar(o.getId());
+                else dao.eliminar(o.getId(), usuarioActual.getId());
                 recargar();
             } catch (SQLException e) {
                 mostrarAviso("No se pudo eliminar: " + e.getMessage());

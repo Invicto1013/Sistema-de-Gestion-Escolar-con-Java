@@ -23,12 +23,17 @@ public class AnuncioDAO {
                 + "a.destinatarios, a.prioridad, a.fecha_publicacion, a.activo "
                 + "FROM anuncios_escolares a "
                 + "JOIN usuarios u ON u.id_usuario = a.id_autor "
-                + "WHERE a.activo = 1 AND (a.destinatarios = 'TODOS' OR a.destinatarios = ? OR ? = 'ADMIN') "
+                + "WHERE a.activo = 1 AND (a.destinatarios = 'TODOS' OR a.destinatarios = ? OR ? IN ('ADMIN','DIRECTOR','SECRETARIA')) "
                 + "ORDER BY CASE a.prioridad WHEN 'URGENTE' THEN 1 WHEN 'IMPORTANTE' THEN 2 ELSE 3 END, "
                 + "a.fecha_publicacion DESC LIMIT 50";
 
         List<Anuncio> lista = new ArrayList<>();
-        String rolStr = rol != null ? rol.name() : "TODOS";
+        String rolStr = switch (rol == null ? Rol.ADMIN : rol) {
+            case PROFESOR -> "PROFESORES";
+            case ESTUDIANTE -> "ESTUDIANTES";
+            case PADRE -> "PADRES";
+            default -> "TODOS";
+        };
 
         try (Connection conn = ConexionBD.obtener();
              PreparedStatement ps = conn.prepareStatement(sql)) {

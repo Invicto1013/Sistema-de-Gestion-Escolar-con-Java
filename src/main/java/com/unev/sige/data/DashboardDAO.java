@@ -86,7 +86,7 @@ public final class DashboardDAO {
 
     private Alcance alcance(Rol rol) {
         return switch(rol) {
-            case ADMIN -> new Alcance("","",false);
+            case ADMIN, DIRECTOR, SECRETARIA -> new Alcance("","",false);
             case PROFESOR -> new Alcance(""," WHERE s.id_profesor=?",true);
             case ESTUDIANTE -> new Alcance(""," WHERE i.id_estudiante=?",true);
             case PADRE -> new Alcance("JOIN estudiante_padre ep ON ep.id_estudiante=i.id_estudiante JOIN padres pa ON pa.id_padre=ep.id_padre",

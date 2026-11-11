@@ -19,7 +19,7 @@ import javafx.scene.layout.VBox;
 import java.sql.SQLException;
 
 /** Administración de vínculos padre/tutor-estudiante. */
-public class VinculacionesPanel extends VBox {
+public final class VinculacionesPanel extends VBox {
     private record OpcionPadre(Padre padre) {
         @Override public String toString() { return padre.getNombreCompleto() + " (" + padre.getCorreo() + ")"; }
     }
@@ -58,8 +58,8 @@ public class VinculacionesPanel extends VBox {
         TableColumn<VinculoPadreEstudiante, String> hijo = col("Estudiante", VinculoPadreEstudiante::estudiante);
         TableColumn<VinculoPadreEstudiante, String> matricula = col("Matrícula", VinculoPadreEstudiante::matricula);
         TableColumn<VinculoPadreEstudiante, String> parentescoCol = col("Parentesco", VinculoPadreEstudiante::parentesco);
-        tabla.getColumns().addAll(padre, hijo, matricula, parentescoCol);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(padre, hijo, matricula, parentescoCol));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(tabla, Priority.ALWAYS);
         getChildren().addAll(Dialogos.titulo("Vinculación de padres e hijos"),
                 new Label("Selecciona las cuentas existentes para asociarlas."), controles, acciones, tabla, estado);

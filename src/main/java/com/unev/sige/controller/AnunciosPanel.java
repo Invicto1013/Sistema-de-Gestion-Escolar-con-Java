@@ -2,6 +2,7 @@ package com.unev.sige.controller;
 
 import com.unev.sige.data.AnuncioDAO;
 import com.unev.sige.model.Anuncio;
+import com.unev.sige.model.Permisos;
 import com.unev.sige.model.Rol;
 import com.unev.sige.model.Usuario;
 import javafx.beans.property.SimpleStringProperty;
@@ -59,7 +60,7 @@ public final class AnunciosPanel extends BorderPane {
         btnVer.setOnAction(e -> onLeerAnuncio());
         barra.getChildren().add(btnVer);
 
-        if (usuario.getRol() == Rol.ADMIN) {
+        if (Permisos.publicaAnuncios(usuario.getRol())) {
             Button btnNuevo = new Button("Publicar anuncio");
             btnNuevo.getStyleClass().add("primary");
             btnNuevo.setOnAction(e -> onNuevoAnuncio());
@@ -87,7 +88,7 @@ public final class AnunciosPanel extends BorderPane {
 
     private void recargar() {
         try {
-            List<Anuncio> lista = usuarioActual.getRol() == Rol.ADMIN
+            List<Anuncio> lista = Permisos.publicaAnuncios(usuarioActual.getRol())
                     ? dao.listarTodos()
                     : dao.listarParaUsuario(usuarioActual.getRol());
             vista.setDatos(lista);

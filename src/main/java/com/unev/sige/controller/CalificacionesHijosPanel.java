@@ -18,7 +18,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 /** Consulta de calificaciones de hijos vinculados al padre autenticado. */
-public class CalificacionesHijosPanel extends VBox {
+public final class CalificacionesHijosPanel extends VBox {
     private final int idPadre;
     private final ComboBox<Estudiante> estudiantes = new ComboBox<>();
     private final TableView<CalificacionHijo> tabla = new TableView<>();
@@ -54,8 +54,8 @@ public class CalificacionesHijosPanel extends VBox {
         letra.setMaxWidth(65);
         TableColumn<CalificacionHijo, String> estadoMateria = col("Estado", CalificacionHijo::estado);
         estadoMateria.setMaxWidth(100);
-        tabla.getColumns().addAll(periodo, materia, p1, p2, examen, notaFinal, letra, estadoMateria);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(periodo, materia, p1, p2, examen, notaFinal, letra, estadoMateria));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(tabla, Priority.ALWAYS);
         try {
             List<Estudiante> hijos = new VinculacionDAO().listarHijos(idPadre);

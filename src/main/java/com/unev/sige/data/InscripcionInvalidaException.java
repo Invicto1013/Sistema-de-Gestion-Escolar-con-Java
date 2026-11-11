@@ -6,6 +6,8 @@ package com.unev.sige.data;
  */
 public class InscripcionInvalidaException extends Exception {
 
+    private static final long serialVersionUID = 1L;
+
     public InscripcionInvalidaException(String mensaje) {
         super(mensaje);
     }

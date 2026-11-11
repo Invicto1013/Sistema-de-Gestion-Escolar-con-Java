@@ -3,6 +3,7 @@ package com.unev.sige.controller;
 import com.unev.sige.data.HorarioDAO;
 import com.unev.sige.data.SeccionDAO;
 import com.unev.sige.model.HorarioSeccion;
+import com.unev.sige.model.Permisos;
 import com.unev.sige.model.Rol;
 import com.unev.sige.model.Seccion;
 import com.unev.sige.model.Usuario;
@@ -55,7 +56,7 @@ public final class HorariosPanel extends BorderPane {
         HBox barra = new HBox(10);
         barra.setPadding(new Insets(0, 0, 10, 0));
 
-        if (usuario.getRol() == Rol.ADMIN) {
+        if (Permisos.gestionaHorarios(usuario.getRol())) {
             cmbSecciones.setPromptText("Filtrar por sección...");
             cmbSecciones.setCellFactory(lv -> new javafx.scene.control.ListCell<>() {
                 @Override protected void updateItem(Seccion s, boolean empty) {

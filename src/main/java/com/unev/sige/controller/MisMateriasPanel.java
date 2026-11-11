@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Pantalla del estudiante: las materias en las que esta inscrito (solo lectura).
  */
-public class MisMateriasPanel extends VBox {
+public final class MisMateriasPanel extends VBox {
 
     public MisMateriasPanel(int idEstudiante) {
         setSpacing(12);

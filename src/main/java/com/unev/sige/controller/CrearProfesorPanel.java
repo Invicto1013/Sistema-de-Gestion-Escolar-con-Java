@@ -31,6 +31,7 @@ public class CrearProfesorPanel extends VBox {
     private final PasswordField contrasena = new PasswordField();
     private final PasswordField confirmar = new PasswordField();
     private final Label estado = new Label();
+    private final HBox accionManual = new HBox();
 
     public CrearProfesorPanel(int idAdmin) {
         this.idAdmin = idAdmin;
@@ -60,7 +61,7 @@ public class CrearProfesorPanel extends VBox {
         VBox.setVgrow(formulario, Priority.NEVER);
         getChildren().addAll(Dialogos.titulo("Crear cuenta de profesor"),
                 new Label("Esta cuenta solo se puede crear desde una sesión de administrador."),
-                formulario, new HBox(guardar), estado);
+                formulario, new HBox(guardar), estado, accionManual);
     }
 
     private void agregarFila(GridPane formulario, int fila, String etiqueta, TextField campo) {
@@ -112,8 +113,14 @@ public class CrearProfesorPanel extends VBox {
             }
             Profesor profesor = new Profesor(0, n, a, c, null, cod, esp);
             usuarioDAO.registrarProfesorComoAdmin(profesor, pass, idAdmin);
-            Dialogos.estado(estado, "Perfil creado. Enviando notificación a " + profesor.getCorreo() + "…", false);
+            accionManual.getChildren().clear();
             limpiarFormulario();
+            if (CorreoNotificaciones.aceptaDestinatario(profesor.getCorreo()) && !CorreoNotificaciones.envioAutomaticoConfigurado()) {
+                Dialogos.estado(estado, "Perfil creado. No hay un servicio de correo automático configurado: envía el aviso desde tu propio correo.", false);
+                accionManual.getChildren().setAll(AvisoCorreo.botonManual(profesor.getCorreo(), CorreoNotificaciones.mensajePerfilProfesor(profesor), estado));
+                return;
+            }
+            Dialogos.estado(estado, "Perfil creado. Enviando notificación a " + profesor.getCorreo() + "…", false);
             CompletableFuture.runAsync(() -> {
                 try {
                     if (!CorreoNotificaciones.aceptaDestinatario(profesor.getCorreo())) {
@@ -125,8 +132,10 @@ public class CrearProfesorPanel extends VBox {
                             "Perfil creado y notificación enviada a " + profesor.getCorreo() + ".", false));
                 } catch (Exception envio) {
                     System.err.println("No se pudo enviar la notificación de creación del perfil docente.");
-                    Platform.runLater(() -> Dialogos.estado(estado,
-                            "Perfil creado, pero no se pudo enviar el correo. Revisa la configuración SMTP.", true));
+                    Platform.runLater(() -> {
+                        Dialogos.estado(estado, "Perfil creado, pero el correo automático falló. Puedes enviar el aviso desde tu propio correo.", true);
+                        accionManual.getChildren().setAll(AvisoCorreo.botonManual(profesor.getCorreo(), CorreoNotificaciones.mensajePerfilProfesor(profesor), estado));
+                    });
                 }
             });
         } catch (PermisoDenegadoException e) {

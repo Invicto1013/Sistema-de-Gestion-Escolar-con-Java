@@ -181,6 +181,8 @@ public class DashboardController {
                         () -> new HistorialSesionesPanel(usuario.getId())));
                 agregarOpcion("Crear profesor", () -> mostrarPanelAdmin("Crear profesor",
                         () -> new CrearProfesorPanel(usuario.getId())));
+                agregarOpcion("Crear personal", () -> mostrarPanelAdmin("Crear personal",
+                        () -> new CrearPersonalPanel(usuario.getId())));
                 agregarOpcion("Asignaturas", () -> mostrarPanelAdmin("Asignaturas", AsignaturasPanel::new));
                 agregarOpcion("Grados y currículo", () -> mostrarPanelAdmin("Grados y currículo", CurriculoPanel::new));
                 agregarOpcion("Períodos", () -> mostrarPanelAdmin("Períodos lectivos",
@@ -202,6 +204,20 @@ public class DashboardController {
                         () -> new ObservacionesConductaPanel(usuario)));
                 agregarOpcion("Reporte de inscripciones", () -> mostrarPanelAdmin("Reporte de inscripciones",
                         () -> new ReporteInscripcionesPanel()));
+            }
+            case DIRECTOR -> {
+                agregarOpcion("Anuncios", () -> mostrarPanelPropio(new AnunciosPanel(usuario)));
+                agregarOpcion("Conducta", () -> mostrarPanelPropio(new ObservacionesConductaPanel(usuario)));
+                agregarOpcion("Boletas", () -> mostrarPanelPropio(new BoletaPanel(Rol.DIRECTOR, usuario.getId())));
+                agregarOpcion("Auditoría", () -> mostrarPanelPropio(new AuditoriaPanel()));
+                agregarOpcion("Reporte de inscripciones", () -> mostrarPanelPropio(new ReporteInscripcionesPanel()));
+            }
+            case SECRETARIA -> {
+                agregarOpcion("Anuncios", () -> mostrarPanelPropio(new AnunciosPanel(usuario)));
+                agregarOpcion("Horarios", () -> mostrarPanelPropio(new HorariosPanel(usuario)));
+                agregarOpcion("Vincular padres", () -> mostrarPanelPropio(new VinculacionesPanel()));
+                agregarOpcion("Boletas", () -> mostrarPanelPropio(new BoletaPanel(Rol.SECRETARIA, usuario.getId())));
+                agregarOpcion("Reporte de inscripciones", () -> mostrarPanelPropio(new ReporteInscripcionesPanel()));
             }
             case PROFESOR -> {
                 agregarOpcion("Mis secciones", () -> mostrarPanelPropio(new MisSeccionesPanel(usuario.getId())));
@@ -593,6 +609,8 @@ public class DashboardController {
             case PROFESOR -> "Profesor";
             case ESTUDIANTE -> "Estudiante";
             case PADRE -> "Padre / Tutor";
+            case DIRECTOR -> "Director/a";
+            case SECRETARIA -> "Secretario/a";
         };
     }
 

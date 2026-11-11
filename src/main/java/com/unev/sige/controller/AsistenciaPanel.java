@@ -74,9 +74,9 @@ public class AsistenciaPanel extends VBox {
         asistencia.setCellValueFactory(c -> c.getValue().estado);
         asistencia.setCellFactory(ComboBoxTableCell.forTableColumn(FXCollections.observableArrayList(ESTADOS)));
         asistencia.setEditable(true);
-        tabla.getColumns().addAll(matricula, estudiante, asistencia);
+        tabla.getColumns().setAll(java.util.List.of(matricula, estudiante, asistencia));
         tabla.setEditable(true);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(tabla, Priority.ALWAYS);
 
         Button guardar = new Button("Guardar asistencia");

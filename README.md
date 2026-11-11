@@ -2,6 +2,30 @@
 
 Aplicación de gestión escolar para primaria y secundaria, desarrollada con Java 21, JavaFX, MySQL y un módulo web adaptable. La aplicación de escritorio sirve a la operación local; SIGE Web es un servidor Java HTTP que reutiliza la capa de datos de MySQL. La interfaz web no es una aplicación JavaFX ejecutada en el navegador.
 
+## Roles de director/a y secretario/a
+
+Además de administrador, profesor, estudiante y padre/tutor, SIGE tiene dos cargos administrativos:
+
+| Función | Admin | Director/a | Secretario/a |
+|---|:-:|:-:|:-:|
+| Informes, boletas, carnets y asistencia de todos los grupos | Sí | Sí | Sí |
+| Publicar anuncios | Sí | Sí | Sí |
+| Registrar conducta y eliminar observaciones ajenas | Sí | Sí | No |
+| Auditoría | Sí | Sí | No |
+| Solicitudes de registro y vínculos padre-estudiante | Sí | No | Sí |
+| Horarios | Sí | No | Sí |
+| Crear cuentas de personal | Sí | No | No |
+
+El administrador crea estas cuentas en **Crear personal** (web y ejecutable). La contraseña inicial se entrega por otro medio y la persona debe cambiarla al entrar por primera vez.
+
+### Aviso por correo al crear un perfil
+
+El aviso nunca incluye la contraseña y solo se envía a correos personales de Gmail, Outlook, Hotmail, Live o MSN. Hay tres métodos, en este orden:
+
+1. **API HTTPS de Brevo (recomendado en Render gratis, que bloquea SMTP).** Crea una cuenta gratuita en brevo.com, verifica tu correo remitente en *Senders* y genera una clave en *SMTP & API > API Keys*. Define en Render: `SIGE_BREVO_API_KEY`, `SIGE_MAIL_FROM` (el remitente verificado) y, si quieres, `SIGE_MAIL_FROM_NAME`.
+2. **SMTP** (para uso local): `SIGE_SMTP_HOST`, `SIGE_SMTP_PORT`, `SIGE_SMTP_USER`, `SIGE_SMTP_PASSWORD` y `SIGE_SMTP_FROM`. Con Gmail se necesita una contraseña de aplicación.
+3. **Manual, sin configurar nada:** si no hay método automático o falla, aparece el botón «Enviar aviso desde mi correo», que abre tu programa de correo con el mensaje listo (en el ejecutable, si no se puede abrir, lo copia al portapapeles).
+
 ## Requisitos
 
 - JDK 21 (JavaFX runtime se resuelve con Maven).

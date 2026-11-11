@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * Pantalla del profesor: las secciones que tiene asignadas (solo lectura).
  */
-public class MisSeccionesPanel extends VBox {
+public final class MisSeccionesPanel extends VBox {
 
     public MisSeccionesPanel(int idProfesor) {
         setSpacing(12);
@@ -45,8 +45,8 @@ public class MisSeccionesPanel extends VBox {
                 c.getValue().getInscritos() + " / " + c.getValue().getCupoMaximo()));
         colCupo.setMaxWidth(120);
 
-        tabla.getColumns().addAll(colAsignatura, colGrado, colCreditos, colAula, colHorario, colCupo);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(colAsignatura, colGrado, colCreditos, colAula, colHorario, colCupo));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(tabla, Priority.ALWAYS);
 
         Label lblEstado = new Label();

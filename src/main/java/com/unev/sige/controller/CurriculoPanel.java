@@ -30,7 +30,7 @@ public final class CurriculoPanel extends VBox {
         ciclo.setPrefWidth(150);
         grado.setPrefWidth(170);
         areas.setPrefWidth(650);
-        tabla.getColumns().addAll(nivel, ciclo, grado, areas);
+        tabla.getColumns().setAll(java.util.List.of(nivel, ciclo, grado, areas));
         tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(tabla, Priority.ALWAYS);
         getChildren().addAll(Dialogos.titulo("Grados y áreas curriculares"),

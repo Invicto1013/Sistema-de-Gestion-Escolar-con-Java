@@ -27,7 +27,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /** Reporte de inscripciones por intervalo, limitado al alcance académico del usuario actual. */
-public class ReporteInscripcionesPanel extends VBox {
+public final class ReporteInscripcionesPanel extends VBox {
     private final Usuario usuario = SesionActual.getUsuario();
     private final DatePicker desde = new DatePicker(LocalDate.now().withDayOfMonth(1));
     private final DatePicker hasta = new DatePicker(LocalDate.now());
@@ -62,8 +62,9 @@ public class ReporteInscripcionesPanel extends VBox {
         TableColumn<LineaReporteInscripcion, String> area = columna("Área", f -> f.area() == null ? "Pendiente" : f.area());
         TableColumn<LineaReporteInscripcion, String> seccion = columna("Sección", f -> Integer.toString(f.idSeccion()));
         TableColumn<LineaReporteInscripcion, String> estadoMateria = columna("Estado", LineaReporteInscripcion::estado);
-        tabla.getColumns().addAll(fecha, estudiante, matricula, periodo, asignatura, grado, area, seccion, estadoMateria);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(fecha, estudiante, matricula, periodo, asignatura, grado, area, seccion,
+                estadoMateria));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
     }
 
     private TableColumn<LineaReporteInscripcion, String> columna(String titulo,

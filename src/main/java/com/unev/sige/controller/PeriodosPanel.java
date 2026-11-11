@@ -35,7 +35,7 @@ public final class PeriodosPanel extends BorderPane {
     public PeriodosPanel(int idAdmin) {
         this.idAdmin = idAdmin;
         setPadding(new Insets(8));
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         columna("Período", Periodo::nombre);
         columna("Inicio", p -> p.inicio() == null ? "—" : p.inicio().toString());
         columna("Fin", p -> p.fin() == null ? "—" : p.fin().toString());

@@ -6,6 +6,8 @@ package com.unev.sige.data;
  */
 public class PeriodoCerradoException extends PermisoDenegadoException {
 
+    private static final long serialVersionUID = 1L;
+
     public PeriodoCerradoException(String mensaje) {
         super(mensaje);
     }

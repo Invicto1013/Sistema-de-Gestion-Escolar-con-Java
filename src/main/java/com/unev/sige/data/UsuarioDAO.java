@@ -4,6 +4,7 @@ import com.unev.sige.model.Estudiante;
 import com.unev.sige.model.Padre;
 import com.unev.sige.model.PoliticaContrasena;
 import com.unev.sige.model.Profesor;
+import com.unev.sige.model.Permisos;
 import com.unev.sige.model.Rol;
 import com.unev.sige.model.Usuario;
 
@@ -226,7 +227,7 @@ public class UsuarioDAO {
         try (Connection conn = ConexionBD.obtener()) {
             conn.setAutoCommit(false);
             try {
-                validarAdministrador(conn, idAdmin);
+                validarGestorSolicitudes(conn, idAdmin);
                 String correo;
                 try (PreparedStatement ps = conn.prepareStatement(
                         "SELECT correo FROM usuarios WHERE id_usuario = ? AND activo = 0 AND pendiente_aprobacion = 1 FOR UPDATE")) {
@@ -280,6 +281,39 @@ public class UsuarioDAO {
                     ps.setInt(1, id);
                     ps.executeUpdate();
                 }
+                conn.commit();
+            } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            }
+        }
+    }
+
+    /**
+     * Crea una cuenta de director/a o secretario/a. Solo un administrador activo puede hacerlo; la cuenta deberá
+     * cambiar la contraseña inicial en su primer acceso.
+     */
+    public void registrarPersonalComoAdmin(Usuario personal, String contrasenaPlana, int idAdmin)
+            throws SQLException, PermisoDenegadoException {
+        if (personal == null || !Permisos.esPersonalCreable(personal.getRol())) {
+            throw new PermisoDenegadoException("Solo se pueden crear perfiles de director/a o secretario/a con esta opción.");
+        }
+        String incumplimiento = PoliticaContrasena.validar(contrasenaPlana);
+        if (incumplimiento != null) throw new PermisoDenegadoException(incumplimiento);
+        String hash = Usuario.hashear(contrasenaPlana);
+        try (Connection conn = ConexionBD.obtener()) {
+            conn.setAutoCommit(false);
+            try {
+                validarAdministrador(conn, idAdmin);
+                int id = insertarUsuario(conn, personal, hash);
+                personal.setId(id);
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE usuarios SET debe_cambiar_contrasena = 1 WHERE id_usuario = ?")) {
+                    ps.setInt(1, id);
+                    ps.executeUpdate();
+                }
+                AuditoriaDAO.registrar(conn, idAdmin, "PERSONAL_CREADO", "usuario", String.valueOf(id),
+                        "Cuenta de " + personal.getRol().etiqueta() + " creada para " + personal.getCorreo() + ".", null, "OK");
                 conn.commit();
             } catch (SQLException | PermisoDenegadoException | RuntimeException e) {
                 conn.rollback();
@@ -559,7 +593,7 @@ public class UsuarioDAO {
                     ps.executeUpdate();
                 }
                 Usuario perfil = switch (nuevoRol) {
-                    case ADMIN -> new Usuario(idUsuario, nombre, apellido, correo, null, Rol.ADMIN);
+                    case ADMIN, DIRECTOR, SECRETARIA -> new Usuario(idUsuario, nombre, apellido, correo, null, nuevoRol);
                     case ESTUDIANTE -> new Estudiante(idUsuario, nombre, apellido, correo, null,
                             matricula, grado, 0);
                     case PROFESOR -> new Profesor(idUsuario, nombre, apellido, correo, null,
@@ -589,13 +623,13 @@ public class UsuarioDAO {
             case PROFESOR -> "SELECT COUNT(*) FROM secciones WHERE id_profesor = ?";
             case PADRE -> "SELECT COUNT(*) FROM estudiante_padre ep JOIN padres p ON p.id_padre = ep.id_padre"
                     + " WHERE p.id_usuario = ?";
-            case ADMIN -> null;
+            case ADMIN, DIRECTOR, SECRETARIA -> null;
         };
         String tabla = switch (rol) {
             case ESTUDIANTE -> "estudiantes";
             case PROFESOR -> "profesores";
             case PADRE -> "padres";
-            case ADMIN -> null;
+            case ADMIN, DIRECTOR, SECRETARIA -> null;
         };
         if (tabla == null) return;
         try (PreparedStatement ps = conn.prepareStatement(dependencia)) {
@@ -616,6 +650,18 @@ public class UsuarioDAO {
 
     private String limpiar(String valor) {
         return valor == null || valor.isBlank() ? null : valor.trim();
+    }
+
+    /** Las solicitudes de registro pueden atenderlas el administrador o la secretaría (cuentas activas). */
+    private void validarGestorSolicitudes(Connection conn, int idActor)
+            throws SQLException, PermisoDenegadoException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT 1 FROM usuarios WHERE id_usuario = ? AND rol IN ('ADMIN','SECRETARIA') AND activo = 1 FOR UPDATE")) {
+            ps.setInt(1, idActor);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) throw new PermisoDenegadoException("Solo administración o secretaría pueden atender solicitudes.");
+            }
+        }
     }
 
     private void validarAdministrador(Connection conn, int idAdmin)
@@ -741,7 +787,7 @@ public class UsuarioDAO {
                     rs.getString("codigo_profesor"), rs.getString("especialidad"));
             case PADRE -> new Padre(id, nombre, apellido, correo, hash,
                     rs.getInt("id_padre"), rs.getString("telefono_contacto"), rs.getString("ocupacion"));
-            case ADMIN -> new Usuario(id, nombre, apellido, correo, hash, Rol.ADMIN);
+            case ADMIN, DIRECTOR, SECRETARIA -> new Usuario(id, nombre, apellido, correo, hash, rol);
         };
         usuario.setDebeCambiarContrasena(rs.getBoolean("debe_cambiar_contrasena"));
         usuario.setActivo(rs.getBoolean("activo"));

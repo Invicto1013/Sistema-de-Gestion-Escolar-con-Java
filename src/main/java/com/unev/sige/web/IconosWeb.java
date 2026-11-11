@@ -16,7 +16,7 @@ final class IconosWeb {
             Map.entry("/reporte-asistencia", "📈"), Map.entry("/secciones", "🏫"), Map.entry("/solicitudes", "📨"),
             Map.entry("/usuarios", "👥"), Map.entry("/vinculaciones", "🔗"), Map.entry("/perfil", "👤"),
             Map.entry("/anuncios", "📢"), Map.entry("/horarios", "🕒"), Map.entry("/conducta", "⭐"),
-            Map.entry("/inicio", "🏠"));
+            Map.entry("/crear-personal", "👔"), Map.entry("/inicio", "🏠"));
 
     private IconosWeb() { }
 

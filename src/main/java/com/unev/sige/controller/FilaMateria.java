@@ -76,9 +76,9 @@ record FilaMateria(Inscripcion inscripcion, DetalleInscripcion detalle) {
         colEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().detalle().getEstadoMateria()));
         colEstado.setMaxWidth(90);
 
-        tabla.getColumns().addAll(colPeriodo, colAsignatura, colArea, colGrado, colCreditos, colProfesor, colAula, colHorario,
-                colEstado);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(colPeriodo, colAsignatura, colArea, colGrado, colCreditos, colProfesor,
+                colAula, colHorario, colEstado));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         return tabla;
     }
 }

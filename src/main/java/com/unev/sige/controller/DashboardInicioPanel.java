@@ -76,7 +76,7 @@ final class DashboardInicioPanel extends VBox {
         GridPane tarjetas=new GridPane();tarjetas.setHgap(10);tarjetas.setVgap(10);tarjetasActuales=tarjetas;
         String[] nombres;String[] valores;
         switch(usuario.getRol()) {
-            case ADMIN -> {nombres=new String[]{"Usuarios activos","Inscripciones","Secciones","Evaluaciones registradas"};
+            case ADMIN, DIRECTOR, SECRETARIA -> {nombres=new String[]{"Usuarios activos","Inscripciones","Secciones","Evaluaciones registradas"};
                 valores=new String[]{Long.toString(i.usuariosActivos()),Long.toString(i.inscripciones()),Long.toString(i.secciones()),Long.toString(i.evaluaciones())};}
             case PROFESOR -> {nombres=new String[]{"Estudiantes atendidos","Inscripciones en mis secciones","Secciones asignadas","Evaluaciones registradas"};
                 valores=new String[]{Long.toString(i.estudiantes()),Long.toString(i.inscripciones()),Long.toString(i.secciones()),Long.toString(i.evaluaciones())};}
@@ -152,5 +152,5 @@ final class DashboardInicioPanel extends VBox {
             columnaPeriodo.setVisible(!telefono);
         }
     }
-    private String rolTexto(Rol r){return switch(r){case ADMIN->"administrador";case PROFESOR->"profesor";case ESTUDIANTE->"estudiante";case PADRE->"padre/tutor";};}
+    private String rolTexto(Rol r){return switch(r){case ADMIN->"administrador";case DIRECTOR->"director/a";case SECRETARIA->"secretario/a";case PROFESOR->"profesor";case ESTUDIANTE->"estudiante";case PADRE->"padre/tutor";};}
 }

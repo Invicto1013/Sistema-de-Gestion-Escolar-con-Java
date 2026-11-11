@@ -40,7 +40,7 @@ public class ReporteDAO {
                 WHERE i.fecha_inscripcion BETWEEN ? AND ?
                 """;
         sql += switch (rolSolicitante) {
-            case ADMIN -> "";
+            case ADMIN, DIRECTOR, SECRETARIA -> "";
             case PROFESOR -> " AND s.id_profesor = ? ";
             case ESTUDIANTE -> " AND i.id_estudiante = ? ";
             case PADRE -> """

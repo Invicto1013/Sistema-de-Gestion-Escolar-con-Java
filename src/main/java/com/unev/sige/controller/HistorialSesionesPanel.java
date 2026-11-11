@@ -41,7 +41,7 @@ public final class HistorialSesionesPanel extends BorderPane {
     }
 
     private void crearTabla() {
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         TableColumn<SesionRegistrada, Number> id = new TableColumn<>("ID");
         id.setCellValueFactory(f -> new SimpleIntegerProperty(f.getValue().idSesion()));
         tabla.getColumns().add(id);

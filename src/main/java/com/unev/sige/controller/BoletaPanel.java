@@ -117,7 +117,7 @@ public class BoletaPanel extends VBox {
     private void cargarEstudiantes() {
         try {
             List<Estudiante> disponibles = switch (rol) {
-                case ADMIN -> new UsuarioDAO().listarEstudiantes();
+                case ADMIN, DIRECTOR, SECRETARIA -> new UsuarioDAO().listarEstudiantes();
                 case PADRE -> new VinculacionDAO().listarHijos(idUsuario);
                 case ESTUDIANTE -> new UsuarioDAO().listarEstudiantes().stream()
                         .filter(e -> e.getId() == idUsuario).toList();
@@ -144,7 +144,7 @@ public class BoletaPanel extends VBox {
         try {
             BoletaDAO dao = new BoletaDAO();
             todasLasNotas = switch (rol) {
-                case ADMIN -> dao.listarParaAdministrador(elegido.getId());
+                case ADMIN, DIRECTOR, SECRETARIA -> dao.listarParaAdministrador(elegido.getId());
                 case PADRE -> dao.listarParaPadre(idUsuario, elegido.getId());
                 case ESTUDIANTE -> dao.listarParaEstudiante(idUsuario);
                 default -> List.of();

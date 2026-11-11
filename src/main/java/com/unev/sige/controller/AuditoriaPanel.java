@@ -26,7 +26,7 @@ public final class AuditoriaPanel extends BorderPane {
 
     public AuditoriaPanel() {
         setPadding(new Insets(8));
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         columna("Fecha", Registro::fecha);
         columna("Usuario", r -> r.usuario() == null ? "—" : r.usuario());
         columna("Acción", Registro::accion);

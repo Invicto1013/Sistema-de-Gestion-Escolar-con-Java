@@ -34,7 +34,7 @@ import java.util.Optional;
 /**
  * Pantalla del administrador para gestionar las secciones (asignatura + profesor + aula + horario + cupo).
  */
-public class SeccionesPanel extends VBox {
+public final class SeccionesPanel extends VBox {
 
     /** Opcion del combo de asignaturas (el combo muestra "codigo - nombre"). */
     private record OpcionAsignatura(Asignatura asignatura) {
@@ -119,8 +119,8 @@ public class SeccionesPanel extends VBox {
                 c.getValue().getInscritos() + " / " + c.getValue().getCupoMaximo()));
         colCupo.setMaxWidth(120);
 
-        tabla.getColumns().addAll(colId, colGrado, colAsignatura, colProfesor, colAula, colHorario, colCupo);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(colId, colGrado, colAsignatura, colProfesor, colAula, colHorario, colCupo));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
     }
 
     private void recargar() {

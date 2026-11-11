@@ -18,7 +18,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 /** Consulta de asistencia de hijos vinculados al padre autenticado. */
-public class AsistenciaHijosPanel extends VBox {
+public final class AsistenciaHijosPanel extends VBox {
     private final int idPadre;
     private final ComboBox<Estudiante> estudiantes = new ComboBox<>();
     private final TableView<ResumenAsistencia> tabla = new TableView<>();
@@ -50,8 +50,8 @@ public class AsistenciaHijosPanel extends VBox {
         TableColumn<ResumenAsistencia, String> ausentes = col("Ausentes", r -> Integer.toString(r.ausentes()));
         TableColumn<ResumenAsistencia, String> porcentaje = col("Asistencia", r -> r.clasesRegistradas() == 0
                 ? "Sin datos" : String.format("%.1f%%", r.porcentaje()));
-        tabla.getColumns().addAll(periodo, materia, registradas, presentes, ausentes, porcentaje);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(periodo, materia, registradas, presentes, ausentes, porcentaje));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(tabla, Priority.ALWAYS);
         try {
             List<Estudiante> hijos = new VinculacionDAO().listarHijos(idPadre);

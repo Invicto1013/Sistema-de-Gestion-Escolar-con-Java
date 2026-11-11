@@ -13,7 +13,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 /** Estudiantes vinculados a la cuenta autenticada del padre o tutor. */
-public class MisHijosPanel extends VBox {
+public final class MisHijosPanel extends VBox {
     public MisHijosPanel(int idPadreUsuario) {
         setSpacing(12);
         TableView<Estudiante> tabla = new TableView<>();
@@ -22,8 +22,8 @@ public class MisHijosPanel extends VBox {
         TableColumn<Estudiante, String> grado = col("Grado", Estudiante::getGrado);
         TableColumn<Estudiante, String> promedio = col("Promedio académico",
                 e -> String.format("%.2f", e.getPromedioAcademico()));
-        tabla.getColumns().addAll(nombre, matricula, grado, promedio);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(nombre, matricula, grado, promedio));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(tabla, Priority.ALWAYS);
         Label estado = new Label();
         try {

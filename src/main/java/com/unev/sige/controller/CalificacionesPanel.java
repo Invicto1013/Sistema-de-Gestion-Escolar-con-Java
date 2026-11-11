@@ -34,7 +34,7 @@ import java.util.Optional;
  * Los profesores ven sus secciones; el administrador puede elegir cualquiera.
  * La nota final y la letra se calculan solas con EscalaCalificaciones.
  */
-public class CalificacionesPanel extends VBox {
+public final class CalificacionesPanel extends VBox {
 
     /** Opcion del combo de secciones del profesor. */
     private record OpcionSeccion(Seccion seccion) {
@@ -130,9 +130,9 @@ public class CalificacionesPanel extends VBox {
         colEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().estadoMateria()));
         colEstado.setMaxWidth(90);
 
-        tabla.getColumns().addAll(colMatricula, colNombre, colPeriodo, colP1, colP2, colExamen, colFinal,
-                colLiteral, colEstado);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(colMatricula, colNombre, colPeriodo, colP1, colP2, colExamen, colFinal,
+                colLiteral, colEstado));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         // Doble clic sobre un estudiante abre la edicion de sus notas.
         tabla.setRowFactory(tv -> {

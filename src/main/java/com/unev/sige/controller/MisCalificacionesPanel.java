@@ -18,7 +18,7 @@ import java.util.function.Function;
  * Pantalla del estudiante: sus notas por materia (solo lectura).
  * Las materias en curso (sin examen final) muestran la nota acumulada hasta el momento.
  */
-public class MisCalificacionesPanel extends VBox {
+public final class MisCalificacionesPanel extends VBox {
 
     public MisCalificacionesPanel(int idEstudiante) {
         setSpacing(12);
@@ -35,11 +35,11 @@ public class MisCalificacionesPanel extends VBox {
                 c.getValue().detalle().getSeccion().getAsignatura().getCodigo() + " - "
                         + c.getValue().detalle().getSeccion().getAsignatura().getNombre()));
 
-        tabla.getColumns().addAll(colPeriodo, colAsignatura,
+        tabla.getColumns().setAll(java.util.List.of(colPeriodo, colAsignatura,
                 columnaNota("Parcial 1", 80, Calificacion::getNotaParcial1),
                 columnaNota("Parcial 2", 80, Calificacion::getNotaParcial2),
                 columnaNota("Examen final", 100, Calificacion::getNotaExamenFinal),
-                columnaNota("Nota final", 90, Calificacion::getNotaFinal));
+                columnaNota("Nota final", 90, Calificacion::getNotaFinal)));
 
         TableColumn<FilaMateria, String> colLetra = new TableColumn<>("Letra");
         colLetra.setCellValueFactory(c -> {
@@ -53,8 +53,8 @@ public class MisCalificacionesPanel extends VBox {
         colEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().detalle().getEstadoMateria()));
         colEstado.setMaxWidth(90);
 
-        tabla.getColumns().addAll(colLetra, colEstado);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(colLetra, colEstado));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(tabla, Priority.ALWAYS);
 
         Label lblEstado = new Label();

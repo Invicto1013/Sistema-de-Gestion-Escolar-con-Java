@@ -18,7 +18,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -33,7 +33,7 @@ import java.util.Optional;
  * Pantalla del administrador para inscribir estudiantes en secciones y retirarlos.
  * Se elige un estudiante; la tabla muestra sus materias de todos los periodos.
  */
-public class InscripcionesPanel extends VBox {
+public final class InscripcionesPanel extends VBox {
 
     /** Opcion del combo de estudiantes ("Apellido, Nombre (matricula)"). */
     private record OpcionEstudiante(Estudiante estudiante) {

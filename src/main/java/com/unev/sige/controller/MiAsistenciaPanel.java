@@ -13,7 +13,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 /** Consulta de asistencia del estudiante, agrupada por materia inscrita. */
-public class MiAsistenciaPanel extends VBox {
+public final class MiAsistenciaPanel extends VBox {
     public MiAsistenciaPanel(int idEstudiante) {
         setSpacing(12);
         TableView<ResumenAsistencia> tabla = new TableView<>();
@@ -27,8 +27,8 @@ public class MiAsistenciaPanel extends VBox {
         TableColumn<ResumenAsistencia, String> ausentes = col("Ausentes", r -> Integer.toString(r.ausentes()));
         TableColumn<ResumenAsistencia, String> porcentaje = col("Asistencia",
                 r -> r.clasesRegistradas() == 0 ? "Sin datos" : String.format("%.1f%%", r.porcentaje()));
-        tabla.getColumns().addAll(periodo, materia, registradas, presentes, ausentes, porcentaje);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().setAll(java.util.List.of(periodo, materia, registradas, presentes, ausentes, porcentaje));
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(tabla, Priority.ALWAYS);
         Label estado = new Label();
         try {
