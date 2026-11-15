@@ -6,7 +6,7 @@ Cada fila relaciona una función existente con las pruebas automáticas que la p
 | # | Función | Pruebas automáticas (`src/test/java/...`) | Verificación manual tras un cambio | Crítica |
 |---|---|---|---|---|
 | 1 | Inicio de sesión y contraseñas | `PoliticaContrasenaTest`, `LimiteIntentosTest`, `TOTPTest`, `SesionWebDAOTest` | Entrar con un usuario por rol; 5 intentos fallidos bloquean | Sí |
-| 2 | Roles y permisos | `PermisosTest`, `UsuarioTest`, `SeguridadWebTest` | Cada rol ve solo su menú; un padre no abre datos de otro hijo | Sí |
+| 2 | Roles y permisos | `PermisosTest`, `PermisosRegresionTest`, `UsuarioTest`, `SeguridadWebTest` | Cada rol ve solo su menú; un padre no abre datos de otro hijo | Sí |
 | 3 | Calificaciones y escala | `CalificacionTest`, `EscalaCalificacionesTest`, `ReglasPeriodoTest` | Registrar una nota y ver el promedio en la boleta | Sí |
 | 4 | Asistencia | `ResumenAsistenciaTest` | Marcar asistencia y comprobar el resumen | No |
 | 5 | Boleta, carnet y exportaciones | `GeneradorDocumentosTest`, `PdfTablaTest`, `XlsxTablaTest` | Abrir `/boleta-oficial` y `/carnet`; imprimir/PDF legible | Sí |

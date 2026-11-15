@@ -24,3 +24,18 @@ Completar con datos reales después de ejecutar (no dejar texto inventado).
 
 ## Evidencia de CI
 Pegar el enlace a la ejecución de GitHub Actions (`ci.yml`, `cobertura.yml`, `codeql.yml`) y una captura en verde.
+
+## Demostración: la regresión se detecta (rama `feature/prueba-regresion-permisos`)
+Prueba nueva: `PermisosRegresionTest` (fija la tabla completa de permisos por rol).
+
+1. **Antes (línea base):** `mvn test "-Djacoco.skip=true" -Dtest=PermisosRegresionTest` → anotar el resultado real.
+2. **Cambio que rompe a propósito (solo para la demostración, sin hacer commit):** en `Permisos.publicaAnuncios` añadir `Rol.PROFESOR` a la lista.
+3. **Durante:** repetir el comando; debe **fallar** con «publicaAnuncios para PROFESOR». Guardar captura de la salida.
+4. **Revertir:** `git restore src/main/java/com/unev/sige/model/Permisos.java`.
+5. **Después:** ejecutar `mvn clean test "-Djacoco.skip=true"` completo y anotar el total en la tabla de arriba.
+
+| Paso | Fecha | Resultado real | Evidencia |
+|---|---|---|---|
+| 1. Antes | | | |
+| 3. Con el cambio roto | | | |
+| 5. Después (suite completa) | | | |
