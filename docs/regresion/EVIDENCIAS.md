@@ -17,7 +17,7 @@ Completar con datos reales después de ejecutar (no dejar texto inventado).
 ## Casos manuales
 | Caso | Rol / Usuario | Pasos / Verificación | Resultado esperado | Resultado real | Evidencia |
 |---|---|---|---|---|---|
-| Sesión por rol | `ADMIN`, `DIRECTOR`, `SECRETARIA`, `PROFESOR`, `ESTUDIANTE`, `PADRE` | Inicio de sesión con 2FA y comprobación de menús permitidos | Cada rol ve estrictamente sus opciones según `Permisos.java` | | |
+| Sesión por rol | `ADMIN`, `DIRECTOR`, `PROFESOR`, `ESTUDIANTE` (probados); `SECRETARIA`, `PADRE` (no ejecutado) | Inicio de sesión y comprobación del menú de cada rol | Cada rol ve solo sus opciones según `Permisos.java` | Parcial: aprobado en ADMIN, DIRECTOR, PROFESOR y ESTUDIANTE; SECRETARIA y PADRE no ejecutados | capturas/m1-admin.png, m1-director.png, m1-profesor.png, m1-estudiante.png |
 | Calificación y boleta | `PROFESOR` / `ESTUDIANTE` | Registrar calificaciones de período activo y consultar boleta final | Notas ponderadas (30/30/40) calculadas y visibles en boleta | | |
 | Bloqueo en período cerrado | `PROFESOR` | Intentar modificar calificaciones en un período lectivo con estado CERRADO | Edición bloqueada (campos solo lectura o rechazo con código/evento `NOTA_DENEGADA` en auditoría) | | |
 | Corrección excepcional de notas | `ADMIN` | Ejecutar corrección en `/corregir-calificacion` con motivo >= 10 caracteres | Nota actualizada, auditoría `NOTA_CORREGIDA` (valor anterior, nuevo y motivo) e historial ajustado | | |
