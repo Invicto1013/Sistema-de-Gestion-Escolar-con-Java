@@ -1,0 +1,8 @@
+option batch abort
+option confirm off
+# Sesion guardada en WinSCP ("SFTP-PRUEBAS") con la identidad del servidor verificada.
+# No guardar contrasenas ni claves privadas en este archivo ni en Git.
+open SFTP-PRUEBAS
+# Vista previa: muestra lo que se transferiria, NO publica. Sin -delete.
+synchronize remote -preview "C:\Users\genes\Documents\sige-proyecto\sige\target\entrega" "/app-staging"
+exit
