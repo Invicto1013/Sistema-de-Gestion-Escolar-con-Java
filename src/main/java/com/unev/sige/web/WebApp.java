@@ -850,11 +850,7 @@ public final class WebApp {
             if(admin)dao.guardarComoAdministrador(grade,s.user.getId());else dao.guardar(grade,s.user.getId());
             redirect(x,"/calificaciones?seccion="+sectionId+"&guardado=1");
         }catch(PermisoDenegadoException e){page(x,s,gradesPage(s,"seccion="+sectionId,e.getMessage()));}
-        catch(SQLException e){
-            java.util.logging.Logger.getLogger("SIGE").log(java.util.logging.Level.WARNING,
-                "saveGrade fallo (SQLState " + e.getSQLState() + ", codigo " + e.getErrorCode() + ")", e);
-            page(x,s,gradesPage(s,"seccion="+sectionId,"No se pudieron guardar las notas. Verifica la conexión con MySQL."));
-        }
+        catch(SQLException e){page(x,s,gradesPage(s,"seccion="+sectionId,"No se pudieron guardar las notas. Verifica la conexión con MySQL."));}
     }
 
     private static double parseGrade(String value){
