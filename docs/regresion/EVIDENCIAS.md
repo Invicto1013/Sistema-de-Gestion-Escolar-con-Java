@@ -14,17 +14,20 @@ Completar con datos reales después de ejecutar (no dejar texto inventado).
 |---|---|---|---|---|---|---|---|
 | 2026-11-15 19:31 | `feature/practica-agentes` | `mvn clean test "-Djacoco.skip=true"` | 192 | 0 | 0 | 15 | capturas/05-suite-completa.png |
 
-## Casos manuales
-| Caso | Rol / Usuario | Pasos / Verificación | Resultado esperado | Resultado real | Evidencia |
+## Pruebas manuales en producción (Render + TiDB)
+
+| # | Caso | Rol | Resultado | Fecha | Evidencia |
 |---|---|---|---|---|---|
-| Sesión por rol | `ADMIN`, `DIRECTOR`, `SECRETARIA`, `PROFESOR`, `ESTUDIANTE`, `PADRE` | Inicio de sesión y comprobación del menú de cada rol (el director, la secretaria y el padre se probaron con una misma cuenta de prueba cuyo rol cambió el administrador con «Cambiar rol») | Cada rol ve solo sus opciones según `Permisos.java` | Aprobado en los 6 roles: los menús coinciden con la matriz (sin Auditoría para secretaria, sin gestión para padre y estudiante, sin Crear personal para profesor) | capturas/m1-admin.png, m1-director.png, m1-secretaria.png, m1-profesor.png, m1-estudiante.png, m1-padre.png |
-| Calificación y boleta | `PROFESOR` / `ESTUDIANTE` | Registrar calificaciones de período activo y consultar boleta final | Notas ponderadas (30/30/40) calculadas y visibles en boleta | | |
-| Bloqueo en período cerrado | `PROFESOR` | Intentar modificar calificaciones en un período lectivo con estado CERRADO | Edición bloqueada (campos solo lectura o rechazo con código/evento `NOTA_DENEGADA` en auditoría) | | |
-| Corrección excepcional de notas | `ADMIN` | Ejecutar corrección en `/corregir-calificacion` con motivo >= 10 caracteres | Nota actualizada, auditoría `NOTA_CORREGIDA` (valor anterior, nuevo y motivo) e historial ajustado | | |
-| `/health` | No autenticado | `GET /health` | Código HTTP 200 con estado OK / UP del servicio | | |
-| SSO al Aula | `PROFESOR` / `ESTUDIANTE` | Clic en «Aula Virtual» desde SIGE | Redirección con token SSO válido manteniendo sesión (SameSite=Lax) | | |
-| Auditoría y exportación | `ADMIN` / `DIRECTOR` | Realizar acción sensible (ej. cambio/corrección de nota) y exportar reporte | Registro visible con hora RD (America/Santo_Domingo) y exportación a Excel/CSV exitosa | | |
-| Envío de avisos de credenciales | `ADMIN` | Crear nuevo personal (`DIRECTOR` o `SECRETARIA`) con correo válido (Gmail/Outlook) | Envío exitoso vía API Brevo / SMTP sin exponer contraseñas en texto claro | | |
+| 1 | Acceso por rol: cada rol ve solo lo que le corresponde | ADMIN, DIRECTOR, SECRETARIA, PROFESOR, ESTUDIANTE, PADRE | Aprobado | (fecha de tus capturas) | m1-*.png |
+| 2 | Guardar calificaciones | PROFESOR | Aprobado tras corregir INC-009 (1.er intento falló) | 2026-11-18 | m2-calificaciones-guardadas.png |
+| 3 | Boleta con notas actualizadas (ING-101: 89 / 80 / 99, final 90.3 A) | ESTUDIANTE | Aprobado | 2026-11-18 | m3-boleta.png |
+| 4 | Health check de producción (`/health` responde `ok`) | Público | Aprobado | 2026-11-18 | m4-health.png |
+| 5 | SSO de SIGE al Aula Virtual sin pedir login | PROFESOR | Aprobado | 2026-11-18 | m5-sso-aula.png |
+| 6 | Crear personal y enviar aviso por correo (sin contraseña) | ADMIN | Aprobado tras corregir INC-010 (1.er intento: `notificacion=fallida`; 2.º: `ok`) | 2026-11-19 | m6-crear-personal.png, m6-correo.png |
+
+Los casos 2 y 6 fallaron la primera vez y se corrigieron durante la práctica. Eso es lo esperado de una
+prueba de regresión: encontró dos incompatibilidades con el entorno de producción que las pruebas
+automáticas no detectaban (MySQL local frente a TiDB, y configuración de Brevo).
 
 ## Evidencia de CI
 Pegar los enlaces y evidencias correspondientes a los flujos automatizados de GitHub Actions:

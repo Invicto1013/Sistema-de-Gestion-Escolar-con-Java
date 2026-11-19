@@ -16,3 +16,45 @@ Los datos de commit y fecha marcados «completar» se obtienen con `git log --da
 ## Decisiones técnicas
 - **DEC-001:** el dominó del Aula guarda las partidas en memoria (sin tablas nuevas). Limitación: se pierden si Render reinicia el servicio.
 - **DEC-002:** los avisos por correo usan la API HTTPS de Brevo porque Render gratis bloquea SMTP; el envío manual por `mailto` queda como respaldo.
+
+## INC-009: No se podían guardar calificaciones en producción (TiDB)
+
+- **Fecha:** 2026-11-18
+- **Detectado por:** prueba manual de regresión (caso 2, calificaciones), rol PROFESOR
+- **Síntoma:** al guardar notas de ING-101 aparecía "No se pudieron guardar las notas.
+  Verifica la conexión con MySQL." La conexión a la base de datos estaba bien.
+- **Causa raíz:** `PeriodoDAO.estadoCompartido` usa `SELECT … FOR SHARE`. TiDB solo lo
+  implementa como "noop" y lo rechaza por defecto
+  (SQLState 42000, código 1235, `tidb_enable_noop_functions`).
+  En MySQL local y en CI funciona, por eso las pruebas no lo detectaron.
+- **Por qué tardó en diagnosticarse:** el `catch (SQLException)` de `saveGrade` mostraba
+  un mensaje genérico y no registraba el error real. Los logs de Render no mostraban nada útil.
+- **Detección:** se añadió logging en `saveGrade` (SQLState, código y stack trace),
+  se desplegó y se repitió la acción. El log mostró el error exacto a las 5:10 p.m.
+- **Corrección:** se añadió `&sessionVariables=tidb_enable_noop_functions=ON`
+  a `SIGE_DB_URL` en Render. Verificado: "La calificación se guardó correctamente."
+- **Riesgo residual:** el bloqueo compartido pasa a ser un no-op en TiDB. Se acepta
+  porque solo el profesor de la sección edita esas notas. Alternativa futura:
+  cambiar la consulta a `FOR UPDATE` en el código.
+- **Prevención:**
+  - Registrar el error real en los `catch` de operaciones críticas (73 `catch (SQLException)`
+    en `WebApp.java`; empezar por guardar, eliminar y crear).
+  - Añadir pruebas de integración contra TiDB, o una lista de consultas incompatibles
+    (`FOR SHARE`, `LOCK IN SHARE MODE`, `SAVEPOINT`, `LOCK TABLES`).
+- **Estado:** cerrado.
+
+## INC-010: El aviso por correo al crear personal fallaba en producción
+
+- **Fecha:** 2026-11-19
+- **Detectado por:** prueba manual de regresión (caso 6), rol ADMIN
+- **Síntoma:** "Perfil creado, pero el correo automático falló" (`notificacion=fallida`).
+- **Causa raíz:** Brevo tenía activo el bloqueo de IP para claves API (0 IP autorizadas) y rechazaba
+  las llamadas desde Render, cuya IP de salida es compartida y cambia. El remitente y la clave eran válidos.
+- **Por qué tardó en diagnosticarse:** `avisoCorreo` solo imprimía "No se pudo enviar el aviso" sin la causa.
+- **Detección:** Brevo → Seguridad → IP autorizadas mostraba 1 IP no autorizada bloqueada.
+- **Corrección:** se desactivó el bloqueo para claves API. Verificado: `notificacion=ok` (2026-11-19).
+- **Riesgo residual:** una API key filtrada serviría desde cualquier IP. La clave solo permite enviar correos,
+  vive solo en variables de entorno de Render y puede regenerarse.
+- **Prevención:** registrar el tipo de error y su mensaje en `avisoCorreo` (sin la clave); documentar este
+  ajuste en la guía de despliegue.
+- **Estado:** cerrado.
