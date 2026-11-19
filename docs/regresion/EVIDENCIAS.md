@@ -18,11 +18,15 @@ Completar con datos reales después de ejecutar (no dejar texto inventado).
 | Caso | Rol / Usuario | Pasos / Verificación | Resultado esperado | Resultado real | Evidencia |
 |---|---|---|---|---|---|
 | Sesión por rol | `ADMIN`, `DIRECTOR`, `SECRETARIA`, `PROFESOR`, `ESTUDIANTE`, `PADRE` | Inicio de sesión y comprobación del menú de cada rol (el director, la secretaria y el padre se probaron con una misma cuenta de prueba cuyo rol cambió el administrador con «Cambiar rol») | Cada rol ve solo sus opciones según `Permisos.java` | Aprobado en los 6 roles: los menús coinciden con la matriz (sin Auditoría para secretaria, sin gestión para padre y estudiante, sin Crear personal para profesor) | capturas/m1-admin.png, m1-director.png, m1-secretaria.png, m1-profesor.png, m1-estudiante.png, m1-padre.png |
-| Calificación y boleta | `PROFESOR` / `ESTUDIANTE` | Registrar calificaciones de período activo y consultar boleta final | Notas ponderadas (30/30/40) calculadas y visibles en boleta | | |
+Caso 2	Resultado	Fecha	Evidencia
+2. Guardar calificaciones (PROFESOR)	Aprobado tras INC-009	2026-11-18	captura “La calificación se guardó correctamente”
+3. Boleta (ESTUDIANTE)	Aprobado	2026-11-18	captura de la boleta con 90.3 · A
 | Bloqueo en período cerrado | `PROFESOR` | Intentar modificar calificaciones en un período lectivo con estado CERRADO | Edición bloqueada (campos solo lectura o rechazo con código/evento `NOTA_DENEGADA` en auditoría) | | |
-| Corrección excepcional de notas | `ADMIN` | Ejecutar corrección en `/corregir-calificacion` con motivo >= 10 caracteres | Nota actualizada, auditoría `NOTA_CORREGIDA` (valor anterior, nuevo y motivo) e historial ajustado | | |
-| `/health` | No autenticado | `GET /health` | Código HTTP 200 con estado OK / UP del servicio | | |
-| SSO al Aula | `PROFESOR` / `ESTUDIANTE` | Clic en «Aula Virtual» desde SIGE | Redirección con token SSO válido manteniendo sesión (SameSite=Lax) | | |
+| Corrección excepcional de notas | `ADMIN` | Ejecutar corrección en `/corregir-calificacion` con motivo >= 10 caracteres | Nota actualizada, auditoría `NOTA_CORREGIDA` (valor anterior, nuevo y motivo) e historial ajustado | |
+Caso 3	Resultado	Fecha	Evidencia
+Health check de producción	Aprobado	2026-11-18	m4-health.png
+|Caso 4	Resultado	Fecha	Evidencia
+SSO SIGE → Aula (PROFESOR)	Aprobado	2026-11-18	m5-sso-aula.png
 | Auditoría y exportación | `ADMIN` / `DIRECTOR` | Realizar acción sensible (ej. cambio/corrección de nota) y exportar reporte | Registro visible con hora RD (America/Santo_Domingo) y exportación a Excel/CSV exitosa | | |
 | Envío de avisos de credenciales | `ADMIN` | Crear nuevo personal (`DIRECTOR` o `SECRETARIA`) con correo válido (Gmail/Outlook) | Envío exitoso vía API Brevo / SMTP sin exponer contraseñas en texto claro | | |
 

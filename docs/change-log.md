@@ -9,3 +9,4 @@
 | Aula v1.1.0 | pendiente de publicar | Dominó para dos jugadores en línea; icono ❓ «Acerca de» (repositorio `sige-aula`). |
 
 Completar las fechas vacías con `git log --date=short --format="%ad %h %s"` y `git tag`.
+TiDB no es MySQL al 100 %.
