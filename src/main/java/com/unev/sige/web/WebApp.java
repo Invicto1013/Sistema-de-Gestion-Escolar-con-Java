@@ -15,6 +15,7 @@ import com.unev.sige.data.ConexionBD;
 import com.unev.sige.data.CorreoNotificaciones;
 import com.unev.sige.data.CurriculoDAO;
 import com.unev.sige.data.DashboardDAO;
+import com.unev.sige.data.EliminacionUsuarioDAO;
 import com.unev.sige.data.HorarioDAO;
 import com.unev.sige.data.InscripcionDAO;
 import com.unev.sige.data.InscripcionInvalidaException;
@@ -233,6 +234,7 @@ public final class WebApp {
                 case "/accion-usuario" -> userAction(x,s,form);
                 case "/cerrar-sesion-admin" -> closeSessionAsAdmin(x,s,form);
                 case "/resetear-contrasena" -> resetUserPassword(x,s,form);
+                case "/eliminar-usuario" -> deleteUser(x,s,form);
                 case "/actualizar-rol" -> changeRole(x,s,form);
                 case "/crear-vinculo" -> createParentLink(x,s,form);
                 case "/eliminar-vinculo" -> deleteParentLink(x,s,form);
@@ -851,10 +853,10 @@ public final class WebApp {
             redirect(x,"/calificaciones?seccion="+sectionId+"&guardado=1");
         }catch(PermisoDenegadoException e){page(x,s,gradesPage(s,"seccion="+sectionId,e.getMessage()));}
         catch(SQLException e){
-    java.util.logging.Logger.getLogger("SIGE").log(java.util.logging.Level.WARNING,
-        "saveGrade fallo (SQLState " + e.getSQLState() + ", codigo " + e.getErrorCode() + ")", e);
-    page(x,s,gradesPage(s,"seccion="+sectionId,"No se pudieron guardar las notas. Verifica la conexión con MySQL."));
-}
+            java.util.logging.Logger.getLogger("SIGE").log(java.util.logging.Level.WARNING,
+                "saveGrade fallo (SQLState " + e.getSQLState() + ", codigo " + e.getErrorCode() + ")", e);
+            page(x,s,gradesPage(s,"seccion="+sectionId,"No se pudieron guardar las notas. Verifica la conexión con MySQL."));
+        }
     }
 
     private static double parseGrade(String value){
@@ -1424,6 +1426,7 @@ public final class WebApp {
                         .append("'><input type='hidden' name='accion' value='2fa'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar</label><button class='secondary' type='submit'>Restablecer 2FA</button></form>")
                         .append("<form method='post' action='/resetear-contrasena' class='inline-form'>").append(hiddenCsrf(s)).append("<input type='hidden' name='id' value='").append(u.getId())
                         .append("'><label class='delete-confirm'><input type='checkbox' name='confirmar' value='si' required>Confirmar</label><button class='secondary' type='submit' ").append(u.getId()==s.user.getId()?"disabled":"").append(">Clave temporal</button></form>")
+                        .append(u.getId()==s.user.getId()?"":"<details class='user-delete'><summary>Eliminar cuenta…</summary><form method='post' action='/eliminar-usuario' class='inline-form'>"+hiddenCsrf(s)+"<input type='hidden' name='id' value='"+u.getId()+"'><p class='help-text'>Se borrarán la cuenta y todos sus datos. No se puede deshacer. Escribe <b>"+esc(u.getCorreo())+"</b> para confirmar.</p>"+"<input name='correo' maxlength='100' required autocomplete='off' placeholder='Correo de la cuenta'><button class='danger' type='submit'>Eliminar definitivamente</button></form></details>")
                         .append("</div></td></tr>");
             }
             if(rows.isEmpty())rows.append("<tr><td colspan='6' class='empty'>No hay cuentas que coincidan con los filtros.</td></tr>");
@@ -1484,6 +1487,22 @@ public final class WebApp {
             page(x,s,shell("Contraseña restablecida",body,true,s.user.getNombreCompleto()));
         }catch(PermisoDenegadoException e){page(x,s,usersAdminPage(s,null,e.getMessage()));}
         catch(SQLException e){page(x,s,usersAdminPage(s,null,"No se pudo restablecer la contraseña. Verifica la conexión con MySQL."));}
+    }
+
+    private static void deleteUser(HttpExchange x,WebSession s,Map<String,String> values)throws IOException{
+        if(s.user==null||s.user.getRol()!=Rol.ADMIN){page(x,s,errorPage("Solo un administrador puede eliminar cuentas."));return;}
+        int id;try{id=Integer.parseInt(values.getOrDefault("id",""));}catch(NumberFormatException e){page(x,s,usersAdminPage(s,null,"La cuenta seleccionada no es válida."));return;}
+        try{
+            new EliminacionUsuarioDAO().eliminarComoAdmin(s.user.getId(),id,values.getOrDefault("correo",""));
+            SESSIONS.entrySet().removeIf(entry->entry.getValue().user!=null&&entry.getValue().user.getId()==id);
+            SESIONES_WEB.eliminarDeUsuario(id);
+            redirect(x,"/usuarios?actualizado=1");
+        }catch(PermisoDenegadoException e){page(x,s,usersAdminPage(s,null,e.getMessage()));}
+        catch(SQLException e){
+            java.util.logging.Logger.getLogger("SIGE").log(java.util.logging.Level.WARNING,
+                "deleteUser fallo (SQLState " + e.getSQLState() + ", codigo " + e.getErrorCode() + ")", e);
+            page(x,s,usersAdminPage(s,null,"No se pudo eliminar la cuenta. No se borró nada."));
+        }
     }
 
     private static String temporaryPassword(){
