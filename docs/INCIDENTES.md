@@ -42,3 +42,19 @@ Los datos de commit y fecha marcados «completar» se obtienen con `git log --da
   - Añadir pruebas de integración contra TiDB, o una lista de consultas incompatibles
     (`FOR SHARE`, `LOCK IN SHARE MODE`, `SAVEPOINT`, `LOCK TABLES`).
 - **Estado:** cerrado.
+
+## INC-010: El aviso por correo al crear personal fallaba en producción
+
+- **Fecha:** 2026-11-19
+- **Detectado por:** prueba manual de regresión (caso 6), rol ADMIN
+- **Síntoma:** "Perfil creado, pero el correo automático falló" (`notificacion=fallida`).
+- **Causa raíz:** Brevo tenía activo el bloqueo de IP para claves API (0 IP autorizadas) y rechazaba
+  las llamadas desde Render, cuya IP de salida es compartida y cambia. El remitente y la clave eran válidos.
+- **Por qué tardó en diagnosticarse:** `avisoCorreo` solo imprimía "No se pudo enviar el aviso" sin la causa.
+- **Detección:** Brevo → Seguridad → IP autorizadas mostraba 1 IP no autorizada bloqueada.
+- **Corrección:** se desactivó el bloqueo para claves API. Verificado: `notificacion=ok` (2026-11-19).
+- **Riesgo residual:** una API key filtrada serviría desde cualquier IP. La clave solo permite enviar correos,
+  vive solo en variables de entorno de Render y puede regenerarse.
+- **Prevención:** registrar el tipo de error y su mensaje en `avisoCorreo` (sin la clave); documentar este
+  ajuste en la guía de despliegue.
+- **Estado:** cerrado.

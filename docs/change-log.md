@@ -10,3 +10,9 @@
 
 Completar las fechas vacías con `git log --date=short --format="%ad %h %s"` y `git tag`.
 TiDB no es MySQL al 100 %.
+
+- 2026-11-18: Registro del error real en `saveGrade` (INC-009).
+- 2026-11-18: Producción: `sessionVariables=tidb_enable_noop_functions=ON` en `SIGE_DB_URL` (INC-009).
+- 2026-11-19: Respaldo: `mysqldump` sin `--single-transaction` (TiDB no admite SAVEPOINT).
+- 2026-11-19: Producción: bloqueo de IP de claves API desactivado en Brevo (INC-010).
+- 2026-11-19: Nueva función: eliminar usuario (solo ADMIN).
