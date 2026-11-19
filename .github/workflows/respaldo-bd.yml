@@ -39,7 +39,7 @@ jobs:
           echo "FECHA=$FECHA" >> "$GITHUB_ENV"
           docker run --rm -e MYSQL_PWD mysql:8.4 mysqldump \
             -h "$SIGE_DB_HOST" -P "$SIGE_DB_PORT" -u "$SIGE_DB_USER" \
-            --ssl-mode=REQUIRED --single-transaction --routines --triggers \
+            --ssl-mode=REQUIRED --skip-lock-tables --routines --triggers \
             --no-tablespaces --set-gtid-purged=OFF --default-character-set=utf8mb4 \
             "$SIGE_DB_NAME" | gzip -9 > "sige_${FECHA}.sql.gz"
 
