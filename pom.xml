@@ -133,5 +133,35 @@
                 </plugins>
             </build>
         </profile>
+        <!-- Pruebas de integracion reproducibles: mvn -P integration test (ver docs/PRUEBAS_INTEGRACION.md).
+             Exige una MySQL LOCAL (deploy/db-test/docker-compose.yml). Nunca apunta a TiDB, Aiven ni a produccion. -->
+        <profile>
+            <id>integration</id>
+            <properties>
+                <it.db.url>jdbc:mysql://127.0.0.1:3307/sige_test?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;characterEncoding=UTF-8</it.db.url>
+                <it.db.user>root</it.db.user>
+                <it.db.password>root</it.db.password>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*IntegracionTest.java</include>
+                            </includes>
+                            <failIfNoSpecifiedTests>false</failIfNoSpecifiedTests>
+                            <environmentVariables>
+                                <SIGE_IT_DB>true</SIGE_IT_DB>
+                                <SIGE_DB_URL>${it.db.url}</SIGE_DB_URL>
+                                <SIGE_DB_USER>${it.db.user}</SIGE_DB_USER>
+                                <SIGE_DB_PASSWORD>${it.db.password}</SIGE_DB_PASSWORD>
+                            </environmentVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>

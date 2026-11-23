@@ -52,4 +52,54 @@ class SeguridadWebTest {
         SeguridadWeb.aplicarCabeceras(con, true);
         assertTrue(con.getFirst("Strict-Transport-Security").startsWith("max-age="));
     }
+
+    // --- Contrato de cabeceras y cookie (mejora: validacion automatizada de contratos) ---
+
+    @Test
+    void laPaginaLlevaTodasLasCabecerasDeSeguridad() {
+        Headers h = new Headers();
+        SeguridadWeb.cabecerasDePagina(h, false);
+        assertEquals("no-store", h.getFirst("Cache-Control"));
+        assertEquals("nosniff", h.getFirst("X-Content-Type-Options"));
+        assertEquals("DENY", h.getFirst("X-Frame-Options"));
+        assertEquals("same-origin", h.getFirst("Referrer-Policy"));
+        assertEquals("same-origin", h.getFirst("Cross-Origin-Opener-Policy"));
+        assertNotNull(h.getFirst("Permissions-Policy"));
+        assertFalse(h.containsKey("Strict-Transport-Security"));
+    }
+
+    @Test
+    void laPoliticaCspNoPermiteScriptsAjenosNiMarcos() {
+        String csp = SeguridadWeb.CSP;
+        assertTrue(csp.contains("default-src 'self'"));
+        assertTrue(csp.contains("frame-ancestors 'none'"));
+        assertTrue(csp.contains("form-action 'self'"));
+        assertTrue(csp.contains("base-uri 'self'"));
+        assertFalse(csp.contains("script-src"), "los scripts caen en default-src 'self'");
+        assertFalse(csp.contains("'unsafe-eval'"));
+        assertFalse(csp.contains("*"));
+    }
+
+    @Test
+    void conHttpsLaPaginaAgregaHsts() {
+        Headers h = new Headers();
+        SeguridadWeb.cabecerasDePagina(h, true);
+        assertTrue(h.getFirst("Strict-Transport-Security").contains("includeSubDomains"));
+    }
+
+    @Test
+    void laCookieDeSesionEsHttpOnlyYSameSite() {
+        String c = SeguridadWeb.cookieSesion("SIGE_SESSION", "abc123", 28800, false);
+        assertTrue(c.startsWith("SIGE_SESSION=abc123;"));
+        assertTrue(c.contains("HttpOnly"));
+        assertTrue(c.contains("SameSite=Lax"));
+        assertTrue(c.contains("Path=/"));
+        assertTrue(c.contains("Max-Age=28800"));
+        assertFalse(c.contains("Secure"));
+    }
+
+    @Test
+    void laCookieSeMarcaSecureEnHttps() {
+        assertTrue(SeguridadWeb.cookieSesion("S", "x", 60, true).endsWith("; Secure"));
+    }
 }

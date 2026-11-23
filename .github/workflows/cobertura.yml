@@ -30,6 +30,11 @@ jobs:
           else
             echo "No se genero el informe de cobertura." | tee -a "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Verificar umbral minimo de cobertura (com.unev.sige.model)
+        env:
+          # Umbral de lineas del paquete de dominio. Subelo cuando la cobertura real lo permita.
+          UMBRAL_MODELO: '60'
+        run: bash .github/scripts/verificar-umbral.sh com.unev.sige.model "$UMBRAL_MODELO" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Guardar el informe HTML de cobertura
         if: always()
         uses: actions/upload-artifact@v4
