@@ -37,6 +37,38 @@ TiDB no es MySQL al 100 %.
 - 2026-11-21: Salud escolar: validación de exequátur médico y esquema de vacunación estudiantil (`ValidadorCertificadoSaludEscolar.java`).
 - 2026-11-21: Registro civil escolar: validación de actas de nacimiento JCE para admisión (`ValidadorActaNacimientoEscolar.java`).
 - 2026-11-21: Identidad y diferenciación de producto: adopción del Código Único de Estudiante autónomo (CUE `SIGE-YYYY-XXXXX`), actas y suficiencia académica propia (`docs/IDENTIDAD_Y_DIFERENCIACION_SIGE.md`).
+- 2026-11-23: Verificación documental: códigos de integridad `DOC-XXXX-XXXX-XXXX` y URLs institucionales (`ValidadorFirmaDigitalDocumento.java`).
+- 2026-11-23: Gestión de profesorado: cálculo y prevención de sobrecarga docente y límites de secciones (`CalculadorCargaDocente.java`).
+- 2026-11-23: Bienestar escolar: validación reglamentaria de excusas y reprogramación de exámenes (`ValidadorExcusaEscolar.java`).
+- 2026-11-23: Analítica de retención: índice predictivo de riesgo de deserción y abandono escolar (`CalculadorRiesgoDesercion.java`).
+- 2026-11-23: Credenciales QR: carnets estudiantiles inteligentes con payload de seguridad (`ValidadorCarnetInteligente.java`).
+- 2026-11-23: Finanzas escolares: cálculo de mensualidades, descuentos familiares y control de mora (`CalculadorFinanzasEscolares.java`).
+- 2026-11-23: Traslados de alumnos: gestión de transferencias escolares y paz y salvo financiero (`ValidadorTransferenciaEscolar.java`).
+- 2026-11-23: Formación integral: inscripción y límites de clubes extracurriculares (`ValidadorClubExtracurricular.java`).
+- 2026-11-23: Transporte escolar: asignación y validación de rutas y paradas escolares (`ValidadorTransporteEscolar.java`).
+- 2026-11-23: Comedor escolar: gestión de planes nutricionales y prevención de alérgenos (`ValidadorComedorEscolar.java`).
+- 2026-11-23: Préstamo de tecnología: control de tablets, laptops y mora en devoluciones (`ValidadorPrestamoDispositivo.java`).
+- 2026-11-23: Calidad docente: evaluación multidimensional del profesorado (`CalculadorEvaluacionDocente.java`).
+- 2026-11-23: Infraestructura: casilleros estudiantiles con nomenclatura por pabellón (`ValidadorCasilleroEscolar.java`).
+- 2026-11-23: Democracia escolar: sistema de votación para el consejo estudiantil (`ValidadorVotoEstudiantil.java`).
+- 2026-11-23: Seguridad de salida: entrega de alumnos mediante PIN de terceros autorizados (`ValidadorRetiroEstudiante.java`).
+- 2026-11-23: Idoneidad académica: validación de títulos universitarios de educadores (`ValidadorTituloDocente.java`).
+- 2026-11-23: Salas de cómputo: inventario y validación de MAC en laboratorios STEM (`ValidadorLaboratorioInformatica.java`).
+- 2026-11-23: Diagnóstico pedagógico: pruebas de entrada y refuerzo académico (`CalculadorPruebaDiagnostica.java`).
+- 2026-11-23: Admisión escolar: control y completitud de expedientes de nuevo ingreso (`ValidadorAdmisionNuevoIngreso.java`).
+- 2026-11-23: Feria científica: baremos de evaluación de proyectos y prototipos (`CalculadorFeriaCientifica.java`).
+- 2026-11-23: Banco de libros: control de préstamos, conservación física y reposición (`GestorBancoLibrosTexto.java`).
+- 2026-11-23: Familia y escuela: citaciones formales a tutores por la dirección (`ValidadorCitacionPadres.java`).
+- 2026-11-23: Salidas escolares: validación de seguro y autorizaciones de excursiones (`ValidadorExcursionEscolar.java`).
+- 2026-11-23: Deporte escolar: baremos de rendimiento y aptitud física (`CalculadorAptitudFisica.java`).
+- 2026-11-23: Salud escolar: historial de enfermería y primeros auxilios (`ValidadorEnfermeriaEscolar.java`).
+- 2026-11-23: Divulgación estudiantil: gestión del periódico y publicaciones escolares (`GestorPublicacionEscolar.java`).
+- 2026-11-23: Escuela de padres: seguimiento de asistencia a talleres familiares (`GestorEscuelaParaPadres.java`).
+- 2026-11-23: Comunidad Alumni: registro y seguimiento a egresados de bachillerato (`ValidadorRedEgresados.java`).
+
+
+
+
 
 
 
@@ -47,3 +79,4 @@ TiDB no es MySQL al 100 %.
 
 
 - 2026-11-23: Mejoras del protocolo de pruebas: perfil Maven `integration` + MySQL desechable (`deploy/db-test/`), umbral de cobertura en CI (`verificar-umbral.sh`, paquete `com.unev.sige.model`) y contratos de cabeceras/cookie (`SeguridadWeb`, `SeguridadWebTest`, `ContratosHttpTest`).
+- 2026-11-23: Herramientas escolares: las 36 reglas del paquete `model` quedan visibles por rol en la web (`/herramientas`) y en el escritorio (menú «Herramientas»), sin guardar datos (`CatalogoHerramientas`, `HerramientasWeb`, `HerramientasPanel`). Corrige además la detección de alérgenos compuestos del comedor.

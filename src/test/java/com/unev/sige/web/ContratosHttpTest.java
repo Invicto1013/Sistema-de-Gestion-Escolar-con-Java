@@ -98,6 +98,16 @@ class ContratosHttpTest {
     }
 
     @Test
+    void lasHerramientasEscolaresPidenIniciarSesion() throws Exception {
+        for (String ruta : new String[] {"/herramientas", "/herramienta?id=excusa"}) {
+            HttpResponse<String> r = get(ruta);
+            assertEquals(200, r.statusCode(), ruta);
+            assertTrue(r.body().contains("Inicia sesión"), ruta);
+            assertTrue(!r.body().contains("Calcular"), ruta);
+        }
+    }
+
+    @Test
     void elEstadoDeSaludRespondeSinSesion() throws Exception {
         assertEquals(200, get("/health").statusCode());
     }

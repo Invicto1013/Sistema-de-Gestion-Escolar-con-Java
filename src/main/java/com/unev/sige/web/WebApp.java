@@ -195,6 +195,8 @@ public final class WebApp {
                     case "/boleta-oficial" -> sendOfficialReportCard(x, s, x.getRequestURI().getRawQuery());
                     case "/carnet" -> sendStudentCard(x, s, x.getRequestURI().getRawQuery());
                     case "/2fa" -> page(x, s, mfaPage(s, null));
+                    case "/herramientas" -> page(x, s, herramientasPage(s));
+                    case "/herramienta" -> page(x, s, herramientaPage(s, x.getRequestURI().getRawQuery(), null, null));
                     case "/password" -> page(x, s, passwordPage(s, null));
                     default -> page(x, s, errorPage("Página no encontrada."));
                 }
@@ -214,6 +216,7 @@ public final class WebApp {
             if (campoInvalido != null) { page(x, s, errorPage(campoInvalido)); return; }
             switch (path) {
                 case "/login" -> login(x, s, form);
+                case "/herramienta" -> runHerramienta(x, s, form);
                 case "/registro" -> registrar(x, s, form);
                 case "/solicitud" -> requestAction(x, s, form);
                 case "/verify-2fa" -> verifyMfa(x, s, form);
@@ -2508,7 +2511,7 @@ public final class WebApp {
         String ajustes="<div class='ajustes'>"+VisionWeb.menu(VISION_REQUEST.get(),PATH_REQUEST.get(),EstacionWeb.seccionMenu(ESTACION_REQUEST.get(),PATH_REQUEST.get())+MovimientoWeb.seccionMenu(MOVIMIENTO_REQUEST.get(),PATH_REQUEST.get()))+TemaWeb.boton(PATH_REQUEST.get())+AcercaWeb.boton()+"</div>";
         String estacion=EstacionWeb.efectiva(ESTACION_REQUEST.get(),java.time.LocalDate.now(java.time.ZoneOffset.of(com.unev.sige.model.ZonaVisual.desplazamiento())));
         String role=ROLE_REQUEST.get();
-        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mi horario</a><a href='/conducta'>Conducta</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/mis-hijos'>Mis hijos</a><a href='/conducta'>Conducta</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mis horarios</a><a href='/conducta'>Conducta</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"DIRECTOR".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/conducta'>Conducta</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a>":"SECRETARIA".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/solicitudes'>Solicitudes</a><a href='/vinculaciones'>Vincular padres</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/conducta'>Conducta</a><a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/crear-personal'>Crear personal</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/periodos'>Períodos</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a><a href='/historial-sesiones'>Historial</a>":"";
+        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mi horario</a><a href='/conducta'>Conducta</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/mis-hijos'>Mis hijos</a><a href='/conducta'>Conducta</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mis horarios</a><a href='/conducta'>Conducta</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"DIRECTOR".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/conducta'>Conducta</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a>":"SECRETARIA".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/solicitudes'>Solicitudes</a><a href='/vinculaciones'>Vincular padres</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/conducta'>Conducta</a><a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/crear-personal'>Crear personal</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/periodos'>Períodos</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a><a href='/historial-sesiones'>Historial</a>":"";if(role!=null&&!role.isEmpty())academicLink+="<a href='/herramientas'>Herramientas</a>";
         String nav = logged ? "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation' aria-label='Navegación principal'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a>"+stop+"</nav>"+ajustes+"<div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+"</div></header>"
                 : "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span>"+ajustes+"</header>";
@@ -2545,6 +2548,27 @@ public final class WebApp {
     }
     private static String profileField(String label,String value){return "<div class='profile-line'><span>"+esc(label)+"</span><b>"+esc(value==null||value.isBlank()?"No registrado":value)+"</b></div>";}
     private static String alert(String text) { return "<div class='alert' role='alert'>"+esc(text)+"</div>"; }
+    // ----- Herramientas escolares (catalogo de reglas por rol) -----
+    private static String herramientasPage(WebSession s){
+        if(s.user==null)return shell("Herramientas",errorPage("Inicia sesión para ver las herramientas."),false,"");
+        return shell("Herramientas",HerramientasWeb.indice(s.user.getRol()),true,s.user.getNombreCompleto());
+    }
+    private static String herramientaPage(WebSession s,String query,Map<String,String> valores,com.unev.sige.model.HerramientaEscolar.Resultado resultado){
+        if(s.user==null)return shell("Herramientas",errorPage("Inicia sesión para usar las herramientas."),false,"");
+        return herramientaPage(s,com.unev.sige.model.CatalogoHerramientas.buscar(queryValue(query,"id")==null?"":queryValue(query,"id")).orElse(null),valores,resultado);
+    }
+    private static String herramientaPage(WebSession s,com.unev.sige.model.HerramientaEscolar h,Map<String,String> valores,com.unev.sige.model.HerramientaEscolar.Resultado resultado){
+        if(s.user==null)return shell("Herramientas",errorPage("Inicia sesión para usar las herramientas."),false,"");
+        if(h==null||!h.visiblePara(s.user.getRol()))return shell("Herramientas",errorPage("Esa herramienta no existe o no está disponible para tu rol."),true,s.user.getNombreCompleto());
+        return shell(h.titulo(),HerramientasWeb.formulario(h,s.csrf,valores,resultado),true,s.user.getNombreCompleto());
+    }
+    private static void runHerramienta(HttpExchange x,WebSession s,Map<String,String> form)throws IOException{
+        com.unev.sige.model.HerramientaEscolar h=com.unev.sige.model.CatalogoHerramientas.buscar(form.get("id")==null?"":form.get("id")).orElse(null);
+        if(s.user==null||h==null||!h.visiblePara(s.user.getRol())){page(x,s,herramientaPage(s,h,null,null));return;}
+        Map<String,String> valores=HerramientasWeb.valoresDe(h,form);
+        page(x,s,herramientaPage(s,h,valores,h.ejecutar(valores)));
+    }
+
     private static String errorPage(String message) { return "<section class='card'>"+alert(message)+"<a href='/'>Volver al inicio</a></section>"; }
 
     private static void page(HttpExchange x, WebSession s, String html) throws IOException {

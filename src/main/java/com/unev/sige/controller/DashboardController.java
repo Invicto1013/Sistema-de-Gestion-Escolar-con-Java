@@ -257,6 +257,8 @@ public class DashboardController {
                 agregarOpcion("Reporte de inscripciones", () -> mostrarPanelPropio(new ReporteInscripcionesPanel()));
             }
         }
+        // Reglas escolares (carga docente, riesgo de deserción, excusas, finanzas...) filtradas por rol.
+        agregarOpcion("Herramientas", () -> mostrarPanelPropio(new HerramientasPanel(usuario.getRol())));
     }
 
     private void adaptarLayout(double ancho) {
