@@ -61,7 +61,7 @@ jobs:
           rm -f "sige_${FECHA}.sql.gz"
 
       - name: Guardar el respaldo cifrado (30 dias)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sige-respaldo-${{ env.FECHA }}
           path: sige_${{ env.FECHA }}.sql.gz.gpg
