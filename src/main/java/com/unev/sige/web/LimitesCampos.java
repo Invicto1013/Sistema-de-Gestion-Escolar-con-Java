@@ -39,6 +39,7 @@ final class LimitesCampos {
     /** Máximo permitido para un campo en una ruta. El nombre de una asignatura admite 100; el de una persona, 50. */
     static int maximo(String ruta, String campo) {
         if ("nombre".equals(campo) && "/guardar-asignatura".equals(ruta)) return 100;
+        if (campo != null && campo.startsWith("f_")) return 2000; // campos de las herramientas escolares
         Integer largo = MAXIMOS.get(campo);
         if (largo != null) return largo;
         Integer corto = CORTOS.get(campo);
