@@ -2549,9 +2549,7 @@ public final class WebApp {
 
     private static void page(HttpExchange x, WebSession s, String html) throws IOException {
         RENDER_CSRF.set(s.csrf);
-        Headers h=x.getResponseHeaders(); h.set("Cache-Control","no-store"); h.set("X-Content-Type-Options","nosniff");
-        h.set("X-Frame-Options","DENY"); h.set("Referrer-Policy","same-origin"); SeguridadWeb.aplicarCabeceras(h,esHttps(x));
-        h.set("Content-Security-Policy","default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'");
+        SeguridadWeb.cabecerasDePagina(x.getResponseHeaders(),esHttps(x));
         send(x,200,"text/html; charset=utf-8",html);
         RENDER_CSRF.remove();
         LOCAL_REQUEST.remove();ADMIN_REQUEST.remove();
@@ -2693,7 +2691,7 @@ public final class WebApp {
         long now=Instant.now().getEpochSecond();if(now-s.saved<60)return;s.saved=now;
         try{SESIONES_WEB.tocar(s.id);}catch(SQLException ignored){}
     }
-    private static void setCookie(HttpExchange x,String id){String secure="true".equalsIgnoreCase(env("SIGE_WEB_SECURE_COOKIE","false"))?"; Secure":"";x.getResponseHeaders().add("Set-Cookie",COOKIE+"="+id+"; Path=/; HttpOnly; SameSite=Lax; Max-Age="+MAX_IDLE_SECONDS+secure);}
+    private static void setCookie(HttpExchange x,String id){boolean secure="true".equalsIgnoreCase(env("SIGE_WEB_SECURE_COOKIE","false"));x.getResponseHeaders().add("Set-Cookie",SeguridadWeb.cookieSesion(COOKIE,id,MAX_IDLE_SECONDS,secure));}
     private static void clearCookie(HttpExchange x){x.getResponseHeaders().add("Set-Cookie",COOKIE+"=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");}
     private static String randomToken(){byte[] bytes=new byte[32];RANDOM.nextBytes(bytes);return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);}
     private static boolean constantEquals(String a,String b){return a!=null&&b!=null&&java.security.MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8),b.getBytes(StandardCharsets.UTF_8));}

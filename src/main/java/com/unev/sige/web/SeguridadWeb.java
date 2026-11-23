@@ -85,4 +85,22 @@ final class SeguridadWeb {
             h.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
         }
     }
+
+    /** Politica CSP de las paginas HTML: solo recursos propios; sin scripts en linea ni incrustacion en marcos. */
+    static final String CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'";
+
+    /** Todas las cabeceras de seguridad de una pagina HTML (contrato verificado por pruebas). */
+    static void cabecerasDePagina(Headers h, boolean https) {
+        h.set("Cache-Control", "no-store");
+        h.set("X-Content-Type-Options", "nosniff");
+        h.set("X-Frame-Options", "DENY");
+        h.set("Referrer-Policy", "same-origin");
+        aplicarCabeceras(h, https);
+        h.set("Content-Security-Policy", CSP);
+    }
+
+    /** Valor de Set-Cookie de la sesion: HttpOnly y SameSite=Lax siempre; Secure segun el entorno. */
+    static String cookieSesion(String nombre, String id, long maxAgeSegundos, boolean secure) {
+        return nombre + "=" + id + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=" + maxAgeSegundos + (secure ? "; Secure" : "");
+    }
 }
