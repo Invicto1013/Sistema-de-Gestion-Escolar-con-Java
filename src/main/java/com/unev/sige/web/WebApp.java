@@ -196,7 +196,7 @@ public final class WebApp {
                     case "/boleta-oficial" -> sendOfficialReportCard(x, s, x.getRequestURI().getRawQuery());
                     case "/carnet" -> sendStudentCard(x, s, x.getRequestURI().getRawQuery());
                     case "/2fa" -> page(x, s, mfaPage(s, null));
-                    case "/herramientas" -> page(x, s, herramientasPage(s));
+                    case "/herramientas" -> page(x, s, herramientasPage(s, queryValue(x.getRequestURI().getRawQuery(), "abrir")));
                     case "/herramienta" -> page(x, s, herramientaPage(s, x.getRequestURI().getRawQuery(), null, null));
                     case "/herramientas-registros" -> page(x, s, registrosPage(s, ""));
                     case "/herramientas-registros.pdf" -> registrosPdf(x, s);
@@ -2555,9 +2555,9 @@ public final class WebApp {
     private static String profileField(String label,String value){return "<div class='profile-line'><span>"+esc(label)+"</span><b>"+esc(value==null||value.isBlank()?"No registrado":value)+"</b></div>";}
     private static String alert(String text) { return "<div class='alert' role='alert'>"+esc(text)+"</div>"; }
     // ----- Herramientas escolares (catalogo de reglas por rol) -----
-    private static String herramientasPage(WebSession s){
+    private static String herramientasPage(WebSession s,String abrir){
         if(s.user==null)return shell("Herramientas",errorPage("Inicia sesión para ver las herramientas."),false,"");
-        return shell("Herramientas",HerramientasWeb.indice(s.user.getRol()),true,s.user.getNombreCompleto());
+        return shell("Herramientas",HerramientasWeb.indice(s.user.getRol(),abrir),true,s.user.getNombreCompleto());
     }
     private static String herramientaPage(WebSession s,String query,Map<String,String> valores,com.unev.sige.model.HerramientaEscolar.Resultado resultado){
         if(s.user==null)return shell("Herramientas",errorPage("Inicia sesión para usar las herramientas."),false,"");
@@ -2692,7 +2692,7 @@ public final class WebApp {
         send(x,200,"text/css; charset=utf-8",css);
     }
     private static String manifest(){return "{\"id\":\"/\",\"name\":\"SIGE - Sistema de Gestión Educativa\",\"short_name\":\"SIGE\",\"description\":\"Portal académico SIGE\",\"start_url\":\"/\",\"scope\":\"/\",\"display\":\"standalone\",\"background_color\":\"#f3f6fa\",\"theme_color\":\"#17324d\",\"icons\":[{\"src\":\"/icon.svg\",\"sizes\":\"any\",\"type\":\"image/svg+xml\",\"purpose\":\"any maskable\"}]}";}
-    private static String serviceWorker(){return "const CACHE='sige-ui-v12';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
+    private static String serviceWorker(){return "const CACHE='sige-ui-v13';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
     private static String icon(){return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' role='img' aria-label='SIGE'> <rect width='512' height='512' rx='112' fill='#17324d'/> <path d='M256 196C204 166 146 164 100 184v176c46-18 104-16 156 14z' fill='#ffffff'/> <path d='M256 196c52-30 110-32 156-12v176c-46-18-104-16-156 14z' fill='#d6ece9'/> <path d='M256 196v178' stroke='#17324d' stroke-width='9' stroke-linecap='round'/> <g stroke='#0f766e' stroke-width='12' stroke-linecap='round' fill='none'> <path d='M140 238c34-10 68-6 88 6'/><path d='M140 282c34-10 68-6 88 6'/> <path d='M372 238c-34-10-68-6-88 6'/><path d='M372 282c-34-10-68-6-88 6'/> </g> <path d='M256 74l14 38 38 14-38 14-14 38-14-38-38-14 38-14z' fill='#ef6530'/> </svg>";}
     private static void send(HttpExchange x,int status,String type,String body)throws IOException{
         byte[] data=body.getBytes(StandardCharsets.UTF_8); x.getResponseHeaders().set("Content-Type",type); if("HEAD".equalsIgnoreCase(x.getRequestMethod())){x.sendResponseHeaders(status,-1);return;}x.sendResponseHeaders(status,data.length);x.getResponseBody().write(data);

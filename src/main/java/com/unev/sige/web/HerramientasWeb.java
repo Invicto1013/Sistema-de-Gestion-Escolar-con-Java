@@ -2,6 +2,7 @@ package com.unev.sige.web;
 
 import com.unev.sige.model.CatalogoHerramientas;
 import com.unev.sige.model.HerramientaEscolar;
+import com.unev.sige.model.IconosHerramientas;
 import com.unev.sige.model.RegistroHerramienta;
 import com.unev.sige.model.Rol;
 import java.util.LinkedHashMap;
@@ -21,23 +22,42 @@ final class HerramientasWeb {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
     }
 
-    /** Pantalla de entrada: las herramientas del rol agrupadas por tema. */
+    /** Pantalla de entrada con los grupos plegables abiertos según {@code abrir}: null (el primero), «todos», «ninguno» o el slug de un grupo. */
     static String indice(Rol rol) {
-        List<HerramientaEscolar> visibles = CatalogoHerramientas.paraRol(rol);
-        StringBuilder b = new StringBuilder("<section class='card'><div class='eyebrow'>HERRAMIENTAS</div><h1>Herramientas escolares</h1>"
+        return indice(rol, null);
+    }
+
+    static String indice(Rol rol, String abrir) {
+        Map<String, List<HerramientaEscolar>> grupos = CatalogoHerramientas.porGrupo(rol);
+        int total = grupos.values().stream().mapToInt(List::size).sum();
+        StringBuilder b = new StringBuilder("<section class='card herr-hero'><span class='herr-hero-icono' aria-hidden='true'>🧰</span><div class='herr-hero-texto'>"
+                + "<div class='eyebrow'>HERRAMIENTAS</div><h1>Herramientas escolares</h1>"
                 + "<p>Calculadoras y validaciones de las reglas del centro para tu rol (" + esc(rol == null ? "" : rol.etiqueta())
-                + "). Los resultados son de consulta: no se guarda nada.</p></section>");
-        Map<String, List<HerramientaEscolar>> porGrupo = new LinkedHashMap<>();
-        for (HerramientaEscolar h : visibles) porGrupo.computeIfAbsent(h.grupo(), k -> new java.util.ArrayList<>()).add(h);
-        for (Map.Entry<String, List<HerramientaEscolar>> g : porGrupo.entrySet()) {
-            b.append("<section class='card'><h2>").append(esc(g.getKey())).append("</h2><ul class='herramientas'>");
+                + "). «Calcular» solo consulta; «Calcular y guardar» guarda el registro para descargarlo en PDF.</p>"
+                + "<p class='herr-acciones'><a href='/herramientas?abrir=todos'>Expandir todo</a><a href='/herramientas?abrir=ninguno'>Contraer todo</a>"
+                + "<a href='/herramientas-registros'>💾 Mis registros</a></p></div>"
+                + "<span class='herr-contador'><strong>" + total + "</strong> herramientas<br>" + grupos.size() + " grupos</span></section>");
+        boolean primero = true;
+        int fila = 0;
+        for (Map.Entry<String, List<HerramientaEscolar>> g : grupos.entrySet()) {
+            String slug = CatalogoHerramientas.slug(g.getKey());
+            boolean abierto = "todos".equals(abrir) || slug.equals(abrir) || (abrir == null && primero);
+            primero = false;
+            b.append("<details class='herr-grupo' id='").append(slug).append("' style='--acento:").append(IconosHerramientas.acento(g.getKey()))
+                    .append("'").append(abierto ? " open" : "").append("><summary><span class='herr-icono' aria-hidden='true'>")
+                    .append(IconosHerramientas.iconoGrupo(g.getKey())).append("</span><span class='herr-grupo-titulo'>").append(esc(g.getKey()))
+                    .append("</span><span class='herr-cuenta'>").append(g.getValue().size()).append("</span></summary><div class='herr-lista'>");
+            int i = 0;
             for (HerramientaEscolar h : g.getValue()) {
-                b.append("<li><a href='/herramienta?id=").append(esc(h.id())).append("'><strong>").append(esc(h.titulo()))
-                        .append("</strong></a> — ").append(esc(h.descripcion())).append("</li>");
+                b.append("<a class='herr-tarjeta' style='--i:").append(i++).append("' href='/herramienta?id=").append(esc(h.id())).append("'>")
+                        .append("<span class='herr-icono' aria-hidden='true'>").append(IconosHerramientas.icono(h.id())).append("</span>")
+                        .append("<span class='herr-texto'><strong>").append(esc(h.titulo())).append("</strong><small>").append(esc(h.descripcion()))
+                        .append("</small></span></a>");
             }
-            b.append("</ul></section>");
+            b.append("</div></details>");
+            fila++;
         }
-        if (visibles.isEmpty()) b.append("<section class='card'><p>No hay herramientas disponibles para tu rol.</p></section>");
+        if (fila == 0) b.append("<section class='card'><p>No hay herramientas disponibles para tu rol.</p></section>");
         return b.toString();
     }
 
@@ -49,21 +69,25 @@ final class HerramientasWeb {
     /** Igual que el anterior, con un aviso ya escapado (por ejemplo «Registro guardado») bajo el formulario. */
     static String formulario(HerramientaEscolar h, String csrf, Map<String, String> valores, HerramientaEscolar.Resultado resultado, String avisoHtml) {
         Map<String, String> v = valores == null ? h.valoresIniciales() : valores;
-        StringBuilder b = new StringBuilder("<section class='card'><div class='eyebrow'>")
-                .append(esc(h.grupo().toUpperCase(java.util.Locale.ROOT))).append("</div><h1>").append(esc(h.titulo())).append("</h1><p>")
-                .append(esc(h.descripcion())).append("</p><form method='post' action='/herramienta'><input type='hidden' name='_csrf' value='")
+        String slug = CatalogoHerramientas.slug(h.grupo());
+        StringBuilder b = new StringBuilder("<section class='card herr-form' style='--acento:").append(IconosHerramientas.acento(h.grupo()))
+                .append("'><div class='herr-form-cab'><span class='herr-icono herr-icono-grande' aria-hidden='true'>").append(IconosHerramientas.icono(h.id()))
+                .append("</span><div><div class='eyebrow'>").append(esc(IconosHerramientas.iconoGrupo(h.grupo()) + " " + h.grupo().toUpperCase(java.util.Locale.ROOT)))
+                .append("</div><h1>").append(esc(h.titulo())).append("</h1><p>").append(esc(h.descripcion()))
+                .append("</p></div></div><form method='post' action='/herramienta'><input type='hidden' name='_csrf' value='")
                 .append(esc(csrf)).append("'><input type='hidden' name='id' value='").append(esc(h.id())).append("'>");
         for (HerramientaEscolar.Campo c : h.campos()) {
             String nombre = PREFIJO + c.nombre();
             String valor = v.getOrDefault(c.nombre(), c.valorInicial());
             b.append("<label>").append(esc(c.etiqueta())).append(control(c, nombre, valor)).append("</label>");
         }
-        b.append("<button class='primary' type='submit' name='accion' value='calcular'>Calcular</button> "
-                + "<button type='submit' name='accion' value='guardar'>Calcular y guardar</button> "
-                + "<a href='/herramientas-registros'>Mis registros</a> · <a href='/herramientas'>Volver a herramientas</a></form></section>");
-        if (avisoHtml != null && !avisoHtml.isEmpty()) b.append("<section class='card' role='status'><p>").append(avisoHtml).append("</p></section>");
+        b.append("<div class='herr-acciones'><button class='primary' type='submit' name='accion' value='calcular'>Calcular</button>"
+                + "<button class='herr-sec' type='submit' name='accion' value='guardar'>💾 Calcular y guardar</button></div>"
+                + "<p class='herr-enlaces'><a href='/herramientas-registros'>💾 Mis registros</a>"
+                + "<a href='/herramientas?abrir=" + slug + "#" + slug + "'>← Volver a herramientas</a></p></form></section>");
+        if (avisoHtml != null && !avisoHtml.isEmpty()) b.append("<section class='card herr-aviso' role='status'>").append(avisoHtml).append("</section>");
         if (resultado != null) {
-            b.append("<section class='card' role='status' aria-live='polite'><h2>")
+            b.append("<section class='card herr-resultado" + (resultado.exito() ? "" : " herr-error") + "' role='status' aria-live='polite'><h2>")
                     .append(resultado.exito() ? "Resultado" : "Revisa los datos").append("</h2><p>")
                     .append(esc(resultado.texto()).replace("\n", "<br>")).append("</p></section>");
         }

@@ -352,3 +352,62 @@ html[data-tema=oscuro]:not([data-vision=contraste]) .form-ext input:not([type=hi
 html[data-tema=auto]:not([data-vision=contraste]) .form-ext label{color:#d6e3f0}
 html[data-tema=auto]:not([data-vision=contraste]) .form-ext input:not([type=hidden]),html[data-tema=auto]:not([data-vision=contraste]) .form-ext select,html[data-tema=auto]:not([data-vision=contraste]) .form-ext textarea{background:#101a24;border-color:#2b3a4a;color:#e5edf5}
 }
+
+/* ---- Herramientas escolares: grupos plegables, tarjetas con icono y animaciones (se apagan con prefers-reduced-motion) ---- */
+@keyframes herr-entra{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes herr-abre{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes herr-pop{0%{opacity:0;transform:scale(.97)}60%{transform:scale(1.01)}100%{opacity:1;transform:none}}
+@keyframes herr-flota{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.herr-hero{display:flex;align-items:center;gap:clamp(14px,3vw,28px);flex-wrap:wrap;border:0;color:#fff;background:linear-gradient(120deg,#17324d,#0f766e);animation:herr-entra .5s ease both}
+.herr-hero h1,.herr-hero .eyebrow,.herr-hero p{color:#fff;margin-top:0}
+.herr-hero p{opacity:.92}
+.herr-hero-icono{font-size:2.6rem;line-height:1;width:72px;height:72px;display:grid;place-items:center;border-radius:20px;background:#ffffff26;animation:herr-flota 4s ease-in-out infinite}
+.herr-hero-texto{flex:1 1 320px;min-width:0}
+.herr-acciones{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.herr-acciones a{color:#fff;text-decoration:none;font-weight:700;font-size:.85rem;padding:6px 12px;border:1px solid #ffffff66;border-radius:999px;transition:background .2s ease,transform .2s ease}
+.herr-acciones a:hover,.herr-acciones a:focus-visible{background:#ffffff2e;transform:translateY(-1px)}
+.herr-contador{font-size:.9rem;text-align:center;padding:10px 16px;border-radius:14px;background:#ffffff1f}
+.herr-contador strong{display:block;font-size:1.9rem;line-height:1.1}
+.herr-grupo{--acento:#0f766e;margin:14px 0;border:1px solid var(--line);border-left:5px solid var(--acento);border-radius:14px;background:color-mix(in srgb,var(--acento) 5%,transparent);overflow:hidden;transition:box-shadow .25s ease;animation:herr-entra .45s ease both}
+.herr-grupo:hover{box-shadow:0 6px 22px color-mix(in srgb,var(--acento) 18%,transparent)}
+.herr-grupo>summary{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;list-style:none;font-weight:800;color:var(--navy);user-select:none}
+.herr-grupo>summary::-webkit-details-marker{display:none}
+.herr-grupo>summary::after{content:"";margin-left:auto;width:9px;height:9px;border-right:2.5px solid var(--acento);border-bottom:2.5px solid var(--acento);transform:rotate(45deg);transition:transform .3s ease;flex:none}
+.herr-grupo[open]>summary::after{transform:rotate(-135deg)}
+.herr-grupo>summary:focus-visible{outline:3px solid color-mix(in srgb,var(--acento) 55%,transparent);outline-offset:-3px}
+.herr-grupo-titulo{font-size:1.05rem}
+.herr-cuenta{min-width:26px;text-align:center;padding:2px 9px;border-radius:999px;background:var(--acento);color:#fff;font-size:.78rem;font-weight:800}
+.herr-icono{display:inline-grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;font-size:1.3rem;background:color-mix(in srgb,var(--acento) 16%,transparent);transition:transform .25s ease}
+.herr-icono-grande{width:64px;height:64px;font-size:2rem;border-radius:18px}
+.herr-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:12px;padding:4px 16px 16px;animation:herr-abre .35s ease both}
+.herr-tarjeta{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface,transparent);color:inherit;text-decoration:none;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;animation:herr-entra .45s ease both;animation-delay:calc(var(--i,0)*45ms)}
+.herr-tarjeta:hover,.herr-tarjeta:focus-visible{transform:translateY(-3px);border-color:var(--acento);box-shadow:0 8px 20px color-mix(in srgb,var(--acento) 22%,transparent)}
+.herr-tarjeta:hover .herr-icono,.herr-tarjeta:focus-visible .herr-icono{transform:scale(1.12) rotate(-6deg)}
+.herr-tarjeta:focus-visible{outline:3px solid color-mix(in srgb,var(--acento) 55%,transparent);outline-offset:2px}
+.herr-texto{display:grid;gap:3px;min-width:0}
+.herr-texto strong{color:var(--navy)}
+.herr-texto small{color:var(--muted);line-height:1.35}
+.herr-form{border-top:5px solid var(--acento,#0f766e);animation:herr-entra .45s ease both}
+.herr-form-cab{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+.herr-form-cab h1{margin:2px 0 4px}
+.herr-form-cab p{margin:0;color:var(--muted)}
+.herr-form form{display:grid;gap:12px}
+.herr-form label{display:grid;gap:5px;font-weight:650;color:var(--muted)}
+.herr-form input,.herr-form select,.herr-form textarea{font:inherit;border:1px solid var(--line);border-radius:8px;padding:9px 10px;transition:border-color .2s ease,box-shadow .2s ease}
+.herr-form input:focus,.herr-form select:focus,.herr-form textarea:focus{outline:none;border-color:var(--acento,#0f766e);box-shadow:0 0 0 3px color-mix(in srgb,var(--acento,#0f766e) 25%,transparent)}
+.herr-resultado{border-left:5px solid #16a34a;animation:herr-pop .45s ease both}
+.herr-resultado.herr-error{border-left-color:#e11d48}
+@media(max-width:560px){.herr-hero-icono{width:56px;height:56px;font-size:2rem}.herr-contador{width:100%}.herr-form-cab{align-items:flex-start}.herr-icono-grande{width:52px;height:52px;font-size:1.6rem}}
+html .card.herr-hero,html[data-tema] .card.herr-hero{background:linear-gradient(120deg,#17324d,#0f766e);color:#fff;border:0}
+html[data-tema=oscuro] .card.herr-hero,html[data-tema=auto] .card.herr-hero{background:linear-gradient(120deg,#12304a,#0b5f58)}
+.herr-acciones{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.herr-acciones button{min-height:44px;border-radius:9px;font:inherit;font-weight:700;cursor:pointer;transition:transform .15s ease,box-shadow .2s ease,background-color .2s ease}
+.herr-sec{background:transparent;color:var(--acento,#0f766e);border:2px solid var(--acento,#0f766e)}
+.herr-sec:hover{background:color-mix(in srgb,var(--acento,#0f766e) 12%,transparent);transform:translateY(-1px)}
+.herr-sec:active{transform:scale(.98)}
+.herr-enlaces{display:flex;flex-wrap:wrap;gap:8px 18px;margin:4px 0 0}
+.herr-enlaces a{color:var(--acento,#0f766e);font-weight:700;text-decoration:none;transition:transform .15s ease}
+.herr-enlaces a:hover{text-decoration:underline;transform:translateX(2px)}
+.herr-aviso{border-left:5px solid #16a34a;animation:herr-pop .35s ease both}
+.herr-aviso a{color:var(--teal);font-weight:700}
+@media(max-width:560px){.herr-acciones{grid-template-columns:1fr}}

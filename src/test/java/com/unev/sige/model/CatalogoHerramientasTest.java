@@ -124,4 +124,39 @@ class CatalogoHerramientasTest {
         v.put("asistentes", "D-9");
         assertFalse(h.ejecutar(v).exito());
     }
+
+    @Test
+    void cadaHerramientaYGrupoTieneIconoYColor() {
+        for (HerramientaEscolar h : CatalogoHerramientas.todas()) {
+            assertFalse(IconosHerramientas.icono(h.id()).equals("🧰") && !h.id().isEmpty(), "sin icono propio: " + h.id());
+            assertTrue(CatalogoHerramientas.GRUPOS.contains(h.grupo()), "grupo fuera del orden: " + h.grupo());
+        }
+        for (String g : CatalogoHerramientas.GRUPOS) {
+            assertFalse(IconosHerramientas.iconoGrupo(g).equals("🧰"), g);
+            assertTrue(IconosHerramientas.acento(g).matches("#[0-9a-f]{6}"), g);
+        }
+    }
+
+    @Test
+    void losGruposVanEnOrdenFijoYLasHerramientasEnOrdenAlfabetico() {
+        Map<String, java.util.List<HerramientaEscolar>> m = CatalogoHerramientas.porGrupo(Rol.ADMIN);
+        assertEquals(CatalogoHerramientas.GRUPOS, new java.util.ArrayList<>(m.keySet()));
+        int total = 0;
+        java.text.Collator c = java.text.Collator.getInstance(java.util.Locale.forLanguageTag("es"));
+        for (java.util.List<HerramientaEscolar> lista : m.values()) {
+            total += lista.size();
+            for (int i = 1; i < lista.size(); i++) assertTrue(c.compare(lista.get(i - 1).titulo(), lista.get(i).titulo()) <= 0, lista.get(i).titulo());
+        }
+        assertEquals(36, total);
+        assertFalse(CatalogoHerramientas.porGrupo(Rol.ESTUDIANTE).containsKey("Docentes"));
+        for (Rol r : Rol.values()) assertFalse(CatalogoHerramientas.porGrupo(r).isEmpty(), r.name());
+    }
+
+    @Test
+    void elSlugNoLlevaTildesNiEspacios() {
+        assertEquals("academico", CatalogoHerramientas.slug("Académico"));
+        assertEquals("bienestar-y-seguridad", CatalogoHerramientas.slug("Bienestar y seguridad"));
+        assertEquals("documentos-y-codigos", CatalogoHerramientas.slug("Documentos y códigos"));
+        assertEquals("", CatalogoHerramientas.slug(null));
+    }
 }

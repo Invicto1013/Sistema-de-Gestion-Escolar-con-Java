@@ -137,4 +137,51 @@ class HerramientasWebTest {
         assertTrue(conBorrar.contains("action='/herramientas-registro-eliminar'"));
         assertFalse(HerramientasWeb.detalle(r, "TOK", false).contains("herramientas-registro-eliminar"));
     }
+
+    @Test
+    void losGruposSonPlegablesYSoloElPrimeroViveAbiertoPorDefecto() {
+        String html = HerramientasWeb.indice(Rol.ADMIN);
+        assertEquals(6, html.split("<details class='herr-grupo'", -1).length - 1);
+        assertEquals(1, html.split(" open>", -1).length - 1);
+        assertTrue(html.indexOf("id='academico'") < html.indexOf("id='docentes'"));
+        assertTrue(html.indexOf("id='docentes'") < html.indexOf("id='bienestar-y-seguridad'"));
+        assertTrue(html.contains("<summary>"));
+        assertTrue(html.contains("herr-cuenta"));
+        assertFalse(html.contains("<script"));
+        assertTrue(html.contains("aria-hidden='true'"));
+    }
+
+    @Test
+    void elParametroAbrirControlaQueGruposQuedanAbiertos() {
+        assertEquals(6, HerramientasWeb.indice(Rol.ADMIN, "todos").split(" open>", -1).length - 1);
+        assertEquals(0, HerramientasWeb.indice(Rol.ADMIN, "ninguno").split(" open>", -1).length - 1);
+        String uno = HerramientasWeb.indice(Rol.ADMIN, "docentes");
+        assertEquals(1, uno.split(" open>", -1).length - 1);
+        assertTrue(uno.contains("id='docentes' style='--acento:#7c3aed' open>"));
+        assertFalse(HerramientasWeb.indice(Rol.ADMIN, "'><script>").contains("<script>"));
+    }
+
+    @Test
+    void lasTarjetasLlevanIconoYSalenEnOrdenAlfabeticoDentroDelGrupo() {
+        String html = HerramientasWeb.indice(Rol.ADMIN, "todos");
+        assertTrue(html.contains("herr-icono"));
+        assertTrue(html.contains("🩺"));
+        int a = html.indexOf("id='academico'"), b = html.indexOf("id='docentes'");
+        String academico = html.substring(a, b);
+        assertTrue(academico.indexOf("Aptitud física") < academico.indexOf("Créditos académicos"));
+        assertTrue(academico.indexOf("Créditos académicos") < academico.indexOf("Estadísticas de un grupo"));
+        assertTrue(academico.contains("style='--i:0'"));
+        assertTrue(academico.contains("style='--i:1'"));
+    }
+
+    @Test
+    void elFormularioMuestraIconoColorYVuelveAlGrupo() {
+        HerramientaEscolar h = CatalogoHerramientas.buscar("excusa").orElseThrow();
+        String html = HerramientasWeb.formulario(h, "t", null, null);
+        assertTrue(html.contains("herr-icono-grande"));
+        assertTrue(html.contains("--acento:#e11d48"));
+        assertTrue(html.contains("/herramientas?abrir=bienestar-y-seguridad#bienestar-y-seguridad"));
+        assertTrue(HerramientasWeb.formulario(h, "t", null, new HerramientaEscolar.Resultado(false, "x")).contains("herr-resultado herr-error"));
+        assertFalse(HerramientasWeb.formulario(h, "t", null, new HerramientaEscolar.Resultado(true, "x")).contains("herr-error"));
+    }
 }
