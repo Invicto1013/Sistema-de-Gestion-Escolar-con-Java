@@ -6,6 +6,7 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import com.unev.sige.data.Autenticacion2FADAO;
 import com.unev.sige.data.AnuncioDAO;
 import com.unev.sige.data.HerramientaRegistroDAO;
+import com.unev.sige.data.SuscripcionDAO;
 import com.unev.sige.data.AsistenciaDAO;
 import com.unev.sige.data.AuditoriaDAO;
 import com.unev.sige.data.AulaDAO;
@@ -196,6 +197,7 @@ public final class WebApp {
                     case "/boleta-oficial" -> sendOfficialReportCard(x, s, x.getRequestURI().getRawQuery());
                     case "/carnet" -> sendStudentCard(x, s, x.getRequestURI().getRawQuery());
                     case "/2fa" -> page(x, s, mfaPage(s, null));
+                    case "/planes" -> page(x, s, planesPage(s, null));
                     case "/herramientas" -> page(x, s, herramientasPage(s, queryValue(x.getRequestURI().getRawQuery(), "abrir")));
                     case "/herramienta" -> page(x, s, herramientaPage(s, x.getRequestURI().getRawQuery(), null, null));
                     case "/herramientas-registros" -> page(x, s, registrosPage(s, ""));
@@ -223,6 +225,7 @@ public final class WebApp {
                 case "/login" -> login(x, s, form);
                 case "/herramienta" -> runHerramienta(x, s, form);
                 case "/herramientas-registro-eliminar" -> deleteRegistro(x, s, form);
+                case "/planes" -> cambiarPlan(x, s, form);
                 case "/registro" -> registrar(x, s, form);
                 case "/solicitud" -> requestAction(x, s, form);
                 case "/verify-2fa" -> verifyMfa(x, s, form);
@@ -2517,7 +2520,7 @@ public final class WebApp {
         String ajustes="<div class='ajustes'>"+VisionWeb.menu(VISION_REQUEST.get(),PATH_REQUEST.get(),EstacionWeb.seccionMenu(ESTACION_REQUEST.get(),PATH_REQUEST.get())+MovimientoWeb.seccionMenu(MOVIMIENTO_REQUEST.get(),PATH_REQUEST.get()))+TemaWeb.boton(PATH_REQUEST.get())+AcercaWeb.boton()+"</div>";
         String estacion=EstacionWeb.efectiva(ESTACION_REQUEST.get(),java.time.LocalDate.now(java.time.ZoneOffset.of(com.unev.sige.model.ZonaVisual.desplazamiento())));
         String role=ROLE_REQUEST.get();
-        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mi horario</a><a href='/conducta'>Conducta</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/mis-hijos'>Mis hijos</a><a href='/conducta'>Conducta</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mis horarios</a><a href='/conducta'>Conducta</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"DIRECTOR".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/conducta'>Conducta</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a>":"SECRETARIA".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/solicitudes'>Solicitudes</a><a href='/vinculaciones'>Vincular padres</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/conducta'>Conducta</a><a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/crear-personal'>Crear personal</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/periodos'>Períodos</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a><a href='/historial-sesiones'>Historial</a>":"";if(role!=null&&!role.isEmpty())academicLink+="<a href='/herramientas'>Herramientas</a>";
+        String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mi horario</a><a href='/conducta'>Conducta</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/mis-hijos'>Mis hijos</a><a href='/conducta'>Conducta</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mis horarios</a><a href='/conducta'>Conducta</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"DIRECTOR".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/conducta'>Conducta</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a>":"SECRETARIA".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/solicitudes'>Solicitudes</a><a href='/vinculaciones'>Vincular padres</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/conducta'>Conducta</a><a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/crear-personal'>Crear personal</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/periodos'>Períodos</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a><a href='/historial-sesiones'>Historial</a>":"";if(role!=null&&!role.isEmpty())academicLink+="<a href='/herramientas'>Herramientas</a>";if("ADMIN".equals(role)||"DIRECTOR".equals(role))academicLink+="<a href='/planes'>Planes de servicio</a>";
         String nav = logged ? "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation' aria-label='Navegación principal'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a>"+stop+"</nav>"+ajustes+"<div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+"</div></header>"
                 : "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span>"+ajustes+"</header>";
@@ -2631,6 +2634,23 @@ public final class WebApp {
             enviarPdf(x,com.unev.sige.model.ReportePdfHerramientas.registro(r),"herramienta-registro-"+r.id()+".pdf");
         }catch(SQLException e){avisoErrorRegistro(e,"registroPdf");send(x,500,"text/plain; charset=utf-8","No se pudo generar el PDF.");}
     }
+    private static String planesPage(WebSession s,String aviso){
+        if(s.user==null)return shell("Planes de servicio",errorPage("Inicia sesión para ver los planes."),false,"");
+        if(!com.unev.sige.model.CatalogoPlanes.puedeVer(s.user.getRol()))return shell("Planes de servicio",errorPage("Solo administración o dirección pueden ver los planes de servicio."),true,s.user.getNombreCompleto());
+        com.unev.sige.model.SuscripcionCentro actual=null;int usuarios=-1;String mensaje=aviso;
+        try{SuscripcionDAO dao=new SuscripcionDAO();actual=dao.actual().orElse(null);usuarios=dao.usuariosActivos();}
+        catch(SQLException e){mensaje=SuscripcionDAO.tablaFaltante(e)?"El plan aún no está activado: ejecuta sql/fase_planes_servicio.sql en la base de datos.":"No se pudo consultar el plan. Inténtalo de nuevo.";}
+        return shell("Planes de servicio",PlanesWeb.pagina(s.user.getRol(),actual,usuarios,s.csrf,mensaje),true,s.user.getNombreCompleto());
+    }
+    private static void cambiarPlan(HttpExchange x,WebSession s,Map<String,String> form)throws IOException{
+        if(s.user==null||!com.unev.sige.model.CatalogoPlanes.puedeCambiar(s.user.getRol())){page(x,s,errorPage("Solo la administración puede cambiar el plan."));return;}
+        try{
+            new SuscripcionDAO().cambiar(form.getOrDefault("plan",""),s.user.getId());
+            page(x,s,planesPage(s,"Plan actualizado."));
+        }catch(IllegalArgumentException e){page(x,s,planesPage(s,e.getMessage()));}
+        catch(SQLException e){page(x,s,planesPage(s,SuscripcionDAO.tablaFaltante(e)?"El plan aún no está activado: ejecuta sql/fase_planes_servicio.sql en la base de datos.":"No se pudo cambiar el plan."));}
+    }
+
     private static void deleteRegistro(HttpExchange x,WebSession s,Map<String,String> form)throws IOException{
         if(s.user==null){page(x,s,errorPage("Inicia sesión para eliminar registros."));return;}
         int id;try{id=Integer.parseInt(form.getOrDefault("id",""));}catch(NumberFormatException e){page(x,s,registrosPage(s,"El registro seleccionado no es válido."));return;}
@@ -2692,7 +2712,7 @@ public final class WebApp {
         send(x,200,"text/css; charset=utf-8",css);
     }
     private static String manifest(){return "{\"id\":\"/\",\"name\":\"SIGE - Sistema de Gestión Educativa\",\"short_name\":\"SIGE\",\"description\":\"Portal académico SIGE\",\"start_url\":\"/\",\"scope\":\"/\",\"display\":\"standalone\",\"background_color\":\"#f3f6fa\",\"theme_color\":\"#17324d\",\"icons\":[{\"src\":\"/icon.svg\",\"sizes\":\"any\",\"type\":\"image/svg+xml\",\"purpose\":\"any maskable\"}]}";}
-    private static String serviceWorker(){return "const CACHE='sige-ui-v13';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
+    private static String serviceWorker(){return "const CACHE='sige-ui-v14';const ASSETS=['/styles.css','/icon.svg','/logo.svg','/login-hero.svg','/dashboard-hero.svg','/manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname==='/'||u.pathname==='/2fa'||u.pathname==='/password')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";}
     private static String icon(){return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' role='img' aria-label='SIGE'> <rect width='512' height='512' rx='112' fill='#17324d'/> <path d='M256 196C204 166 146 164 100 184v176c46-18 104-16 156 14z' fill='#ffffff'/> <path d='M256 196c52-30 110-32 156-12v176c-46-18-104-16-156 14z' fill='#d6ece9'/> <path d='M256 196v178' stroke='#17324d' stroke-width='9' stroke-linecap='round'/> <g stroke='#0f766e' stroke-width='12' stroke-linecap='round' fill='none'> <path d='M140 238c34-10 68-6 88 6'/><path d='M140 282c34-10 68-6 88 6'/> <path d='M372 238c-34-10-68-6-88 6'/><path d='M372 282c-34-10-68-6-88 6'/> </g> <path d='M256 74l14 38 38 14-38 14-14 38-14-38-38-14 38-14z' fill='#ef6530'/> </svg>";}
     private static void send(HttpExchange x,int status,String type,String body)throws IOException{
         byte[] data=body.getBytes(StandardCharsets.UTF_8); x.getResponseHeaders().set("Content-Type",type); if("HEAD".equalsIgnoreCase(x.getRequestMethod())){x.sendResponseHeaders(status,-1);return;}x.sendResponseHeaders(status,data.length);x.getResponseBody().write(data);
