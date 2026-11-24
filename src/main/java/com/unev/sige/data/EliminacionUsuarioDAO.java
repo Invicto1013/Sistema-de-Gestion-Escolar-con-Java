@@ -72,6 +72,9 @@ public class EliminacionUsuarioDAO {
                 // 3. Conducta y anuncios.
                 filas += borrar(conn, "DELETE FROM observaciones_conducta WHERE id_profesor = ? OR id_estudiante = ?", idUsuario, idUsuario);
                 filas += borrar(conn, "DELETE FROM anuncios_escolares WHERE id_autor = ?", idUsuario);
+                filas += borrar(conn, "DELETE FROM herramienta_registro_datos WHERE id_registro IN "
+                        + "(SELECT id_registro FROM herramienta_registros WHERE id_usuario = ?)", idUsuario);
+                filas += borrar(conn, "DELETE FROM herramienta_registros WHERE id_usuario = ?", idUsuario);
 
                 // 4. Estudiante: asistencia, notas, inscripciones, historial y vínculos con padres.
                 String detallesDelEstudiante = "(SELECT d.id_detalle_inscripcion FROM detalle_inscripciones d "

@@ -1,5 +1,7 @@
 package com.unev.sige.controller;
 
+import com.unev.sige.app.SesionActual;
+import com.unev.sige.data.HerramientaRegistroDAO;
 import com.unev.sige.model.CatalogoHerramientas;
 import com.unev.sige.model.HerramientaEscolar;
 import com.unev.sige.model.Rol;
@@ -17,6 +19,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
@@ -64,14 +67,16 @@ public final class HerramientasPanel extends VBox {
 
         Button calcular = new Button("Calcular");
         calcular.getStyleClass().add("primary");
-        calcular.setOnAction(e -> calcular());
+        calcular.setOnAction(e -> calcular(false));
+        Button guardar = new Button("Calcular y guardar");
+        guardar.setOnAction(e -> calcular(true));
 
         resultado.setEditable(false);
         resultado.setWrapText(true);
         resultado.setPrefRowCount(8);
         resultado.setPromptText("El resultado aparecerá aquí. Es solo una consulta: no se guarda nada.");
 
-        ScrollPane desplazable = new ScrollPane(new VBox(8, descripcion, formulario, calcular, resultado));
+        ScrollPane desplazable = new ScrollPane(new VBox(8, descripcion, formulario, new javafx.scene.layout.HBox(8, calcular, guardar), resultado));
         desplazable.setFitToWidth(true);
         VBox.setVgrow(desplazable, Priority.ALWAYS);
 
@@ -143,10 +148,30 @@ public final class HerramientasPanel extends VBox {
         }
     }
 
-    private void calcular() {
+    private void calcular(boolean guardar) {
         if (actual == null) return;
         Map<String, String> valores = new LinkedHashMap<>();
         lectores.forEach((nombre, lector) -> valores.put(nombre, lector.get()));
-        resultado.setText(actual.ejecutar(valores).texto());
+        HerramientaEscolar.Resultado r = actual.ejecutar(valores);
+        resultado.setText(r.texto());
+        if (!guardar) return;
+        if (!r.exito()) {
+            Dialogos.error("No se guardó: revisa los datos del formulario.");
+            return;
+        }
+        if (SesionActual.getUsuario() == null) {
+            Dialogos.error("Inicia sesión para guardar registros.");
+            return;
+        }
+        try {
+            int id = new HerramientaRegistroDAO().guardar(SesionActual.getUsuario().getId(), actual, valores, r.texto());
+            Dialogos.informacion("Registro N.º " + id + " guardado. Puedes verlo y descargarlo en PDF desde «Mis registros».");
+        } catch (IllegalStateException ex) {
+            Dialogos.error(ex.getMessage());
+        } catch (SQLException ex) {
+            boolean falta = "42S02".equals(ex.getSQLState()) || ex.getErrorCode() == 1146;
+            Dialogos.error(falta ? "El guardado aún no está activado: ejecuta sql/fase_herramientas_escolares.sql en la base de datos."
+                    : "No se pudo guardar el registro: " + ex.getMessage());
+        }
     }
 }
