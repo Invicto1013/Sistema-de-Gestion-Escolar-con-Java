@@ -82,3 +82,4 @@ TiDB no es MySQL al 100 %.
 - 2026-11-23: Herramientas escolares: las 36 reglas del paquete `model` quedan visibles por rol en la web (`/herramientas`) y en el escritorio (menú «Herramientas»), sin guardar datos (`CatalogoHerramientas`, `HerramientasWeb`, `HerramientasPanel`). Corrige además la detección de alérgenos compuestos del comedor.
 - 2026-11-24: Registros de herramientas escolares: tablas `herramienta_registros` y `herramienta_registro_datos` (`sql/fase_herramientas_escolares.sql`), botón «Calcular y guardar», «Mis registros» y descarga en PDF (uno o el listado) en web y escritorio; los campos sensibles no se guardan, límite de 200 por usuario y borrado de registros al eliminar la cuenta.
 - 2026-11-24: Herramientas escolares: submenú plegable por grupos, orden, iconos, diseño y animaciones (web y escritorio).
+- 2026-11-24: Iconos en el menú web para Herramientas (🧰), Mis registros (💾) y Reporte (📑).

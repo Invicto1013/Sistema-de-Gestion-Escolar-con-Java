@@ -13,4 +13,10 @@ class IconosWebTest {
         String x = "<a href='/otra'>Otra</a><a class='brand' href='/'><img src='/logo.svg' alt=''>SIGE</a>";
         assertEquals(x, IconosWeb.agregar(x));
     }
+    @Test void herramientasYReporteTienenIcono() {
+        String r = IconosWeb.agregar("<a href='/herramientas'>Herramientas</a><a href='/reporte-inscripciones'>Reporte</a><a href='/herramientas-registros'>Mis registros</a>");
+        assertTrue(r.contains("🧰</span> Herramientas</a>"));
+        assertTrue(r.contains("📑</span> Reporte</a>"));
+        assertTrue(r.contains("💾</span> Mis registros</a>"));
+    }
 }
