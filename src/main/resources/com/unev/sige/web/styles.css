@@ -411,3 +411,24 @@ html[data-tema=oscuro] .card.herr-hero,html[data-tema=auto] .card.herr-hero{back
 .herr-aviso{border-left:5px solid #16a34a;animation:herr-pop .35s ease both}
 .herr-aviso a{color:var(--teal);font-weight:700}
 @media(max-width:560px){.herr-acciones{grid-template-columns:1fr}}
+/* Planes de servicio */
+@keyframes plan-sube{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes plan-llena{from{width:0}}
+.plan-hero{background:linear-gradient(120deg,#17324d,#2563eb);color:#fff;border:0;animation:plan-sube .4s ease both}
+.plan-hero h1,.plan-hero p,.plan-hero .eyebrow{color:#fff}
+.plan-aviso{border-left:5px solid #d97706;animation:plan-sube .3s ease both}
+.plan-uso{border-top:5px solid var(--acento);animation:plan-sube .4s ease both}
+.plan-meta{color:var(--muted);margin:0 0 8px}
+.plan-barra{height:12px;border-radius:99px;background:rgba(120,130,150,.25);overflow:hidden;margin-top:8px}
+.plan-barra span{display:block;height:100%;background:var(--acento);border-radius:99px;animation:plan-llena .9s ease both}
+.plan-barra.plan-alerta span{background:#d97706}.plan-barra.plan-exceso span{background:#dc2626}
+.plan-rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-top:16px}
+.plan-tarjeta{position:relative;border-top:5px solid var(--acento);animation:plan-sube .45s ease both;animation-delay:calc(var(--i)*90ms);transition:transform .2s ease,box-shadow .2s ease}
+.plan-tarjeta:hover{transform:translateY(-4px);box-shadow:0 12px 26px rgba(23,50,77,.18)}
+.plan-tarjeta.plan-actual{outline:3px solid var(--acento)}
+.plan-etiqueta{position:absolute;top:12px;right:12px;background:var(--acento);color:#fff;border-radius:99px;padding:3px 10px;font-size:.75rem;font-weight:700}
+.plan-icono{font-size:2rem}
+.plan-resumen{color:var(--muted)}
+.plan-precio{font-size:2rem;font-weight:800;margin:6px 0}.plan-precio span,.plan-precio small{font-size:.9rem;font-weight:600;color:var(--muted)}
+.plan-tarjeta ul{padding-left:1.1rem;margin:8px 0 14px}.plan-tarjeta li{margin:4px 0}
+.plan-nota{color:var(--muted);margin-top:12px}

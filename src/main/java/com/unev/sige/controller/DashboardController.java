@@ -260,6 +260,9 @@ public class DashboardController {
         // Reglas escolares (carga docente, riesgo de deserción, excusas, finanzas...) filtradas por rol.
         agregarOpcion("Herramientas", () -> mostrarPanelPropio(new HerramientasPanel(usuario.getRol())));
         agregarOpcion("Mis registros", () -> mostrarPanelPropio(new RegistrosHerramientasPanel(usuario)));
+        if (com.unev.sige.model.CatalogoPlanes.puedeVer(usuario.getRol())) {
+            agregarOpcion("Planes de servicio", () -> mostrarPanelPropio(new PlanesPanel(usuario.getRol())));
+        }
     }
 
     private void adaptarLayout(double ancho) {

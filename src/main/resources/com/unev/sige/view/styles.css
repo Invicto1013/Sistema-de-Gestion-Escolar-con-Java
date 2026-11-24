@@ -88,3 +88,10 @@
 .herr-detalle { -fx-padding: 6 8; }
 .herr-secundario { -fx-background-color: transparent; -fx-border-color: -sige-accent; -fx-border-width: 2; -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: -sige-accent; -fx-font-weight: bold; -fx-cursor: hand; }
 .herr-secundario:hover { -fx-background-color: rgba(15,118,110,0.12); }
+
+/* Planes de servicio */
+.plan-tarjeta-fx { -fx-background-color: rgba(120,130,150,0.12); -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 8, 0, 0, 2); }
+.plan-tarjeta-fx:hover { -fx-background-color: rgba(120,130,150,0.2); -fx-translate-y: -3; }
+.plan-actual-fx { -fx-background-color: rgba(120,130,150,0.12); -fx-background-radius: 10; -fx-padding: 12 14; }
+.plan-titulo-fx { -fx-font-size: 16px; -fx-font-weight: bold; }
+.plan-aviso-fx { -fx-background-color: rgba(217,119,6,0.15); -fx-background-radius: 8; -fx-padding: 8 12; }
