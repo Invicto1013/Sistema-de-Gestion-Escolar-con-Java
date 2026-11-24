@@ -6,8 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.unev.sige.model.CatalogoHerramientas;
 import com.unev.sige.model.HerramientaEscolar;
+import com.unev.sige.model.RegistroHerramienta;
 import com.unev.sige.model.Rol;
+import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -78,5 +81,60 @@ class HerramientasWebTest {
         assertEquals(2, v.size());
         assertEquals("2", v.get("clubes"));
         assertTrue(h.ejecutar(v).exito());
+    }
+
+    private static RegistroHerramienta registro(int id, int dueno, String titulo, String resultado) {
+        return new RegistroHerramienta(id, dueno, "Ana <b>Gómez</b>", "excusa", titulo, resultado,
+                LocalDateTime.of(2026, 11, 24, 9, 30), List.of(new RegistroHerramienta.Dato("tipo", "Tipo", "MEDICA\n<i>x</i>")));
+    }
+
+    @Test
+    void elFormularioOfreceCalcularYGuardar() {
+        HerramientaEscolar h = CatalogoHerramientas.buscar("excusa").orElseThrow();
+        String html = HerramientasWeb.formulario(h, "t", null, null, HerramientasWeb.avisoGuardado(15));
+        assertTrue(html.contains("name='accion' value='guardar'"));
+        assertTrue(html.contains("name='accion' value='calcular'"));
+        assertTrue(html.contains("/herramientas-registro?id=15"));
+        assertTrue(html.contains("/herramientas-registro.pdf?id=15"));
+        assertTrue(html.contains("/herramientas-registros"));
+    }
+
+    @Test
+    void elListadoEscapaMuestraElAutorSoloAQuienVeTodosYLimitaElBorrado() {
+        List<RegistroHerramienta> lista = List.of(registro(1, 10, "Excusa <script>", "Excusa válida: Sí\nlínea 2"), registro(2, 11, "Otra", "ok"));
+        String propio = HerramientasWeb.listado(lista, false, "TOK", 10, Rol.ESTUDIANTE, "");
+        assertFalse(propio.contains("<script>"));
+        assertFalse(propio.contains("<th>Autor</th>"));
+        assertTrue(propio.contains("Excusa válida: Sí"));
+        assertFalse(propio.contains("línea 2"));
+        assertTrue(propio.contains("name='id' value='1'"));
+        assertFalse(propio.contains("name='id' value='2'"));
+        String director = HerramientasWeb.listado(lista, true, "TOK", 5, Rol.DIRECTOR, "");
+        assertTrue(director.contains("<th>Autor</th>"));
+        assertFalse(director.contains("<b>Gómez</b>"));
+        assertFalse(director.contains("action='/herramientas-registro-eliminar'"));
+        String admin = HerramientasWeb.listado(lista, true, "TOK", 5, Rol.ADMIN, "Registro eliminado.");
+        assertTrue(admin.contains("name='id' value='2'"));
+        assertTrue(admin.contains("Registro eliminado."));
+        assertTrue(admin.contains("/herramientas-registros.pdf"));
+    }
+
+    @Test
+    void elListadoVacioDaUnaPista() {
+        String html = HerramientasWeb.listado(List.of(), false, "t", 1, Rol.ESTUDIANTE, "");
+        assertTrue(html.contains("Todavía no hay registros"));
+        assertFalse(html.contains("<table"));
+    }
+
+    @Test
+    void elDetalleEscapaYOfrecePdfYEliminarSoloSiCorresponde() {
+        RegistroHerramienta r = registro(9, 10, "Excusa", "Resultado\nsegunda línea");
+        String conBorrar = HerramientasWeb.detalle(r, "TOK", true);
+        assertFalse(conBorrar.contains("<i>x</i>"));
+        assertTrue(conBorrar.contains("&lt;i&gt;x&lt;/i&gt;"));
+        assertTrue(conBorrar.contains("/herramientas-registro.pdf?id=9"));
+        assertTrue(conBorrar.contains("Resultado<br>segunda línea"));
+        assertTrue(conBorrar.contains("action='/herramientas-registro-eliminar'"));
+        assertFalse(HerramientasWeb.detalle(r, "TOK", false).contains("herramientas-registro-eliminar"));
     }
 }

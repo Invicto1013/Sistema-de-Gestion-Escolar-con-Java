@@ -727,3 +727,29 @@ CREATE TABLE IF NOT EXISTS observaciones_conducta (
     CONSTRAINT fk_obs_profesor FOREIGN KEY (id_profesor) REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
     CONSTRAINT fk_obs_seccion FOREIGN KEY (id_seccion) REFERENCES secciones(id_seccion) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 4. Registros de las herramientas escolares (ver sql/fase_herramientas_escolares.sql)
+-- 4a. Cabecera del registro (uno por cálculo guardado)
+CREATE TABLE IF NOT EXISTS herramienta_registros (
+    id_registro INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    herramienta VARCHAR(40) NOT NULL,   -- identificador del catálogo, p. ej. riesgo-desercion
+    titulo VARCHAR(120) NOT NULL,
+    resultado TEXT NOT NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_herr_reg_usuario (id_usuario, creado_en),
+    INDEX idx_herr_reg_herramienta (herramienta),
+    CONSTRAINT fk_herr_reg_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 4b. Datos de entrada de cada registro (un renglón por campo del formulario)
+CREATE TABLE IF NOT EXISTS herramienta_registro_datos (
+    id_dato INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_registro INT NOT NULL,
+    orden INT NOT NULL,
+    campo VARCHAR(40) NOT NULL,
+    etiqueta VARCHAR(120) NOT NULL,
+    valor TEXT NOT NULL,
+    INDEX idx_herr_dato_registro (id_registro, orden),
+    CONSTRAINT fk_herr_dato_registro FOREIGN KEY (id_registro) REFERENCES herramienta_registros(id_registro) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

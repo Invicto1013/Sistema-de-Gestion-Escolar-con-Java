@@ -61,7 +61,7 @@ java -jar target\sige-1.0.0.jar
 
 ## Base de datos
 
-`sql/sige_completo.sql` crea la estructura completa (29 tablas, con currículo por grados, aula virtual, períodos lectivos, auditoría, historial académico, anuncios escolares, horarios de secciones y cuaderno de conducta), los roles, un usuario de prueba por rol y datos de ejemplo. Las credenciales de prueba están al inicio del script. Para actualizar una base que ya existe, aplica en orden `sql/fase_curriculo_grados.sql`, `sql/aula_virtual.sql`, `sql/fase_periodos_auditoria.sql` y `sql/fase_extensiones_escolares.sql`.
+`sql/sige_completo.sql` crea la estructura completa (31 tablas, con currículo por grados, aula virtual, períodos lectivos, auditoría, historial académico, anuncios escolares, horarios de secciones, cuaderno de conducta y registros de herramientas escolares), los roles, un usuario de prueba por rol y datos de ejemplo. Las credenciales de prueba están al inicio del script. Para actualizar una base que ya existe, aplica en orden `sql/fase_curriculo_grados.sql`, `sql/aula_virtual.sql`, `sql/fase_periodos_auditoria.sql` `sql/fase_extensiones_escolares.sql` y `sql/fase_herramientas_escolares.sql`.
 
 ## Extensiones escolares avanzadas
 

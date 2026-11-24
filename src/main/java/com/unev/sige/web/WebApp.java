@@ -5,6 +5,7 @@ import com.google.zxing.WriterException;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.unev.sige.data.Autenticacion2FADAO;
 import com.unev.sige.data.AnuncioDAO;
+import com.unev.sige.data.HerramientaRegistroDAO;
 import com.unev.sige.data.AsistenciaDAO;
 import com.unev.sige.data.AuditoriaDAO;
 import com.unev.sige.data.AulaDAO;
@@ -197,6 +198,10 @@ public final class WebApp {
                     case "/2fa" -> page(x, s, mfaPage(s, null));
                     case "/herramientas" -> page(x, s, herramientasPage(s));
                     case "/herramienta" -> page(x, s, herramientaPage(s, x.getRequestURI().getRawQuery(), null, null));
+                    case "/herramientas-registros" -> page(x, s, registrosPage(s, ""));
+                    case "/herramientas-registros.pdf" -> registrosPdf(x, s);
+                    case "/herramientas-registro" -> page(x, s, registroPage(s, x.getRequestURI().getRawQuery()));
+                    case "/herramientas-registro.pdf" -> registroPdf(x, s, x.getRequestURI().getRawQuery());
                     case "/password" -> page(x, s, passwordPage(s, null));
                     default -> page(x, s, errorPage("Página no encontrada."));
                 }
@@ -217,6 +222,7 @@ public final class WebApp {
             switch (path) {
                 case "/login" -> login(x, s, form);
                 case "/herramienta" -> runHerramienta(x, s, form);
+                case "/herramientas-registro-eliminar" -> deleteRegistro(x, s, form);
                 case "/registro" -> registrar(x, s, form);
                 case "/solicitud" -> requestAction(x, s, form);
                 case "/verify-2fa" -> verifyMfa(x, s, form);
@@ -2558,15 +2564,81 @@ public final class WebApp {
         return herramientaPage(s,com.unev.sige.model.CatalogoHerramientas.buscar(queryValue(query,"id")==null?"":queryValue(query,"id")).orElse(null),valores,resultado);
     }
     private static String herramientaPage(WebSession s,com.unev.sige.model.HerramientaEscolar h,Map<String,String> valores,com.unev.sige.model.HerramientaEscolar.Resultado resultado){
+        return herramientaPage(s,h,valores,resultado,"");
+    }
+    private static String herramientaPage(WebSession s,com.unev.sige.model.HerramientaEscolar h,Map<String,String> valores,com.unev.sige.model.HerramientaEscolar.Resultado resultado,String aviso){
         if(s.user==null)return shell("Herramientas",errorPage("Inicia sesión para usar las herramientas."),false,"");
         if(h==null||!h.visiblePara(s.user.getRol()))return shell("Herramientas",errorPage("Esa herramienta no existe o no está disponible para tu rol."),true,s.user.getNombreCompleto());
-        return shell(h.titulo(),HerramientasWeb.formulario(h,s.csrf,valores,resultado),true,s.user.getNombreCompleto());
+        return shell(h.titulo(),HerramientasWeb.formulario(h,s.csrf,valores,resultado,aviso),true,s.user.getNombreCompleto());
     }
     private static void runHerramienta(HttpExchange x,WebSession s,Map<String,String> form)throws IOException{
         com.unev.sige.model.HerramientaEscolar h=com.unev.sige.model.CatalogoHerramientas.buscar(form.get("id")==null?"":form.get("id")).orElse(null);
         if(s.user==null||h==null||!h.visiblePara(s.user.getRol())){page(x,s,herramientaPage(s,h,null,null));return;}
         Map<String,String> valores=HerramientasWeb.valoresDe(h,form);
-        page(x,s,herramientaPage(s,h,valores,h.ejecutar(valores)));
+        com.unev.sige.model.HerramientaEscolar.Resultado resultado=h.ejecutar(valores);
+        String aviso="";
+        if("guardar".equals(form.get("accion"))){
+            if(!resultado.exito())aviso="No se guardó: revisa los datos del formulario.";
+            else try{aviso=HerramientasWeb.avisoGuardado(new HerramientaRegistroDAO().guardar(s.user.getId(),h,valores,resultado.texto()));}
+            catch(IllegalStateException e){aviso=HerramientasWeb.esc(e.getMessage());}
+            catch(SQLException e){aviso=avisoErrorRegistro(e,"runHerramienta");}
+        }
+        page(x,s,herramientaPage(s,h,valores,resultado,aviso));
+    }
+    private static String avisoErrorRegistro(SQLException e,String donde){
+        java.util.logging.Logger.getLogger("SIGE").log(java.util.logging.Level.WARNING,donde+" fallo (SQLState "+e.getSQLState()+", codigo "+e.getErrorCode()+")",e);
+        boolean falta="42S02".equals(e.getSQLState())||e.getErrorCode()==1146;
+        return falta?"El guardado aún no está activado: el administrador debe ejecutar sql/fase_herramientas_escolares.sql.":"No se pudo completar la operación con los registros. Inténtalo de nuevo.";
+    }
+    private static boolean veTodosLosRegistros(Rol r){return r==Rol.ADMIN||r==Rol.DIRECTOR;}
+    private static String registrosPage(WebSession s,String mensaje){
+        if(s.user==null)return shell("Registros",errorPage("Inicia sesión para ver tus registros."),false,"");
+        Rol rol=s.user.getRol();boolean todos=veTodosLosRegistros(rol);
+        try{return shell("Registros de herramientas",HerramientasWeb.listado(new HerramientaRegistroDAO().listar(s.user.getId(),todos),todos,s.csrf,s.user.getId(),rol,mensaje),true,s.user.getNombreCompleto());}
+        catch(SQLException e){return shell("Registros",errorPage(avisoErrorRegistro(e,"registrosPage")),true,s.user.getNombreCompleto());}
+    }
+    private static com.unev.sige.model.RegistroHerramienta registroVisible(WebSession s,String query)throws SQLException{
+        int id;try{id=Integer.parseInt(queryValue(query,"id"));}catch(RuntimeException e){return null;}
+        java.util.Optional<com.unev.sige.model.RegistroHerramienta> r=new HerramientaRegistroDAO().obtener(id);
+        return r.isPresent()&&r.get().puedeVer(s.user.getId(),s.user.getRol())?r.get():null;
+    }
+    private static String registroPage(WebSession s,String query){
+        if(s.user==null)return shell("Registros",errorPage("Inicia sesión para ver tus registros."),false,"");
+        try{
+            com.unev.sige.model.RegistroHerramienta r=registroVisible(s,query);
+            if(r==null)return shell("Registros",errorPage("El registro no existe o no tienes permiso para verlo."),true,s.user.getNombreCompleto());
+            return shell(r.titulo(),HerramientasWeb.detalle(r,s.csrf,r.puedeEliminar(s.user.getId(),s.user.getRol())),true,s.user.getNombreCompleto());
+        }catch(SQLException e){return shell("Registros",errorPage(avisoErrorRegistro(e,"registroPage")),true,s.user.getNombreCompleto());}
+    }
+    private static void enviarPdf(HttpExchange x,byte[] pdf,String nombre)throws IOException{
+        Headers h=x.getResponseHeaders();h.set("Cache-Control","no-store");h.set("X-Content-Type-Options","nosniff");
+        h.set("Content-Disposition","attachment; filename=\""+nombre+"\"");
+        sendBytes(x,200,"application/pdf",pdf);
+    }
+    private static void registrosPdf(HttpExchange x,WebSession s)throws IOException{
+        if(s.user==null){send(x,403,"text/plain; charset=utf-8","Inicia sesión para descargar tus registros.");return;}
+        boolean todos=veTodosLosRegistros(s.user.getRol());
+        try{
+            java.util.List<com.unev.sige.model.RegistroHerramienta> lista=new HerramientaRegistroDAO().listar(s.user.getId(),todos);
+            enviarPdf(x,com.unev.sige.model.ReportePdfHerramientas.listado("Registros de herramientas escolares",lista,todos),"herramientas-registros-"+java.time.LocalDate.now()+".pdf");
+        }catch(SQLException e){avisoErrorRegistro(e,"registrosPdf");send(x,500,"text/plain; charset=utf-8","No se pudo generar el PDF.");}
+    }
+    private static void registroPdf(HttpExchange x,WebSession s,String query)throws IOException{
+        if(s.user==null){send(x,403,"text/plain; charset=utf-8","Inicia sesión para descargar el registro.");return;}
+        try{
+            com.unev.sige.model.RegistroHerramienta r=registroVisible(s,query);
+            if(r==null){send(x,404,"text/plain; charset=utf-8","El registro no existe o no tienes permiso para verlo.");return;}
+            enviarPdf(x,com.unev.sige.model.ReportePdfHerramientas.registro(r),"herramienta-registro-"+r.id()+".pdf");
+        }catch(SQLException e){avisoErrorRegistro(e,"registroPdf");send(x,500,"text/plain; charset=utf-8","No se pudo generar el PDF.");}
+    }
+    private static void deleteRegistro(HttpExchange x,WebSession s,Map<String,String> form)throws IOException{
+        if(s.user==null){page(x,s,errorPage("Inicia sesión para eliminar registros."));return;}
+        int id;try{id=Integer.parseInt(form.getOrDefault("id",""));}catch(NumberFormatException e){page(x,s,registrosPage(s,"El registro seleccionado no es válido."));return;}
+        try{
+            boolean existia=new HerramientaRegistroDAO().eliminar(id,s.user.getId(),s.user.getRol());
+            page(x,s,registrosPage(s,existia?"Registro eliminado.":"Ese registro ya no existe."));
+        }catch(PermisoDenegadoException e){page(x,s,registrosPage(s,e.getMessage()));}
+        catch(SQLException e){page(x,s,registrosPage(s,avisoErrorRegistro(e,"deleteRegistro")));}
     }
 
     private static String errorPage(String message) { return "<section class='card'>"+alert(message)+"<a href='/'>Volver al inicio</a></section>"; }

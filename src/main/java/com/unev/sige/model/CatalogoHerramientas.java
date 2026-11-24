@@ -47,6 +47,14 @@ public final class CatalogoHerramientas {
         return TODAS.stream().filter(h -> h.visiblePara(rol)).toList();
     }
 
+    /** Campos que se usan para calcular pero NUNCA se guardan en la base de datos (datos personales o secretos). */
+    private static final java.util.Map<String, Set<String>> NO_SE_GUARDAN =
+            java.util.Map.of("retiro-estudiante", Set.of("cedula", "pin", "pinIngresado"));
+
+    public static boolean noSeGuarda(String herramientaId, String campo) {
+        return NO_SE_GUARDAN.getOrDefault(herramientaId, Set.of()).contains(campo);
+    }
+
     public static Optional<HerramientaEscolar> buscar(String id) {
         return TODAS.stream().filter(h -> h.id().equals(id)).findFirst();
     }
