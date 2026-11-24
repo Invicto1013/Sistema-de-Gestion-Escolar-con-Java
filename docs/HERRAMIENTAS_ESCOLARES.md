@@ -73,3 +73,9 @@ Módulo que hace visibles, según el rol, las reglas escolares del paquete `com.
 1. Haz un respaldo (workflow «Respaldo de la base de datos»).
 2. Ejecuta el contenido de `sql/fase_herramientas_escolares.sql` en la consola SQL de TiDB (o `mysql ... < sql/fase_herramientas_escolares.sql`). Es idempotente: se puede repetir.
 3. Despliega la nueva versión. **Si despliegas antes del paso 2**, las herramientas siguen funcionando; solo «guardar» y «Mis registros» mostrarán el aviso «El guardado aún no está activado».
+
+## Menú plegable, orden y diseño
+
+- **Web** (`/herramientas`): una sección plegable (`<details>`) por grupo —Académico, Docentes, Bienestar y seguridad, Administración, Familia y comunidad, Documentos y códigos— con icono, color de acento y contador. Botones «Expandir todo / Contraer todo»; las herramientas van en orden alfabético dentro de cada grupo. Animaciones CSS (entrada escalonada, giro del indicador, elevación al pasar el cursor) que respetan `prefers-reduced-motion`. Funciona sin JavaScript, compatible con la CSP estricta.
+- **Escritorio**: panel lateral con `Accordion` de un `TitledPane` por grupo (icono + contador), buscador que filtra por título/descripción y transición de desvanecido al cambiar de herramienta. Estilos `herr-*` en `view/styles.css`.
+- Iconos y colores definidos en `IconosHerramientas`; orden en `CatalogoHerramientas.porGrupo(rol)`.

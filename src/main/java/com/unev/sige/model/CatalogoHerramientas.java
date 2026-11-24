@@ -30,6 +30,10 @@ import java.util.function.Predicate;
  */
 public final class CatalogoHerramientas {
 
+    /** Orden fijo en que se muestran los grupos. */
+    public static final List<String> GRUPOS = List.of("Académico", "Docentes", "Bienestar y seguridad",
+            "Administración", "Familia y comunidad", "Documentos y códigos");
+
     private static final String ACADEMICO = "Académico";
     private static final String DOCENTES = "Docentes";
     private static final String BIENESTAR = "Bienestar y seguridad";
@@ -53,6 +57,24 @@ public final class CatalogoHerramientas {
 
     public static boolean noSeGuarda(String herramientaId, String campo) {
         return NO_SE_GUARDAN.getOrDefault(herramientaId, Set.of()).contains(campo);
+    }
+
+    /** Las herramientas del rol agrupadas en el orden de {@link #GRUPOS} y, dentro de cada grupo, por título (alfabético en español). */
+    public static java.util.Map<String, List<HerramientaEscolar>> porGrupo(Rol rol) {
+        java.text.Collator orden = java.text.Collator.getInstance(java.util.Locale.forLanguageTag("es"));
+        java.util.Map<String, List<HerramientaEscolar>> r = new java.util.LinkedHashMap<>();
+        for (String g : GRUPOS) {
+            List<HerramientaEscolar> delGrupo = paraRol(rol).stream().filter(h -> h.grupo().equals(g))
+                    .sorted((x, y) -> orden.compare(x.titulo(), y.titulo())).toList();
+            if (!delGrupo.isEmpty()) r.put(g, delGrupo);
+        }
+        return r;
+    }
+
+    /** Identificador sin tildes ni espacios de un grupo (para anclas y para recordar qué grupo está abierto). */
+    public static String slug(String grupo) {
+        String s = java.text.Normalizer.normalize(grupo == null ? "" : grupo, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return s.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
     }
 
     public static Optional<HerramientaEscolar> buscar(String id) {

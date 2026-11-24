@@ -4,8 +4,15 @@ import com.unev.sige.app.SesionActual;
 import com.unev.sige.data.HerramientaRegistroDAO;
 import com.unev.sige.model.CatalogoHerramientas;
 import com.unev.sige.model.HerramientaEscolar;
+import com.unev.sige.model.IconosHerramientas;
 import com.unev.sige.model.Rol;
+import javafx.animation.FadeTransition;
+import javafx.animation.TranslateTransition;
 import javafx.geometry.Insets;
+import javafx.scene.control.Accordion;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TitledPane;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -15,9 +22,10 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.util.StringConverter;
+import javafx.util.Duration;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -29,11 +37,16 @@ import java.util.function.Supplier;
 
 /**
  * Herramientas escolares en el escritorio: las mismas calculadoras y validaciones que la web,
- * filtradas por el rol de quien inició sesión. Solo consulta; no guarda datos.
+ * filtradas por el rol de quien inició sesión. «Calcular» solo consulta; «Calcular y guardar» guarda el registro.
  */
 public final class HerramientasPanel extends VBox {
 
-    private final ComboBox<HerramientaEscolar> selector = new ComboBox<>();
+    private final TextField buscador = new TextField();
+    private final Accordion menu = new Accordion();
+    private final Label cabecera = new Label();
+    private final VBox detalle = new VBox(8);
+    private final List<ListView<HerramientaEscolar>> listas = new java.util.ArrayList<>();
+    private boolean sincronizando;
     private final Label descripcion = new Label();
     private final GridPane formulario = new GridPane();
     private final TextArea resultado = new TextArea();
@@ -44,21 +57,12 @@ public final class HerramientasPanel extends VBox {
         setSpacing(12);
         List<HerramientaEscolar> disponibles = CatalogoHerramientas.paraRol(rol);
 
-        selector.getItems().setAll(disponibles);
-        selector.setMaxWidth(Double.MAX_VALUE);
-        selector.setPromptText("Elige una herramienta");
-        selector.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(HerramientaEscolar h) {
-                return h == null ? "" : h.grupo() + " — " + h.titulo();
-            }
-
-            @Override
-            public HerramientaEscolar fromString(String texto) {
-                return null;
-            }
-        });
-        selector.valueProperty().addListener((obs, anterior, nueva) -> mostrar(nueva));
+        buscador.setPromptText("🔎 Buscar herramienta…");
+        buscador.getStyleClass().add("herr-buscador");
+        buscador.textProperty().addListener((obs, a, n) -> construirMenu(rol, n));
+        menu.getStyleClass().add("herr-menu");
+        cabecera.getStyleClass().add("herr-cabecera");
+        detalle.getStyleClass().add("herr-detalle");
 
         descripcion.setWrapText(true);
         formulario.setHgap(10);
@@ -69,6 +73,7 @@ public final class HerramientasPanel extends VBox {
         calcular.getStyleClass().add("primary");
         calcular.setOnAction(e -> calcular(false));
         Button guardar = new Button("Calcular y guardar");
+        guardar.getStyleClass().add("herr-secundario");
         guardar.setOnAction(e -> calcular(true));
 
         resultado.setEditable(false);
@@ -76,14 +81,65 @@ public final class HerramientasPanel extends VBox {
         resultado.setPrefRowCount(8);
         resultado.setPromptText("El resultado aparecerá aquí. Es solo una consulta: no se guarda nada.");
 
-        ScrollPane desplazable = new ScrollPane(new VBox(8, descripcion, formulario, new javafx.scene.layout.HBox(8, calcular, guardar), resultado));
+        detalle.getChildren().addAll(cabecera, descripcion, formulario, new HBox(8, calcular, guardar), resultado);
+        ScrollPane desplazable = new ScrollPane(detalle);
         desplazable.setFitToWidth(true);
-        VBox.setVgrow(desplazable, Priority.ALWAYS);
+        HBox.setHgrow(desplazable, Priority.ALWAYS);
 
-        getChildren().addAll(Dialogos.titulo("Herramientas escolares"),
+        VBox lateral = new VBox(8, buscador, menu);
+        lateral.setPrefWidth(300);
+        lateral.setMinWidth(260);
+        VBox.setVgrow(menu, Priority.ALWAYS);
+        HBox cuerpo = new HBox(12, lateral, desplazable);
+        VBox.setVgrow(cuerpo, Priority.ALWAYS);
+
+        getChildren().addAll(Dialogos.titulo("🧰 Herramientas escolares"),
                 new Label("Calculadoras y validaciones de las reglas del centro para tu rol (" + disponibles.size() + " disponibles)."),
-                selector, desplazable);
-        if (!disponibles.isEmpty()) selector.getSelectionModel().selectFirst();
+                cuerpo);
+        construirMenu(rol, "");
+        if (!disponibles.isEmpty()) {
+            menu.getPanes().stream().findFirst().ifPresent(p -> menu.setExpandedPane(p));
+            listas.stream().filter(l -> !l.getItems().isEmpty()).findFirst().ifPresent(l -> l.getSelectionModel().selectFirst());
+        }
+    }
+
+    /** Un panel plegable por grupo, con icono, contador y color de acento; filtra por el texto buscado. */
+    private void construirMenu(Rol rol, String filtro) {
+        String f = filtro == null ? "" : filtro.trim().toLowerCase(java.util.Locale.ROOT);
+        menu.getPanes().clear();
+        listas.clear();
+        for (Map.Entry<String, List<HerramientaEscolar>> e : CatalogoHerramientas.porGrupo(rol).entrySet()) {
+            List<HerramientaEscolar> items = e.getValue().stream()
+                    .filter(h -> f.isEmpty() || h.titulo().toLowerCase(java.util.Locale.ROOT).contains(f)
+                            || h.descripcion().toLowerCase(java.util.Locale.ROOT).contains(f))
+                    .toList();
+            if (items.isEmpty()) continue;
+            ListView<HerramientaEscolar> lista = new ListView<>();
+            lista.getItems().setAll(items);
+            lista.getStyleClass().add("herr-lista-fx");
+            lista.setPrefHeight(items.size() * 34 + 4);
+            lista.setCellFactory(v -> new ListCell<>() {
+                @Override
+                protected void updateItem(HerramientaEscolar h, boolean vacio) {
+                    super.updateItem(h, vacio);
+                    setText(vacio || h == null ? null : IconosHerramientas.icono(h.id()) + "  " + h.titulo());
+                }
+            });
+            lista.getSelectionModel().selectedItemProperty().addListener((obs, anterior, nueva) -> {
+                if (nueva == null || sincronizando) return;
+                sincronizando = true;
+                listas.stream().filter(l -> l != lista).forEach(l -> l.getSelectionModel().clearSelection());
+                sincronizando = false;
+                mostrar(nueva);
+            });
+            TitledPane panel = new TitledPane(IconosHerramientas.iconoGrupo(e.getKey()) + "  " + e.getKey() + "  (" + items.size() + ")", lista);
+            panel.setAnimated(true);
+            panel.getStyleClass().add("herr-grupo-fx");
+            panel.setStyle("-fx-accent: " + IconosHerramientas.acento(e.getKey()) + ";");
+            listas.add(lista);
+            menu.getPanes().add(panel);
+        }
+        if (!f.isEmpty() && !menu.getPanes().isEmpty()) menu.setExpandedPane(menu.getPanes().get(0));
     }
 
     private void mostrar(HerramientaEscolar h) {
@@ -96,6 +152,15 @@ public final class HerramientasPanel extends VBox {
             return;
         }
         descripcion.setText(h.descripcion());
+        cabecera.setText(IconosHerramientas.icono(h.id()) + "  " + h.titulo());
+        detalle.setOpacity(0);
+        detalle.setTranslateY(8);
+        FadeTransition fade = new FadeTransition(Duration.millis(260), detalle);
+        fade.setToValue(1);
+        TranslateTransition sube = new TranslateTransition(Duration.millis(260), detalle);
+        sube.setToY(0);
+        fade.play();
+        sube.play();
         int fila = 0;
         for (HerramientaEscolar.Campo c : h.campos()) {
             Label etiqueta = new Label(c.etiqueta());
