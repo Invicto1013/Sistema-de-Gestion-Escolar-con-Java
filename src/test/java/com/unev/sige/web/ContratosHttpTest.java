@@ -108,6 +108,15 @@ class ContratosHttpTest {
     }
 
     @Test
+    void elCarnetDelPersonalExigeSesion() throws Exception {
+        for (String ruta : new String[] {"/carnet-personal", "/carnet-personal?usuario=1", "/personal-carnets"}) {
+            HttpResponse<String> r = get(ruta);
+            assertTrue(r.body().contains("Inicia sesión"), ruta);
+            assertTrue(!r.body().contains("Carnet de Personal") && !r.body().contains("ID SIGE"), ruta);
+        }
+    }
+
+    @Test
     void elEstadoDeSaludRespondeSinSesion() throws Exception {
         assertEquals(200, get("/health").statusCode());
     }

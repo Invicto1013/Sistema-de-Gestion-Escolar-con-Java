@@ -19,4 +19,9 @@ class IconosWebTest {
         assertTrue(r.contains("📑</span> Reporte</a>"));
         assertTrue(r.contains("💾</span> Mis registros</a>"));
     }
+    @Test void elCarnetDelPersonalTieneIcono() {
+        String r = IconosWeb.agregar("<a href='/carnet-personal'>Mi carnet</a><a href='/personal-carnets'>Carnets del personal</a>");
+        assertTrue(r.contains("🆔</span> Mi carnet</a>"));
+        assertTrue(r.contains("🪪</span> Carnets del personal</a>"));
+    }
 }
