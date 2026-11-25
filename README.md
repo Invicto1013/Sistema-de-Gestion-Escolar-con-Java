@@ -50,14 +50,13 @@ mvn clean javafx:run
 ## Ejecutable distribuible (JAR y jpackage)
 
 ```powershell
-Copy-Item config.example.properties config.properties
-# Completa db.url, db.user, db.password y 2fa.encryption-key en config.properties
 mvn clean package            # genera target/sige-1.0.0.jar (incluye JavaFX y las librerías)
-java -jar target\sige-1.0.0.jar
 .\empaquetar.bat             # app portable en target\dist\SIGE\SIGE.exe (con "exe", instalador; requiere WiX)
 ```
 
-`config.properties` (o `db.properties`) debe estar junto al `.jar` o en la carpeta desde donde se ejecuta; está ignorado por Git y no se empaqueta dentro del JAR. El JAR contiene las librerías de JavaFX del sistema donde se compila.
+**El ejecutable no lleva credenciales.** La primera vez que se abre en un equipo, un asistente pide la dirección de la base de datos, el usuario, la contraseña y (si se usa 2FA) la clave 2FA, comprueba la conexión y los guarda en `%APPDATA%\SIGE\config.properties` (en otros sistemas, `~/.config/sige/`). También permite importar un `config.properties` existente. No hay que copiar ningún archivo junto al `.exe`.
+
+Orden de búsqueda de la configuración: variables de entorno (`SIGE_DB_URL`, `SIGE_DB_USER`, `SIGE_DB_PASSWORD`), `config.properties` en la carpeta de ejecución, junto al `.jar` y, por último, en la carpeta del usuario. Para volver a ver el asistente, borra `%APPDATA%\SIGE\config.properties`. Ese archivo, igual que `config.properties`, no se sube a Git ni se empaqueta. Detalles en `docs/EJECUTABLE_PRIMER_ARRANQUE.md`.
 
 ## Base de datos
 
