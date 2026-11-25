@@ -24,9 +24,11 @@ import com.zaxxer.hikari.HikariPoolMXBean;
  * Tamano maximo: variable SIGE_DB_POOL_SIZE (por defecto 5, entre 1 y 20).
  * Las credenciales NO estan en el codigo. Se buscan, en este orden:
  * 1) variables de entorno SIGE_DB_URL, SIGE_DB_USER y SIGE_DB_PASSWORD;
- * 2) archivo config.properties en la carpeta desde donde se ejecuta la aplicacion
- *    o, si no esta alli, en la carpeta donde esta el .jar;
+ * 2) archivo config.properties en la carpeta desde donde se ejecuta la aplicacion,
+ *    o en la carpeta donde esta el .jar, o en la carpeta del usuario del equipo
+ *    (%APPDATA%\SIGE en Windows; ver {@link ConfiguracionUsuario}), donde lo deja el asistente de primer arranque;
  * 3) archivo dentro del classpath (solo desarrollo; el JAR de entrega no lo incluye).
+ * El ejecutable NO lleva credenciales: cada equipo guarda las suyas fuera del programa.
  * config.properties es el UNICO archivo de configuracion (base de datos, clave 2FA, correo y registro).
  * Esta en .gitignore: copia config.example.properties como plantilla y nunca lo subas a GitHub.
  * db.properties se sigue leyendo solo si no existe config.properties (nombre antiguo, con aviso).
@@ -38,7 +40,7 @@ public final class ConexionBD {
     /** Nombre antiguo: solo se usa si no existe el principal y se avisa en la consola. */
     static final String ARCHIVO_ANTIGUO = "db.properties";
     private static final String[] ARCHIVOS = {ARCHIVO_PRINCIPAL, ARCHIVO_ANTIGUO};
-    private static final Properties PROPIEDADES = cargarPropiedades();
+    private static volatile Properties PROPIEDADES = cargarPropiedades();
 
     private ConexionBD() {
     }
@@ -63,6 +65,7 @@ public final class ConexionBD {
         if (app != null) {
             carpetas.add(app);
         }
+        carpetas.add(ConfiguracionUsuario.carpeta());
         Path elegido = localizar(carpetas);
         if (elegido != null) {
             try {
@@ -173,9 +176,9 @@ public final class ConexionBD {
             }
             throw new SQLException("Falta configurar la conexion (" + String.join(", ", faltan) + "). "
                     + "No se encontro un config.properties valido en la carpeta de ejecucion ("
-                    + Path.of("").toAbsolutePath() + ") ni junto al programa. "
-                    + "Copia config.example.properties como config.properties en la carpeta "
-                    + "del .jar y completa los datos de MySQL.");
+                    + Path.of("").toAbsolutePath() + "), junto al programa ni en " + ConfiguracionUsuario.carpeta() + ". "
+                    + "Abre la aplicacion de escritorio para usar el asistente de primer arranque, o copia "
+                    + "config.example.properties como config.properties en esa carpeta y completa los datos de MySQL.");
         }
 
         HikariConfig cfg = new HikariConfig();
@@ -227,6 +230,23 @@ public final class ConexionBD {
                     + "este encendido (en Aiven puede estar apagado por inactividad), la red y las "
                     + "credenciales. Detalle: " + e.getMessage(), e);
         }
+    }
+
+    /** true si hay direccion y usuario de base de datos (por variable de entorno o archivo). No abre conexion. */
+    public static boolean estaConfigurada() {
+        String url = valor("SIGE_DB_URL", "db.url");
+        String usuario = valor("SIGE_DB_USER", "db.user");
+        return url != null && !url.isEmpty() && usuario != null && !usuario.isEmpty();
+    }
+
+    /**
+     * Vuelve a leer la configuracion y descarta el pool actual. Lo usa el asistente de primer arranque
+     * despues de guardar los datos, para que se apliquen sin reiniciar la aplicacion.
+     */
+    public static synchronized void recargar() {
+        cerrar();
+        pool = null;
+        PROPIEDADES = cargarPropiedades();
     }
 
     /** Cierra el pool y libera sus conexiones. Se invoca solo al terminar la aplicacion. */

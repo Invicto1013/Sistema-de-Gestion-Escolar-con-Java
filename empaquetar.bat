@@ -2,16 +2,12 @@
 REM Genera el ejecutable de SIGE (Fase 9 de la rubrica).
 REM   empaquetar.bat            -> JAR ejecutable + carpeta portable (jpackage app-image)
 REM   empaquetar.bat exe        -> ademas, instalador .exe (requiere WiX Toolset 3.x o 4+)
-REM Requisitos: JDK 25 (con jpackage) y Maven en el PATH, y config.properties en esta carpeta.
+REM Requisitos: JDK 25 (con jpackage) y Maven en el PATH.
+REM El ejecutable NO lleva credenciales: la primera vez que se abre en un equipo, un asistente pide los
+REM datos de conexion y los guarda en %APPDATA%\SIGE\config.properties (fuera del programa).
 setlocal
 cd /d "%~dp0"
 set VERSION=1.0.0
-
-if not exist config.properties (
-  echo [AVISO] No existe config.properties. Copia config.example.properties como config.properties
-  echo         y completa los datos de la base en la nube; se incluira junto al ejecutable.
-  exit /b 1
-)
 
 echo == 1/3 Compilando y creando el JAR ejecutable ==
 call mvn -B -q clean package -DskipTests
@@ -21,7 +17,6 @@ echo == 2/3 Preparando carpeta de entrega ==
 if exist target\entrega rmdir /s /q target\entrega
 mkdir target\entrega
 copy /y target\sige-%VERSION%.jar target\entrega\sige.jar >nul
-copy /y config.properties target\entrega\config.properties >nul
 
 echo == 3/3 Creando ejecutable con jpackage ==
 if exist target\dist rmdir /s /q target\dist
@@ -39,7 +34,7 @@ if /i "%1"=="exe" (
 
 echo.
 echo Listo:
-echo   JAR ejecutable : target\entrega\sige.jar  ^(+ config.properties en la misma carpeta^)
+echo   JAR ejecutable : target\entrega\sige.jar  ^(sin credenciales; el asistente las pide al abrir^)
 echo   App portable   : target\dist\SIGE\SIGE.exe
 if /i "%1"=="exe" echo   Instalador     : target\dist\SIGE-%VERSION%.exe
 endlocal
