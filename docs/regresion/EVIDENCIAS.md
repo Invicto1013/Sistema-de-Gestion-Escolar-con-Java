@@ -124,3 +124,4 @@ Los puntos marcados `[x]` indican que el caso quedó **definido en este document
 - 2026-11-24: CatalogoHerramientasTest/HerramientasWebTest (27) OK con shim; capturas web claro/oscuro/móvil revisadas; panel JavaFX sin compilar en sandbox.
 - 2026-11-24: CatalogoPlanesTest, PlanesWebTest, ScriptsSqlPlanesTest, IconosWebTest OK (13) con shim; captura de /planes revisada; PlanesPanel (JavaFX) y SuscripcionDAO sin compilar en sandbox.
 - 2026-11-24: GeneradorDocumentosTest (+4), PermisosTest (+2), IconosWebTest (+1) OK (18) con runner propio y stubs de zxing/bcrypt; ContratosHttpTest (+1) y paneles JavaFX sin ejecutar en sandbox: validar con mvn clean test y probar con un profesor, un director y una secretaria.
+- 2026-11-24: ConfiguracionUsuarioTest (9) OK con runner propio; ConfiguracionInicialDialog/App (JavaFX) y ConexionBD (Hikari) sin compilar en sandbox: validar con mvn clean test y abrir el .exe sin config.properties en un equipo limpio.

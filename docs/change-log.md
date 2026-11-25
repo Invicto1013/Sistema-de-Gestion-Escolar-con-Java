@@ -85,3 +85,4 @@ TiDB no es MySQL al 100 %.
 - 2026-11-24: Iconos en el menú web para Herramientas (🧰), Mis registros (💾) y Reporte (📑).
 - 2026-11-24: Planes de servicio (Esencial/Estándar/Institucional): tabla suscripcion_centro, web /planes y panel de escritorio, solo ADMIN cambia.
 - 2026-11-24: Carnet de identidad del personal (profesor, director/a, secretario/a): web /carnet-personal y /personal-carnets, panel de escritorio, color por rol, plantilla compartida con el carnet estudiantil (ver docs/CARNET_PERSONAL.md).
+- 2026-11-24: Ejecutable sin credenciales: asistente de primer arranque, configuración por equipo en %APPDATA%\SIGE, empaquetar.bat ya no copia config.properties (ver docs/EJECUTABLE_PRIMER_ARRANQUE.md).

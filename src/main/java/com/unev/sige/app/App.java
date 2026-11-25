@@ -1,5 +1,7 @@
 package com.unev.sige.app;
 
+import com.unev.sige.controller.ConfiguracionInicialDialog;
+import com.unev.sige.data.ConexionBD;
 import com.unev.sige.data.SesionDAO;
 import com.unev.sige.model.ControladorSesion;
 import javafx.application.Application;
@@ -18,6 +20,11 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
+        // El ejecutable no lleva credenciales: en un equipo nuevo, el asistente las pide una sola vez.
+        if (!ConexionBD.estaConfigurada() && !ConfiguracionInicialDialog.mostrar()) {
+            javafx.application.Platform.exit();
+            return;
+        }
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/unev/sige/view/login.fxml"));
         Parent root = loader.load();
 
