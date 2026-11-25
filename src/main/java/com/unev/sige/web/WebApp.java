@@ -196,8 +196,10 @@ public final class WebApp {
                     case "/confirmar" -> page(x, s, confirmPage(s, x.getRequestURI().getRawQuery()));
                     case "/boleta-oficial" -> sendOfficialReportCard(x, s, x.getRequestURI().getRawQuery());
                     case "/carnet" -> sendStudentCard(x, s, x.getRequestURI().getRawQuery());
+                    case "/carnet-personal" -> sendStaffCard(x, s, x.getRequestURI().getRawQuery());
                     case "/2fa" -> page(x, s, mfaPage(s, null));
                     case "/planes" -> page(x, s, planesPage(s, null));
+                    case "/personal-carnets" -> page(x, s, staffCardsPage(s));
                     case "/herramientas" -> page(x, s, herramientasPage(s, queryValue(x.getRequestURI().getRawQuery(), "abrir")));
                     case "/herramienta" -> page(x, s, herramientaPage(s, x.getRequestURI().getRawQuery(), null, null));
                     case "/herramientas-registros" -> page(x, s, registrosPage(s, ""));
@@ -2366,6 +2368,47 @@ public final class WebApp {
         }
     }
 
+    /** Carnet de identidad del personal: cada persona ve el suyo; admin, dirección y secretaría, el de cualquiera. */
+    private static void sendStaffCard(HttpExchange x, WebSession s, String query) throws IOException {
+        if (s.user == null) { send(x, 401, "text/plain; charset=utf-8", "Inicia sesión para ver el carnet."); return; }
+        Rol rol = s.user.getRol();
+        Integer chosen = parseStudentIdParam(query, "usuario");
+        int targetId = s.user.getId();
+        if (chosen != null && chosen > 0 && chosen != s.user.getId()) {
+            if (!Permisos.emiteCarnetsDelPersonal(rol)) { send(x, 403, "text/plain; charset=utf-8", "No autorizado."); return; }
+            targetId = chosen;
+        } else if (!Permisos.tieneCarnetPersonal(rol) && !Permisos.emiteCarnetsDelPersonal(rol)) {
+            send(x, 403, "text/plain; charset=utf-8", "Tu rol no tiene carnet de personal."); return;
+        }
+        try {
+            Usuario u = new UsuarioDAO().buscarPorId(targetId).orElse(null);
+            if (u == null || !Permisos.tieneCarnetPersonal(u.getRol())) {
+                send(x, 404, "text/plain; charset=utf-8", "Personal no encontrado.");
+                return;
+            }
+            send(x, 200, "text/html; charset=utf-8", GeneradorDocumentos.generarCarnetPersonalHtml(u));
+        } catch (SQLException e) {
+            send(x, 500, "text/plain; charset=utf-8", "No se pudo emitir el carnet. Intenta de nuevo.");
+        }
+    }
+
+    private static String staffCardsPage(WebSession s){
+        if(s.user==null)return shell("Carnets del personal",errorPage("Inicia sesión para ver esta página."),false,"");
+        if(!Permisos.emiteCarnetsDelPersonal(s.user.getRol()))return shell("Carnets del personal",errorPage("Solo administración, dirección o secretaría pueden emitir carnets del personal."),true,s.user.getNombreCompleto());
+        try{
+            StringBuilder rows=new StringBuilder();
+            for(Usuario u:new UsuarioDAO().listarTodos()){
+                if(!u.isActivo()||!Permisos.tieneCarnetPersonal(u.getRol()))continue;
+                rows.append("<tr><td>").append(esc(u.getNombreCompleto())).append("</td><td>").append(esc(u.getRol().etiqueta())).append("</td><td>")
+                    .append(esc(GeneradorDocumentos.codigoPersonal(u))).append("</td><td><a href='/carnet-personal?usuario=").append(u.getId()).append("' target='_blank' rel='noopener'>Carnet</a></td></tr>");
+            }
+            if(rows.isEmpty())rows.append("<tr><td colspan='4' class='empty'>No hay personal activo registrado.</td></tr>");
+            String body="<div class='page-heading'><div><div class='eyebrow'>DOCUMENTOS</div><h1>Carnets del personal</h1><p>Emite el carnet de identidad con código QR de profesores, dirección y secretaría.</p></div></div>"
+                    +"<section class='card table-card'><div class='table-wrap'><table class='grade-table'><thead><tr><th>Nombre</th><th>Cargo</th><th>ID SIGE</th><th>Documento</th></tr></thead><tbody>"+rows+"</tbody></table></div></section>";
+            return shell("Carnets del personal",body,true,s.user.getNombreCompleto());
+        }catch(SQLException e){return shell("Carnets del personal",alert("No se pudo cargar el personal. Verifica la conexión con MySQL."),true,s.user.getNombreCompleto());}
+    }
+
     private static void sendStudentCard(HttpExchange x, WebSession s, String query) throws IOException {
         if (s.user == null) { send(x, 401, "text/plain; charset=utf-8", "Inicia sesión para ver el carnet."); return; }
         try {
@@ -2521,6 +2564,8 @@ public final class WebApp {
         String estacion=EstacionWeb.efectiva(ESTACION_REQUEST.get(),java.time.LocalDate.now(java.time.ZoneOffset.of(com.unev.sige.model.ZonaVisual.desplazamiento())));
         String role=ROLE_REQUEST.get();
         String academicLink="ESTUDIANTE".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mi horario</a><a href='/conducta'>Conducta</a><a href='/materias'>Mis materias</a><a href='/inscripciones'>Inscripciones</a><a href='/boleta'>Mi boleta</a><a href='/asistencia'>Mi asistencia</a>":"PADRE".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/mis-hijos'>Mis hijos</a><a href='/conducta'>Conducta</a><a href='/materias'>Materias de mis hijos</a><a href='/boleta'>Boleta de mis hijos</a><a href='/asistencia'>Asistencia de mis hijos</a>":"PROFESOR".equals(role)?"<a href='/aula'>Aula y tareas</a><a href='/anuncios'>Anuncios</a><a href='/horarios'>Mis horarios</a><a href='/conducta'>Conducta</a><a href='/calificaciones'>Calificaciones</a><a href='/asistencia-docente'>Tomar asistencia</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"DIRECTOR".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/conducta'>Conducta</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a>":"SECRETARIA".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/solicitudes'>Solicitudes</a><a href='/vinculaciones'>Vincular padres</a><a href='/boleta'>Boletas y carnets</a><a href='/reporte-asistencia'>Reporte de asistencia</a>":"ADMIN".equals(role)?"<a href='/anuncios'>Anuncios</a><a href='/horarios'>Horarios</a><a href='/conducta'>Conducta</a><a href='/usuarios'>Usuarios</a><a href='/solicitudes'>Solicitudes</a><a href='/cambiar-rol'>Cambiar rol</a><a href='/crear-profesor'>Crear profesor</a><a href='/crear-personal'>Crear personal</a><a href='/vinculaciones'>Vincular padres</a><a href='/asignaturas'>Asignaturas</a><a href='/curriculo'>Grados y currículo</a><a href='/secciones'>Secciones</a><a href='/periodos'>Períodos</a><a href='/calificaciones'>Calificaciones</a><a href='/reporte-asistencia'>Reporte de asistencia</a><a href='/auditoria'>Auditoría</a><a href='/historial-sesiones'>Historial</a>":"";if(role!=null&&!role.isEmpty())academicLink+="<a href='/herramientas'>Herramientas</a>";if("ADMIN".equals(role)||"DIRECTOR".equals(role))academicLink+="<a href='/planes'>Planes de servicio</a>";
+        if("PROFESOR".equals(role)||"DIRECTOR".equals(role)||"SECRETARIA".equals(role))academicLink+="<a href='/carnet-personal'>Mi carnet</a>";
+        if("ADMIN".equals(role)||"DIRECTOR".equals(role)||"SECRETARIA".equals(role))academicLink+="<a href='/personal-carnets'>Carnets del personal</a>";
         String nav = logged ? "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><button class='menu-toggle' type='button' aria-controls='main-navigation' aria-expanded='false' aria-label='Abrir menú'>☰</button><nav class='top-nav' id='main-navigation' aria-label='Navegación principal'><a href='/'>Inicio</a><a href='/perfil'>Mi perfil</a>"+academicLink+"<a href='/reporte-inscripciones'>Reporte</a>"+stop+"</nav>"+ajustes+"<div class='account'><span>"+esc(name)+"</span><form method='post' action='/logout'>"
                 +"<input type='hidden' name='_csrf' value='"+esc(currentCsrf())+"'><button class='quiet' type='submit'>Cerrar sesión</button></form>"+"</div></header>"
                 : "<header class='topbar'><a class='brand' href='/'><img class='brand-logo' src='/logo.svg' alt='' width='36' height='36'>SIGE</a><span class='top-note'>Sistema de gestión educativa</span>"+ajustes+"</header>";

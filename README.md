@@ -69,6 +69,7 @@ Orden de búsqueda de la configuración: variables de entorno (`SIGE_DB_URL`, `S
 - **Cuaderno de observaciones y conducta:** registro docente de reconocimientos/méritos, tardanzas, compromisos de tareas e incidencias disciplinarias, visible por estudiantes y padres/tutores.
 - **Boleta oficial imprimible / PDF:** formato membretado con promedio ponderado, asignaturas evaluadas y firmas oficiales escolares listo para imprimir o guardar como PDF.
 - **Carnet estudiantil con código QR:** credencial escolar imprimible con datos del alumno y código QR de matrícula de alta resolución para control de acceso y biblioteca.
+- **Carnet de identidad del personal:** profesores, dirección y secretaría tienen su carnet imprimible con QR (`/carnet-personal` y «Mi carnet» en el escritorio); administración, dirección y secretaría emiten el de cualquier miembro activo (`/personal-carnets`). Ver `docs/CARNET_PERSONAL.md`.
 
 ## Accesibilidad visual y botones dinámicos
 

@@ -16,7 +16,8 @@ public final class Iconos {
             Map.entry("Asistencia", "✅"), Map.entry("Mis materias", "📚"), Map.entry("Mis calificaciones", "📊"),
             Map.entry("Boleta", "📄"), Map.entry("Mi asistencia", "✅"), Map.entry("Mis hijos", "👪"),
             Map.entry("Crear personal", "👔"), Map.entry("Anuncios", "📢"), Map.entry("Horarios", "🕒"), Map.entry("Mi horario", "🕒"),
-            Map.entry("Conducta", "⭐"), Map.entry("Mi conducta", "⭐"), Map.entry("Herramientas", "🧰"), Map.entry("Mis registros", "💾"), Map.entry("Planes de servicio", "💳"));
+            Map.entry("Conducta", "⭐"), Map.entry("Mi conducta", "⭐"), Map.entry("Herramientas", "🧰"), Map.entry("Mis registros", "💾"), Map.entry("Planes de servicio", "💳"),
+            Map.entry("Mi carnet", "🆔"), Map.entry("Carnets del personal", "🪪"));
 
     private Iconos() {
     }

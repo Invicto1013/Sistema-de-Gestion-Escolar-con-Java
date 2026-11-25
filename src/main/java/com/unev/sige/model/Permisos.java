@@ -7,6 +7,7 @@ package com.unev.sige.model;
  * <ul>
  *   <li>ADMIN: todo.</li>
  *   <li>DIRECTOR/A: supervisa (informes, boletas, carnets, asistencia, auditoría), publica anuncios y gestiona conducta.</li>
+ *   <li>PROFESOR, DIRECTOR/A y SECRETARIO/A tienen carnet de identidad del personal; ADMIN, dirección y secretaría emiten el de cualquier miembro.</li>
  *   <li>SECRETARIO/A: administración diaria (solicitudes de registro, vínculos padre-estudiante, horarios), informes y anuncios.</li>
  * </ul>
  */
@@ -29,6 +30,10 @@ public final class Permisos {
     public static boolean registraConducta(Rol r) { return es(r, Rol.ADMIN, Rol.DIRECTOR, Rol.PROFESOR); }
     public static boolean veConductaCompleta(Rol r) { return es(r, Rol.ADMIN, Rol.DIRECTOR); }
     public static boolean eliminaConductaAjena(Rol r) { return es(r, Rol.ADMIN, Rol.DIRECTOR); }
+    /** Roles con carnet de identidad del personal: profesores, dirección y secretaría. */
+    public static boolean tieneCarnetPersonal(Rol r) { return es(r, Rol.PROFESOR, Rol.DIRECTOR, Rol.SECRETARIA); }
+    /** Quienes pueden emitir el carnet de cualquier miembro del personal (cada persona siempre ve el suyo). */
+    public static boolean emiteCarnetsDelPersonal(Rol r) { return es(r, Rol.ADMIN, Rol.DIRECTOR, Rol.SECRETARIA); }
     /** Roles que puede crear un administrador desde «Crear personal». */
     public static boolean esPersonalCreable(Rol r) { return es(r, Rol.DIRECTOR, Rol.SECRETARIA); }
 }

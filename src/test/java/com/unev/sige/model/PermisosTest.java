@@ -54,4 +54,22 @@ class PermisosTest {
         assertEquals("Director/a", Rol.DIRECTOR.etiqueta());
         assertEquals("Secretario/a", Rol.SECRETARIA.etiqueta());
     }
+    @Test void carnetPersonalLoTienenProfesorDirectorYSecretaria() {
+        assertTrue(Permisos.tieneCarnetPersonal(Rol.PROFESOR));
+        assertTrue(Permisos.tieneCarnetPersonal(Rol.DIRECTOR));
+        assertTrue(Permisos.tieneCarnetPersonal(Rol.SECRETARIA));
+        assertFalse(Permisos.tieneCarnetPersonal(Rol.ESTUDIANTE));
+        assertFalse(Permisos.tieneCarnetPersonal(Rol.PADRE));
+        assertFalse(Permisos.tieneCarnetPersonal(Rol.ADMIN));
+        assertFalse(Permisos.tieneCarnetPersonal(null));
+    }
+    @Test void quienEmiteElCarnetDeOtroPersonal() {
+        assertTrue(Permisos.emiteCarnetsDelPersonal(Rol.ADMIN));
+        assertTrue(Permisos.emiteCarnetsDelPersonal(Rol.DIRECTOR));
+        assertTrue(Permisos.emiteCarnetsDelPersonal(Rol.SECRETARIA));
+        assertFalse(Permisos.emiteCarnetsDelPersonal(Rol.PROFESOR));
+        assertFalse(Permisos.emiteCarnetsDelPersonal(Rol.PADRE));
+        assertFalse(Permisos.emiteCarnetsDelPersonal(Rol.ESTUDIANTE));
+        assertFalse(Permisos.emiteCarnetsDelPersonal(null));
+    }
 }

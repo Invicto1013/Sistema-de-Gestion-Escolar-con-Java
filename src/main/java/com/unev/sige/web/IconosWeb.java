@@ -18,7 +18,8 @@ final class IconosWeb {
             Map.entry("/anuncios", "📢"), Map.entry("/horarios", "🕒"), Map.entry("/conducta", "⭐"),
             Map.entry("/crear-personal", "👔"), Map.entry("/inicio", "🏠"),
             Map.entry("/herramientas", "🧰"), Map.entry("/herramientas-registros", "💾"),
-            Map.entry("/reporte-inscripciones", "📑"), Map.entry("/planes", "💳"));
+            Map.entry("/reporte-inscripciones", "📑"), Map.entry("/planes", "💳"),
+            Map.entry("/carnet-personal", "🆔"), Map.entry("/personal-carnets", "🪪"));
 
     private IconosWeb() { }
 

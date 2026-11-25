@@ -5,6 +5,9 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.common.BitMatrix;
 import com.unev.sige.model.Estudiante;
 import com.unev.sige.model.LineaBoleta;
+import com.unev.sige.model.Permisos;
+import com.unev.sige.model.Rol;
+import com.unev.sige.model.Usuario;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -284,14 +287,58 @@ public final class GeneradorDocumentos {
      */
     public static String generarCarnetHtml(Estudiante estudiante) {
         String qrBase64 = generarQrBase64("SIGE:" + estudiante.getMatricula() + ":" + estudiante.getId());
-        String fechaHoy = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy"));
+        return carnetHtml(
+                "Carnet Estudiantil - " + escape(estudiante.getNombreCompleto()),
+                "#0f766e", "#134e4a", "ESTUDIANTE",
+                obtenerIniciales(estudiante.getNombreCompleto()),
+                escape(estudiante.getNombreCompleto()),
+                "Matrícula: " + escape(estudiante.getMatricula() != null ? estudiante.getMatricula() : "S/M"),
+                escape(estudiante.getGrado() != null ? estudiante.getGrado() : "Primaria / Secundaria"),
+                qrBase64);
+    }
 
+    /**
+     * Carnet de identidad del personal (profesores, dirección y secretaría), con el mismo diseño del carnet
+     * estudiantil, color propio por rol y un QR «SIGE:PERSONAL:ROL:id». Lanza IllegalArgumentException si el
+     * rol no tiene carnet de personal.
+     */
+    public static String generarCarnetPersonalHtml(Usuario persona) {
+        Rol rol = persona.getRol();
+        if (!Permisos.tieneCarnetPersonal(rol)) {
+            throw new IllegalArgumentException("Este rol no tiene carnet de personal.");
+        }
+        String colorA, colorB, area;
+        switch (rol) {
+            case DIRECTOR -> { colorA = "#1e3a8a"; colorB = "#172554"; area = "Dirección del centro"; }
+            case SECRETARIA -> { colorA = "#6d28d9"; colorB = "#4c1d95"; area = "Secretaría"; }
+            default -> { colorA = "#0f766e"; colorB = "#134e4a"; area = "Personal docente"; }
+        }
+        String qrBase64 = generarQrBase64("SIGE:PERSONAL:" + rol.name() + ":" + persona.getId());
+        String nombre = persona.getNombreCompleto();
+        return carnetHtml(
+                "Carnet de Personal - " + escape(nombre),
+                colorA, colorB, escape(rol.etiqueta().toUpperCase(Locale.ROOT)),
+                obtenerIniciales(nombre),
+                escape(nombre),
+                "ID SIGE: " + codigoPersonal(persona),
+                escape(area),
+                qrBase64);
+    }
+
+    /** Código visible del carnet de personal, por ejemplo P-00042. */
+    public static String codigoPersonal(Usuario persona) {
+        return String.format(Locale.ROOT, "P-%05d", persona.getId());
+    }
+
+    private static String carnetHtml(String tituloPagina, String colorA, String colorB, String etiquetaRol,
+                                     String iniciales, String nombre, String linea1, String linea2, String qrBase64) {
+        String ciclo = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy"));
         return """
         <!DOCTYPE html>
         <html lang="es">
         <head>
             <meta charset="UTF-8">
-            <title>Carnet Estudiantil - %s</title>
+            <title>%1$s</title>
             <style>
                 @page { size: auto; margin: 1cm; }
                 body {
@@ -312,7 +359,7 @@ public final class GeneradorDocumentos {
                 .carnet {
                     width: 340px;
                     height: 215px;
-                    background: linear-gradient(135deg, #0f766e 0%%, #134e4a 100%%);
+                    background: linear-gradient(135deg, %2$s 0%%, %3$s 100%%);
                     border-radius: 12px;
                     box-shadow: 0 10px 25px rgba(0,0,0,0.15);
                     color: white;
@@ -363,7 +410,7 @@ public final class GeneradorDocumentos {
                     width: 70px;
                     height: 70px;
                     background: #ffffff;
-                    color: #0f766e;
+                    color: %2$s;
                     border-radius: 8px;
                     display: flex;
                     align-items: center;
@@ -393,7 +440,7 @@ public final class GeneradorDocumentos {
                 .btn-imprimir {
                     margin-bottom: 24px;
                     padding: 10px 20px;
-                    background: #0f766e;
+                    background: %2$s;
                     color: white;
                     border: none;
                     border-radius: 6px;
@@ -414,33 +461,25 @@ public final class GeneradorDocumentos {
                 <div class="carnet">
                     <div class="carnet-header">
                         <h1>SIGE Escolar</h1>
-                        <span>ESTUDIANTE</span>
+                        <span>%4$s</span>
                     </div>
                     <div class="carnet-body">
-                        <div class="avatar">%s</div>
+                        <div class="avatar">%5$s</div>
                         <div class="datos">
-                            <div class="nombre">%s</div>
-                            <div class="matricula">Matrícula: %s</div>
-                            <div class="grado">%s</div>
+                            <div class="nombre">%6$s</div>
+                            <div class="matricula">%7$s</div>
+                            <div class="grado">%8$s</div>
                         </div>
                     </div>
                     <div class="carnet-footer">
-                        <div>Válido ciclo %s<br>República Dominicana</div>
-                        <img class="qr-img" src="%s" alt="QR Matrícula">
+                        <div>Válido ciclo %9$s<br>República Dominicana</div>
+                        <img class="qr-img" src="%10$s" alt="QR de identificación">
                     </div>
                 </div>
             </div>
         </body>
         </html>
-        """.formatted(
-                escape(estudiante.getNombreCompleto()),
-                obtenerIniciales(estudiante.getNombreCompleto()),
-                escape(estudiante.getNombreCompleto()),
-                escape(estudiante.getMatricula() != null ? estudiante.getMatricula() : "S/M"),
-                escape(estudiante.getGrado() != null ? estudiante.getGrado() : "Primaria / Secundaria"),
-                fechaHoy,
-                qrBase64
-        );
+        """.formatted(tituloPagina, colorA, colorB, etiquetaRol, iniciales, nombre, linea1, linea2, ciclo, qrBase64);
     }
 
     private static String generarQrBase64(String texto) {
